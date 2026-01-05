@@ -200,7 +200,7 @@ services:
       - ecomparts-net
     restart: unless-stopped
 
-  # ============================================
+    # ============================================
   # Flower - Monitor de Celery
   # ============================================
   flower:
@@ -208,6 +208,7 @@ services:
       context: ./services/backend
       dockerfile: Dockerfile
     container_name: ecomparts-flower
+    entrypoint: []
     command: celery -A ecomparts flower --port=5555 --basic_auth=admin:EcomFlower2025
     ports:
       - "5555:5555"
