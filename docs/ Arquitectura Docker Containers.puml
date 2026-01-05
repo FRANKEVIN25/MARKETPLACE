@@ -1,0 +1,174 @@
+@startuml
+!define CONTAINER rectangle
+
+title ECOMPARTS - Contenedores Docker y Red Interna
+
+cloud "Internet" {
+    actor Usuario as user
+}
+
+package "Docker Host - Ubuntu 24.04" {
+    
+    ' Red Docker
+    package "ecomparts-net (bridge network)" {
+        
+        ' Contenedor PostgreSQL
+        CONTAINER "ecomparts-postgres\npostgres:16-alpine" as postgres {
+            component "PostgreSQL 16" as pg
+            database "ecomparts_odoo" as db1
+            database "ecomparts_django" as db2
+            
+            note bottom of postgres
+                **Puerto interno:** 5432
+                **Usuario:** ecomparts_user
+                **Healthcheck:** pg_isready
+                **Volumen:** postgres-data
+            end note
+        }
+        
+        ' Contenedor Redis
+        CONTAINER "ecomparts-redis\nredis:7-alpine" as redis_container {
+            component "Redis 7" as redis
+            
+            note bottom of redis_container
+                **Puerto interno:** 6379
+                **Comando:** redis-server
+                **Maxmemory:** 512mb
+                **Volumen:** redis-data
+            end note
+        }
+        
+        ' Contenedor Odoo
+        CONTAINER "ecomparts-odoo\n(custom build)" as odoo_container {
+            component "Odoo 19" as odoo
+            folder "/mnt/extra-addons" as addons
+            folder "/var/lib/odoo" as odoo_data
+            
+            note bottom of odoo_container
+                **Puerto:** 8070 → 8069
+                **Config:** /etc/odoo/odoo.conf
+                **Usuario:** odoo (no-root)
+                **Volúmenes:**
+                - odoo-web-data
+                - ./services/odoo/addons
+            end note
+        }
+        
+        ' Contenedor Django
+        CONTAINER "ecomparts-backend\n(custom build)" as backend_container {
+            component "Django 4.2" as django
+            component "Gunicorn" as gunicorn
+            folder "/app" as app
+            folder "/app/staticfiles" as static
+            folder "/app/media" as media
+            
+            note bottom of backend_container
+                **Puerto:** 8000 → 8000
+                **Workers:** 4
+                **Usuario:** django (no-root)
+                **Volúmenes:**
+                - ./services/backend (bind mount)
+                - backend-static
+                - backend-media
+            end note
+        }
+        
+        ' Contenedor Celery Worker
+        CONTAINER "ecomparts-celery-worker\n(custom build)" as celery_worker {
+            component "Celery Worker" as worker
+            
+            note bottom of celery_worker
+                **Concurrency:** 4 workers
+                **Command:** celery -A ecomparts worker
+                **Volumen:** ./services/backend
+            end note
+        }
+        
+        ' Contenedor Celery Beat
+        CONTAINER "ecomparts-celery-beat\n(custom build)" as celery_beat {
+            component "Celery Beat" as beat
+            
+            note bottom of celery_beat
+                **Scheduler:** DatabaseScheduler
+                **Command:** celery -A ecomparts beat
+                **Volumen:** ./services/backend
+            end note
+        }
+        
+        ' Contenedor Flower
+        CONTAINER "ecomparts-flower\n(custom build)" as flower_container {
+            component "Flower" as flower
+            
+            note bottom of flower_container
+                **Puerto:** 5555 → 5555
+                **Auth:** admin:EcomFlower2025
+            end note
+        }
+    }
+    
+    ' Volúmenes persistentes
+    package "Docker Volumes" {
+        storage "postgres-data" as vol_pg
+        storage "redis-data" as vol_redis
+        storage "odoo-web-data" as vol_odoo
+        storage "backend-static" as vol_static
+        storage "backend-media" as vol_media
+        storage "backend-logs" as vol_logs
+    }
+}
+
+' Conexiones externas
+user -down-> backend_container : http://localhost:8000
+user -down-> odoo_container : http://localhost:8070
+user -down-> flower_container : http://localhost:5555
+
+' Conexiones internas - Base de datos
+backend_container --> postgres : 5432\necomparts_django
+odoo_container --> postgres : 5432\necomparts_odoo
+celery_worker --> postgres : 5432
+celery_beat --> postgres : 5432
+
+' Conexiones internas - Redis
+backend_container --> redis_container : 6379\nCache
+celery_worker --> redis_container : 6379\nBroker
+celery_beat --> redis_container : 6379\nBroker
+flower_container --> redis_container : 6379\nMonitor
+
+' Conexiones internas - Odoo
+backend_container --> odoo_container : 8069\nXML-RPC
+celery_worker --> odoo_container : 8069\nXML-RPC
+
+' Volúmenes
+postgres -down-> vol_pg
+redis_container -down-> vol_redis
+odoo_container -down-> vol_odoo
+backend_container -down-> vol_static
+backend_container -down-> vol_media
+celery_worker -down-> vol_logs
+
+' Dependencias (orden de inicio)
+postgres -[hidden]right-> redis_container
+redis_container -[hidden]right-> odoo_container
+odoo_container -[hidden]right-> backend_container
+backend_container -[hidden]right-> celery_worker
+celery_worker -[hidden]right-> celery_beat
+
+legend right
+    **Healthchecks:**
+    |= Container |= Check |= Status |
+    | postgres | pg_isready | ✅ healthy |
+    | redis | redis-cli ping | ✅ healthy |
+    | odoo | service_started | ✅ started |
+    | backend | service_started | ✅ started |
+    
+    **Orden de inicio:**
+    1. postgres (healthcheck)
+    2. redis (healthcheck)
+    3. odoo (depends_on postgres, redis)
+    4. backend (depends_on postgres, redis, odoo)
+    5. celery_worker (depends_on backend)
+    6. celery_beat (depends_on celery_worker)
+    7. flower (depends_on celery_worker)
+endlegend
+
+@enduml

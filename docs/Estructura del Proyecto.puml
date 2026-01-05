@@ -1,0 +1,77 @@
+@startuml
+@startmindmap
+title ECOMPARTS - Estructura del Proyecto
+
+* <b>ECOMPARTS/</b>
+** <b>.env</b>\n<i>Variables de entorno</i>\n<i>Contraseñas, puertos</i>
+** <b>.gitignore</b>\n<i>Archivos ignorados por Git</i>
+** <b>README.md</b>\n<i>Documentación principal</i>
+** <b>docker-compose.yml</b>\n<i>Orquestación de servicios</i>
+
+left side
+
+** <b>docs/</b>
+*** SETUP_COMPLETO.md
+*** FASE_1_BACKEND.md
+*** FASE_2_FRONTEND.md
+
+right side
+
+** <b>services/</b>
+
+*** <b>odoo/</b>
+**** <b>Dockerfile</b>\n<i>Imagen Odoo 19</i>
+**** <b>config/</b>
+***** odoo.conf\n<i>Configuración Odoo</i>\n<i>DB, puertos, addons</i>
+**** <b>addons/</b>
+***** <b>ecomparts_integration/</b>\n<i>Módulo personalizado</i>
+****** __init__.py
+****** __manifest__.py
+****** <b>models/</b>\n<i>Modelos Odoo</i>
+****** <b>views/</b>\n<i>Vistas XML</i>
+****** <b>security/</b>\n<i>Permisos</i>
+****** <b>data/</b>\n<i>Datos iniciales</i>
+
+*** <b>backend/</b>
+**** <b>Dockerfile</b>\n<i>Imagen Django</i>
+**** <b>requirements.txt</b>\n<i>Dependencias Python</i>
+**** <b>entrypoint.sh</b>\n<i>Script de inicio</i>
+**** <b>manage.py</b>\n<i>CLI Django</i>
+
+**** <b>ecomparts/</b>\n<i>Proyecto Django</i>
+***** __init__.py\n<i>Importa Celery</i>
+***** settings.py\n<i>Configuración Django</i>\n<i>Database, Redis, etc</i>
+***** urls.py\n<i>Rutas API</i>
+***** wsgi.py\n<i>WSGI app</i>
+***** asgi.py\n<i>ASGI app</i>
+***** celery.py\n<i>Config Celery</i>\n<i>Tasks programadas</i>
+
+**** <b>apps/</b>\n<i>Aplicaciones Django</i>
+***** <b>core/</b>\n<i>Utilidades base</i>
+****** __init__.py
+****** apps.py
+****** models.py
+****** admin.py
+***** <b>marketplace/</b>\n<i>Multi-tenancy</i>
+****** models.py\n<i>ProviderGroup</i>\n<i>CompanyProfile</i>
+***** <b>products/</b>\n<i>Catálogo</i>
+****** models.py\n<i>Product</i>\n<i>Category</i>
+****** serializers.py
+****** views.py
+***** <b>vehicles/</b>\n<i>Vehículos</i>
+****** models.py\n<i>Brand, Model</i>\n<i>Variant</i>
+***** <b>users/</b>\n<i>Usuarios</i>
+****** models.py\n<i>CustomUser</i>
+***** <b>sync/</b>\n<i>Sincronización</i>
+****** tasks.py\n<i>Celery tasks</i>\n<i>sync_products</i>\n<i>sync_stock</i>
+
+**** <b>middleware/</b>
+***** __init__.py
+***** odoo_connector.py\n<i>Conexión XML-RPC</i>\n<i>a Odoo</i>
+
+**** <b>staticfiles/</b>\n<i>Archivos estáticos</i>
+**** <b>media/</b>\n<i>Uploads</i>
+**** <b>logs/</b>\n<i>Logs Django</i>
+
+@endmindmap
+@enduml

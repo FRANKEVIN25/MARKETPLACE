@@ -1,0 +1,151 @@
+@startuml
+!define RECTANGLE class
+
+title ECOMPARTS - Arquitectura Completa del Sistema
+
+' Estilos
+skinparam rectangle {
+    BackgroundColor<<frontend>> LightBlue
+    BackgroundColor<<backend>> LightGreen
+    BackgroundColor<<erp>> Orange
+    BackgroundColor<<database>> LightYellow
+    BackgroundColor<<cache>> Pink
+    BackgroundColor<<worker>> Lavender
+}
+
+' ===== CAPA DE PRESENTACIÓN =====
+package "Frontend (Fase 2)" <<frontend>> {
+    [SvelteKit] as svelte
+    note right of svelte
+        Puerto: 5173 o 3000
+        Estado: Pendiente
+    end note
+}
+
+' ===== CAPA DE APLICACIÓN =====
+package "Backend Django" <<backend>> {
+    [Django REST API] as django
+    [Gunicorn Server] as gunicorn
+    
+    package "Apps Django" {
+        [marketplace] as app_marketplace
+        [products] as app_products
+        [vehicles] as app_vehicles
+        [users] as app_users
+        [sync] as app_sync
+        [core] as app_core
+    }
+    
+    [Middleware\nOdoo Connector] as middleware
+}
+
+' ===== CAPA DE ERP =====
+package "ERP Odoo 19" <<erp>> {
+    [Odoo Server] as odoo
+    [odoo-bin] as odoo_bin
+    
+    package "Módulos Odoo" {
+        [base] as odoo_base
+        [ecomparts_integration] as odoo_custom
+    }
+}
+
+' ===== WORKERS ASÍNCRONOS =====
+package "Procesamiento Asíncrono" <<worker>> {
+    [Celery Worker] as celery_worker
+    [Celery Beat\n(Scheduler)] as celery_beat
+    [Flower\n(Monitor)] as flower
+}
+
+' ===== CAPA DE DATOS =====
+package "Bases de Datos" <<database>> {
+    database "PostgreSQL 16" {
+        [ecomparts_odoo] as db_odoo
+        [ecomparts_django] as db_django
+    }
+}
+
+' ===== CAPA DE CACHÉ =====
+package "Cache & Broker" <<cache>> {
+    [Redis 7] as redis
+    note right of redis
+        Puerto: 6379
+        - Cache Django
+        - Broker Celery
+        - Session Storage
+    end note
+}
+
+' ===== CONEXIONES =====
+
+' Frontend -> Backend
+svelte --> django : HTTP REST\nJSON API
+
+' Backend -> Base de datos
+django --> db_django : PostgreSQL\npsycopg2
+django --> redis : Cache\nSessions
+
+' Backend -> Odoo
+django --> middleware : Odoo\nConnector
+middleware --> odoo : XML-RPC\nPuerto 8069
+
+' Odoo -> Base de datos
+odoo --> db_odoo : PostgreSQL\nORM Odoo
+
+' Django Apps
+django ..> app_marketplace
+django ..> app_products
+django ..> app_vehicles
+django ..> app_users
+django ..> app_sync
+django ..> app_core
+
+' Celery
+app_sync --> celery_worker : Tasks\nSincronización
+celery_worker --> redis : Broker\nResultados
+celery_beat --> redis : Scheduler
+celery_worker --> db_django : Actualizar\nDatos
+celery_worker --> odoo : Consultar\nProductos/Stock
+
+' Flower
+flower --> redis : Monitor\nTasks
+
+' Gunicorn
+gunicorn ..> django : WSGI
+
+' Odoo modules
+odoo ..> odoo_base
+odoo ..> odoo_custom
+
+' ===== NOTAS DE PUERTOS =====
+note right of django
+    **Puerto: 8000**
+    Endpoints:
+    - /api/v1/
+    - /admin/
+    - /api/docs/
+end note
+
+note right of odoo
+    **Puerto: 8070**
+    Usuario: admin@ecomparts.local
+    Password: Admin!2025
+end note
+
+note right of flower
+    **Puerto: 5555**
+    Usuario: admin
+    Password: EcomFlower2025
+end note
+
+' ===== LEYENDA =====
+legend right
+    |<back:LightBlue> Frontend </back>| SvelteKit (Fase 2) |
+    |<back:LightGreen> Backend </back>| Django REST API |
+    |<back:Orange> ERP </back>| Odoo 19 Community |
+    |<back:LightYellow> Database </back>| PostgreSQL 16 |
+    |<back:Pink> Cache </back>| Redis 7 |
+    |<back:Lavender> Workers </back>| Celery + Beat + Flower |
+endlegend
+
+@enduml

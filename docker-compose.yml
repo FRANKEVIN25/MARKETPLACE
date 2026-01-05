@@ -1,0 +1,248 @@
+version: "3.8"
+
+services:
+  # ============================================
+  # PostgreSQL - Base de Datos
+  # ============================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ecomparts-postgres
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - ecomparts-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================
+  # Redis - Cache y Broker
+  # ============================================
+  redis:
+    image: redis:7-alpine
+    container_name: ecomparts-redis
+    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis-data:/data
+    networks:
+      - ecomparts-net
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # ============================================
+  # Odoo 19 - ERP
+  # ============================================
+  odoo:
+    build:
+      context: ./services/odoo
+      dockerfile: Dockerfile
+    container_name: ecomparts-odoo
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    ports:
+      - "${ODOO_PORT:-8070}:8069"
+    volumes:
+      - ./services/odoo/addons:/mnt/extra-addons
+      - ./services/odoo/config/odoo.conf:/etc/odoo/odoo.conf:ro
+      - odoo-web-data:/var/lib/odoo
+    environment:
+      - HOST=postgres
+      - PORT=${POSTGRES_PORT}
+      - USER=${POSTGRES_USER}
+      - PASSWORD=${POSTGRES_PASSWORD}
+    networks:
+      - ecomparts-net
+    restart: unless-stopped
+
+  # ============================================
+  # Django Backend - API REST
+  # ============================================
+  backend:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    container_name: ecomparts-backend
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      odoo:
+        condition: service_started
+    ports:
+      - "${DJANGO_PORT:-8000}:8000"
+    volumes:
+      - ./services/backend:/app
+      - backend-static:/app/staticfiles
+      - backend-media:/app/media
+    environment:
+      # Django Core
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_DEBUG=${DJANGO_DEBUG}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
+      # Database
+      - DJANGO_DB_NAME=${DJANGO_DB_NAME}
+      - DJANGO_DB_USER=${DJANGO_DB_USER}
+      - DJANGO_DB_PASSWORD=${DJANGO_DB_PASSWORD}
+      - DJANGO_DB_HOST=${DJANGO_DB_HOST}
+      - DJANGO_DB_PORT=${DJANGO_DB_PORT}
+      # Odoo Connection
+      - ODOO_URL=${ODOO_URL}
+      - ODOO_DB=${ODOO_DB}
+      - ODOO_USERNAME=${ODOO_USERNAME}
+      - ODOO_PASSWORD=${ODOO_PASSWORD}
+      # Redis & Celery
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+      # CORS
+      - CORS_ALLOWED_ORIGINS=${CORS_ALLOWED_ORIGINS}
+      # Regional
+      - TIMEZONE=${TIMEZONE}
+      - LANGUAGE_CODE=${LANGUAGE_CODE}
+      - COUNTRY_CODE=${COUNTRY_CODE}
+    networks:
+      - ecomparts-net
+    restart: unless-stopped
+    command: >
+      sh -c "python manage.py migrate &&
+             python manage.py collectstatic --noinput &&
+             gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -"
+
+  # ============================================
+  # Celery Worker - Tareas Asíncronas
+  # ============================================
+  celery_worker:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    container_name: ecomparts-celery-worker
+    command: celery -A ecomparts worker --loglevel=info --concurrency=4
+    volumes:
+      - ./services/backend:/app
+      - backend-logs:/app/logs
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_DEBUG=${DJANGO_DEBUG}
+      - DJANGO_DB_NAME=${DJANGO_DB_NAME}
+      - DJANGO_DB_USER=${DJANGO_DB_USER}
+      - DJANGO_DB_PASSWORD=${DJANGO_DB_PASSWORD}
+      - DJANGO_DB_HOST=${DJANGO_DB_HOST}
+      - DJANGO_DB_PORT=${DJANGO_DB_PORT}
+      - ODOO_URL=${ODOO_URL}
+      - ODOO_DB=${ODOO_DB}
+      - ODOO_USERNAME=${ODOO_USERNAME}
+      - ODOO_PASSWORD=${ODOO_PASSWORD}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+    networks:
+      - ecomparts-net
+    restart: unless-stopped
+
+  # ============================================
+  # Celery Beat - Scheduler
+  # ============================================
+  celery_beat:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    container_name: ecomparts-celery-beat
+    command: celery -A ecomparts beat --loglevel=info --scheduler django_celery_beat.schedulers:DatabaseScheduler
+    volumes:
+      - ./services/backend:/app
+      - backend-logs:/app/logs
+    environment:
+      - DJANGO_SECRET_KEY=${DJANGO_SECRET_KEY}
+      - DJANGO_DEBUG=${DJANGO_DEBUG}
+      - DJANGO_DB_NAME=${DJANGO_DB_NAME}
+      - DJANGO_DB_USER=${DJANGO_DB_USER}
+      - DJANGO_DB_PASSWORD=${DJANGO_DB_PASSWORD}
+      - DJANGO_DB_HOST=${DJANGO_DB_HOST}
+      - DJANGO_DB_PORT=${DJANGO_DB_PORT}
+      - REDIS_HOST=${REDIS_HOST}
+      - REDIS_PORT=${REDIS_PORT}
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      backend:
+        condition: service_started
+      celery_worker:
+        condition: service_started
+    networks:
+      - ecomparts-net
+    restart: unless-stopped
+
+  # ============================================
+  # Flower - Monitor de Celery
+  # ============================================
+  flower:
+    build:
+      context: ./services/backend
+      dockerfile: Dockerfile
+    container_name: ecomparts-flower
+    command: celery -A ecomparts flower --port=5555 --basic_auth=admin:EcomFlower2025
+    ports:
+      - "5555:5555"
+    environment:
+      - CELERY_BROKER_URL=${CELERY_BROKER_URL}
+      - CELERY_RESULT_BACKEND=${CELERY_RESULT_BACKEND}
+    depends_on:
+      redis:
+        condition: service_healthy
+      celery_worker:
+        condition: service_started
+    networks:
+      - ecomparts-net
+    restart: unless-stopped
+
+# ============================================
+# Volúmenes Persistentes
+# ============================================
+volumes:
+  postgres-data:
+    driver: local
+  redis-data:
+    driver: local
+  odoo-web-data:
+    driver: local
+  backend-static:
+    driver: local
+  backend-media:
+    driver: local
+  backend-logs:
+    driver: local
+
+# ============================================
+# Red Interna
+# ============================================
+networks:
+  ecomparts-net:
+    driver: bridge

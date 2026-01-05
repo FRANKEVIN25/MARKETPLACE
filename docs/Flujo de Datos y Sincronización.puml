@@ -1,0 +1,130 @@
+@startuml
+title ECOMPARTS - Flujo de Datos Multi-Tenant
+
+participant "Cliente\n(Navegador)" as client
+participant "SvelteKit\nFrontend" as frontend
+participant "Django API\n:8000" as django
+participant "Redis\nCache" as redis
+participant "PostgreSQL\necomparts_django" as db_django
+participant "Odoo Connector\nMiddleware" as middleware
+participant "Odoo Server\n:8070" as odoo
+participant "PostgreSQL\necomparts_odoo" as db_odoo
+participant "Celery Worker" as celery
+
+== Fase 1: Consulta de Productos (Usuario Final) ==
+
+client -> frontend : Buscar "Filtro aceite Toyota"
+activate frontend
+
+frontend -> django : GET /api/v1/products/search/\n?q=filtro aceite&marca=Toyota
+activate django
+
+django -> redis : Verificar cache
+alt Cache hit
+    redis --> django : Datos cacheados
+else Cache miss
+    django -> db_django : SELECT productos\nFiltrar por ProviderGroup
+    db_django --> django : Lista productos
+    django -> redis : Guardar en cache (15min)
+end
+
+django --> frontend : JSON Response\n[productos]
+deactivate django
+
+frontend --> client : Mostrar resultados
+deactivate frontend
+
+== Fase 2: Sincronización Automática (Celery Beat) ==
+
+celery -> celery : Tarea programada\n(cada hora)
+activate celery
+
+celery -> middleware : sync_products_from_odoo()
+activate middleware
+
+middleware -> odoo : XML-RPC:\nsearch_read('product.template')
+activate odoo
+
+odoo -> db_odoo : SELECT productos\nFROM product_template\nWHERE company_id = X
+db_odoo --> odoo : Productos Odoo
+
+odoo --> middleware : Lista productos XML-RPC
+deactivate odoo
+
+middleware -> db_django : INSERT/UPDATE\nproductos Django
+db_django --> middleware : OK
+
+middleware -> redis : FLUSHDB\nLimpiar cache
+redis --> middleware : OK
+
+middleware --> celery : Sincronización completa
+deactivate middleware
+
+celery -> celery : Log resultado
+deactivate celery
+
+== Fase 3: Proveedor Actualiza Inventario ==
+
+client -> odoo : Login Odoo\nadmin@ecomparts.local
+activate odoo
+
+client -> odoo : Actualizar stock\nProducto X: 100 unidades
+
+odoo -> db_odoo : UPDATE product.product\nSET qty_available = 100
+db_odoo --> odoo : OK
+
+odoo --> client : Stock actualizado
+deactivate odoo
+
+note over celery
+    15 minutos después...
+    Celery Beat ejecuta
+    sync_stock_from_odoo()
+end note
+
+celery -> middleware : sync_stock_from_odoo()
+activate celery
+activate middleware
+
+middleware -> odoo : XML-RPC:\nread('product.product', fields=['qty_available'])
+activate odoo
+odoo -> db_odoo : SELECT qty_available
+db_odoo --> odoo : Stock actual
+odoo --> middleware : Stock values
+deactivate odoo
+
+middleware -> db_django : UPDATE products\nSET stock = 100
+db_django --> middleware : OK
+
+middleware -> redis : DELETE cache keys\nproduct:*
+redis --> middleware : OK
+
+middleware --> celery : Stock sincronizado
+deactivate middleware
+deactivate celery
+
+note over django, client
+    Ahora el frontend verá
+    el stock actualizado
+end note
+
+== Fase 4: Multi-Tenancy (Aislamiento de Datos) ==
+
+client -> django : GET /api/v1/products/\nHeader: Authorization: Bearer <token>
+activate django
+
+django -> django : Extraer ProviderGroup\ndesde JWT token
+
+django -> db_django : SELECT productos\nWHERE provider_group_id = 1
+note right
+    **Filtro automático**
+    Cada proveedor solo ve
+    sus propios productos
+end note
+
+db_django --> django : Productos del proveedor
+
+django --> client : JSON Response\n(solo productos del proveedor)
+deactivate django
+
+@enduml
