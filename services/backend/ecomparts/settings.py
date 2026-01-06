@@ -5,6 +5,7 @@ Django settings for ECOMPARTS project.
 from pathlib import Path
 import os
 from decouple import config
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -13,9 +14,10 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-change-me')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = config('DJANGO_DEBUG', default=True, cast=bool)
+DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
-ALLOWED_HOSTS = config('DJANGO_ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS',
+'localhost,127.0.0.1').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -54,6 +56,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'apps.marketplace.middleware.TenantScopeMiddleware',
 ]
 
 ROOT_URLCONF = 'ecomparts.urls'
@@ -80,12 +83,37 @@ WSGI_APPLICATION = 'ecomparts.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': config('DJANGO_DB_NAME', default='ecomparts_django'),
-        'USER': config('DJANGO_DB_USER', default='ecomparts_user'),
-        'PASSWORD': config('DJANGO_DB_PASSWORD', default='password'),
-        'HOST': config('DJANGO_DB_HOST', default='localhost'),
-        'PORT': config('DJANGO_DB_PORT', default='5432'),
+        'NAME': os.environ.get('DJANGO_DB_NAME', 'ecomparts_django'),
+        'USER': os.environ.get('DJANGO_DB_USER', 'ecomparts_user'),
+        'PASSWORD': os.environ.get('DJANGO_DB_PASSWORD', ''),
+        'HOST': os.environ.get('DJANGO_DB_HOST', 'postgres'),
+        'PORT': os.environ.get('DJANGO_DB_PORT', '5432'),
+        'CONN_MAX_AGE': 600,
+        'OPTIONS': {
+        'connect_timeout': 10,
+        }
     }
+}
+
+# Celery Configuration
+CELERY_BROKER_URL = f"redis://{os.getenv('REDIS_HOST', 'ecomparts-redis')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_RESULT_BACKEND = f"redis://{os.getenv('REDIS_HOST', 'ecomparts-redis')}:{os.getenv('REDIS_PORT', '6379')}/0"
+CELERY_ACCEPT_CONTENT = ['json']
+CELERY_TASK_SERIALIZER = 'json'
+CELERY_RESULT_SERIALIZER = 'json'
+CELERY_TIMEZONE = 'America/Lima'
+
+# Redis Cache
+CACHES = {
+    'default': {
+        'BACKEND': 'django_redis.cache.RedisCache',
+        'LOCATION': f"redis://{os.getenv('REDIS_HOST', 'ecomparts-redis')}:{os.getenv('REDIS_PORT', '6379')}/1",
+        'OPTIONS': {
+        'CLIENT_CLASS': 'django_redis.client.DefaultClient',
+        'SOCKET_CONNECT_TIMEOUT': 5,
+        'SOCKET_TIMEOUT': 5,
+        }
+        }
 }
 
 # Password validation
@@ -126,6 +154,7 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'rest_framework_simplejwt.authentication.JWTAuthentication',
+        'rest_framework.authentication.SessionAuthentication',
     ],
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
@@ -136,14 +165,23 @@ REST_FRAMEWORK = {
         'rest_framework.filters.OrderingFilter',
     ],
     'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.PageNumberPagination',
-    'PAGE_SIZE': 50,
+    'PAGE_SIZE': 20,
     'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
 }
 
+# JWT Settings
+SIMPLE_JWT = {
+    'ACCESS_TOKEN_LIFETIME': timedelta(hours=1),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+    'ROTATE_REFRESH_TOKENS': True,
+    'BLACKLIST_AFTER_ROTATION': False, # Simplificado para MVP
+}
+
 # CORS
-CORS_ALLOWED_ORIGINS = config('CORS_ALLOWED_ORIGINS', default='http://localhost:3000').split(',')
+CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:5173,http://localhost:3000').split(',')
 CORS_ALLOW_CREDENTIALS = True
 
+"""
 # Redis
 REDIS_HOST = config('REDIS_HOST', default='localhost')
 REDIS_PORT = config('REDIS_PORT', default='6379')
@@ -167,12 +205,53 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = TIME_ZONE
+"""
 
 # Odoo Connection
-ODOO_URL = config('ODOO_URL', default='http://localhost:8069')
-ODOO_DB = config('ODOO_DB', default='ecomparts_odoo')
-ODOO_USERNAME = config('ODOO_USERNAME', default='admin')
-ODOO_PASSWORD = config('ODOO_PASSWORD', default='admin')
+ODOO_CONFIG = {
+'URL': os.environ.get('ODOO_URL', 'http://ecomparts-odoo:8069'),
+'DB': os.environ.get('ODOO_DB', 'ecomparts_odoo'),
+'USERNAME': os.environ.get('ODOO_USERNAME', 'admin@ecomparts.local'),
+'PASSWORD': os.environ.get('ODOO_PASSWORD', ''),
+}
+
+# Logging
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+        'format': '{levelname} {asctime} {module} {message}',
+        'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+        'class': 'logging.StreamHandler',
+        'formatter': 'verbose',
+            },
+    },
+    'loggers': {
+        'django': {'handlers': ['console'],
+        'level': os.getenv('DJANGO_LOG_LEVEL', 'INFO'),
+        },
+        'apps': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'middleware': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if DEBUG else 'INFO',
+            'propagate': False,
+        },
+        'celery': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+            },
+    },
+}
 
 # Spectacular (API Docs)
 SPECTACULAR_SETTINGS = {
@@ -180,4 +259,5 @@ SPECTACULAR_SETTINGS = {
     'DESCRIPTION': 'API REST para Marketplace Multi-Tenant de Autopartes',
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
+    'COMPONENT_SPLIT_REQUEST': True,
 }

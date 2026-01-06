@@ -37,11 +37,11 @@ urlpatterns = [
     path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
     
-    # API endpoints (se agregarán en la siguiente fase)
-    # path('api/v1/marketplace/', include('apps.marketplace.urls')),
-    # path('api/v1/products/', include('apps.products.urls')),
-    # path('api/v1/vehicles/', include('apps.vehicles.urls')),
-    # path('api/v1/users/', include('apps.users.urls')),
+    # API Routes
+    #path('api/v1/core/', include('apps.core.urls')),
+    path('api/v1/marketplace/', include('apps.marketplace.urls')),
+    path('api/v1/products/', include('apps.products.urls')),
+    #path('api/v1/users/', include('apps.users.urls')),
 ]
 
 # Static and media files in development
