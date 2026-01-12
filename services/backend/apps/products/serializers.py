@@ -20,7 +20,7 @@ class CategorySerializer(serializers.ModelSerializer):
 
 
 class ProductSerializer(serializers.ModelSerializer):
-    provider_name = serializers.CharField(source='provider_group.name', read_only=True)
+    provider_name = serializers.CharField(source='provider.name', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     is_synced = serializers.BooleanField(read_only=True)
     
@@ -28,7 +28,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider_group', 'provider_name',
+            'provider', 'provider_name',
             'product_type', 'manufacturer_code',
             'description', 'image', 'price',
             'category', 'category_name',
@@ -44,6 +44,6 @@ class ProductSerializer(serializers.ModelSerializer):
     def validate(self, data):
         """Validar que el producto pertenezca al grupo del usuario"""
         request = self.context.get('request')
-        if request and hasattr(request, 'current_group'):
-            data['provider_group'] = request.current_group
+        if request and hasattr(request, 'current_provider'):
+            data['provider'] = request.current_provider
         return data

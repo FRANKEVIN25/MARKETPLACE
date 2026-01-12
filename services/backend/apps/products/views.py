@@ -45,16 +45,16 @@ class ProductViewSet(viewsets.ModelViewSet):
             return Product.objects.all()
         
         # Filtrar por grupo del usuario
-        current_group = getattr(self.request, 'current_group', None)
-        if current_group:
-            return Product.objects.for_group(current_group)
+        current_provider = getattr(self.request, 'current_provider', None)
+        if current_provider:
+            return Product.objects.for_group(current_provider)
         
         # Sin grupo = sin productos
         return Product.objects.none()
     
     def perform_create(self, serializer):
         """Asignar automáticamente el grupo al crear"""
-        serializer.save(provider_group=self.request.current_group)
+        serializer.save(provider=self.request.current_provider)
     
     @action(detail=True, methods=['post'])
     def sync_to_odoo(self, request, pk=None):

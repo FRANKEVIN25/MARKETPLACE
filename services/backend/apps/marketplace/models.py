@@ -1,5 +1,5 @@
 """
-Modelos de Multi-Tenancy: ProviderGroup y GroupMembership
+Modelos de Multi-Tenancy: Provider y Membership
 """
 from django.db import models
 from django.contrib.auth.models import User
@@ -7,15 +7,15 @@ from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 
 
-class ProviderGroup(models.Model):
+class Provider(models.Model):
     # Identificación
     name = models.CharField(
     max_length=100,
     unique=True,
-    help_text="Nombre del proveedor (Ej: AutoPartes SAC)")
+    help_text="Nombre del proveedor (Ej: AutoPartes ABC SAC)")
 
     slug = models.SlugField(
-    max_length=120,
+    max_length=150,
     unique=True,
     blank=True,
     help_text="URL-friendly identifier")
@@ -41,13 +41,13 @@ class ProviderGroup(models.Model):
     owner = models.ForeignKey(
     User,
     on_delete=models.PROTECT,
-    related_name='owned_provider_groups',
-    help_text="Usuario dueño del grupo")
+    related_name='owned_providers',
+    help_text="Usuario dueño del proveedor")
 
     # Estado
     is_active = models.BooleanField(default=True)
     is_approved = models.BooleanField(
-    default=False,
+    default=False,  
     help_text="Aprobado por SuperAdmin para operar en el marketplace")
 
     # Metadata
@@ -55,9 +55,9 @@ class ProviderGroup(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'marketplace_provider_group'
-        verbose_name = 'Grupo Proveedor'
-        verbose_name_plural = 'Grupos Proveedores'
+        db_table = 'marketplace_provider'
+        verbose_name = 'Proveedor'
+        verbose_name_plural = 'Proveedores'
         ordering = ['-created_at']
 
     def __str__(self):
@@ -69,14 +69,14 @@ class ProviderGroup(models.Model):
             super().save(*args, **kwargs)
 
     def get_members_count(self):
-        """Cantidad de usuarios en este grupo"""
-        return self.memberships.count()
+        """Cantidad de usuarios en este proveedor"""
+        return self.members.count()
     
     def get_products_count(self):
-        """Cantidad de productos de este grupo"""
+        """Cantidad de productos de este proveedor"""
         return self.products.count()
     
-class GroupMembership(models.Model):
+class Member(models.Model):
     """
     Membresía de usuario en un grupo.Define rol y permisos dentro del grupo.
     """
@@ -86,23 +86,11 @@ class GroupMembership(models.Model):
     ('staff', 'Staff'),
     ]
 
-    user = models.ForeignKey(
-    User,
-    on_delete=models.CASCADE,
-    related_name='group_memberships'
-    )
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='provider_memberships')
 
-    group = models.ForeignKey(
-    ProviderGroup,
-    on_delete=models.CASCADE,
-    related_name='memberships'
-    )
+    provider = models.ForeignKey(Provider, on_delete=models.CASCADE, related_name='members')
 
-    role = models.CharField(
-    max_length=20,
-    choices=ROLE_CHOICES,
-    default='staff'
-    )
+    role = models.CharField(max_length=20, choices=ROLE_CHOICES, default='staff')
 
     # Permisos granulares
     can_manage_products = models.BooleanField(default=True)
@@ -114,14 +102,14 @@ class GroupMembership(models.Model):
     joined_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        db_table = 'marketplace_group_membership'
-        verbose_name = 'Membresía de Grupo'
-        verbose_name_plural = 'Membresías de Grupos'
-        unique_together = ['user', 'group']
+        db_table = 'marketplace_member'
+        verbose_name = 'Miembro'
+        verbose_name_plural = 'Miembros'
+        unique_together = ['user', 'provider']
         ordering = ['-joined_at']
 
     def __str__(self):
-        return f"{self.user.username} - {self.group.name} ({self.role})"
+        return f"{self.user.username} - {self.provider.name} ({self.role})"
     
     def clean(self):
         """Validaciones"""

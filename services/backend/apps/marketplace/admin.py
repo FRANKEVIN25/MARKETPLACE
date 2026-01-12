@@ -2,10 +2,10 @@
 Admin de Marketplace
 """
 from django.contrib import admin
-from .models import ProviderGroup, GroupMembership
+from .models import Provider, Member
 
 
-@admin.register(ProviderGroup)
+@admin.register(Provider)
 class ProviderGroupAdmin(admin.ModelAdmin):
     list_display = ['name', 'owner', 'is_approved', 'is_active', 'get_members_count', 'created_at']
     list_filter = ['is_approved', 'is_active', 'created_at']
@@ -19,14 +19,13 @@ class ProviderGroupAdmin(admin.ModelAdmin):
         ('Metadata', {'fields': ('created_at', 'updated_at'),'classes': ('collapse',)}),
     )
 
-@admin.register(GroupMembership)
+@admin.register(Member)
 class GroupMembershipAdmin(admin.ModelAdmin):
-    list_display = ['user', 'group', 'role', 'can_manage_products', 'joined_at']
-    list_filter = ['role', 'group', 'joined_at']
-    search_fields = ['user__username', 'user__email', 'group__name']
+    list_display = ['user', 'provider', 'role', 'can_manage_products', 'joined_at']
+    list_filter = ['role', 'provider', 'joined_at']
     readonly_fields = ['joined_at']
     fieldsets = (
-        ('Membresía', {'fields': ('user', 'group', 'role')}),
+        ('Membresía', {'fields': ('user', 'provider', 'role')}),
         ('Permisos', {'fields': ('can_manage_products','can_manage_prices','can_manage_stock','can_invite_users','can_sync_odoo')}),
         ('Metadata', {'fields': ('joined_at',),'classes': ('collapse',)}),
     )

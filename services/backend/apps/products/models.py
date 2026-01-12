@@ -9,7 +9,7 @@ from mptt.models import MPTTModel, TreeForeignKey
 class Category(MPTTModel):
     """
     Categoría jerárquica de productos.
-    UNIVERSAL - No tiene provider_group (compartida por todos)
+    UNIVERSAL - No tiene provider (compartida por todos)
     """
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, unique=True, blank=True)
@@ -48,10 +48,10 @@ class Category(MPTTModel):
 class ProductQuerySet(models.QuerySet):
     """QuerySet personalizado con filtros por tenant"""
     
-    def for_group(self, group):
-        """Filtrar productos por grupo"""
-        if group:
-            return self.filter(provider_group=group)
+    def for_group(self, provider):
+        """Filtrar productos por proveedor"""
+        if provider:
+            return self.filter(provider_group=provider)
         return self.none()
     
     def for_marketplace(self):
@@ -69,15 +69,13 @@ class ProductManager(models.Manager):
     def get_queryset(self):
         return ProductQuerySet(self.model, using=self._db)
     
-    def for_group(self, group):
-        return self.get_queryset().for_group(group)
+    def for_group(self, provider):
+        return self.get_queryset().for_group(provider)
     
     def for_marketplace(self):
         return self.get_queryset().for_marketplace()
 
 
-# Agregar en la clase Product:
-# objects = ProductManager()
 class Product(models.Model):
     """
     Producto de un proveedor específico.
@@ -90,8 +88,8 @@ class Product(models.Model):
     ]
     
     # 🔑 CAMPO CRÍTICO: Relación con el proveedor
-    provider_group = models.ForeignKey(
-        'marketplace.ProviderGroup',
+    provider = models.ForeignKey(
+        'marketplace.Provider',
         on_delete=models.CASCADE,
         related_name='products',
         help_text='Proveedor dueño de este producto'
@@ -99,28 +97,19 @@ class Product(models.Model):
     
     # Identificación
     name = models.CharField(max_length=200)
-    reference = models.CharField(
-        max_length=50,
-        db_index=True,
-        help_text="SKU o referencia del consumidor"
-    )
+    reference = models.CharField(max_length=50, db_index=True, help_text="SKU o referencia del consumidor")
     slug = models.SlugField(max_length=255, blank=True, editable=False)
     
     # Tipo de producto
     product_type = models.CharField(
-        max_length=10,
+        max_length=12,
         choices=PRODUCT_TYPE_CHOICES,
-        default='consu',
+        default='product',
         help_text='Tipo de producto en Odoo'
     )
     
     # Códigos
-    manufacturer_code = models.CharField(
-        max_length=50,
-        blank=True,
-        null=True,
-        help_text="Código interno del fabricante"
-    )
+    manufacturer_code = models.CharField(max_length=50, blank=True, null=True, help_text="Código del fabricante")
     
     # Contenido
     image = models.ImageField(
@@ -129,14 +118,11 @@ class Product(models.Model):
         null=True,
         help_text="Imagen principal del producto"
     )
+
     description = models.TextField(blank=True, null=True)
     
     # Precio
-    price = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        verbose_name="Precio base"
-    )
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio base")
     
     # Categoría (UNIVERSAL - compartida)
     category = models.ForeignKey(
@@ -175,21 +161,21 @@ class Product(models.Model):
         verbose_name_plural = 'Productos'
         ordering = ['-created_at']
         # Referencia única dentro del proveedor
-        unique_together = [['provider_group', 'reference']]
+        unique_together = [['provider', 'reference']]
         indexes = [
-            models.Index(fields=['provider_group', 'active']),
+            models.Index(fields=['provider', 'active']),
             models.Index(fields=['reference']),
             models.Index(fields=['odoo_product_id']),
         ]
     
     def __str__(self):
-        return f"{self.name} ({self.provider_group.name})"
+        return f"{self.name} ({self.provider.name})"
     
     def save(self, *args, **kwargs):
         if not self.slug:
             # Slug único: nombre-proveedor-id
             base_slug = slugify(self.name)
-            self.slug = f"{base_slug}-{self.provider_group.slug}"
+            self.slug = f"{base_slug}-{self.provider.slug}"
         super().save(*args, **kwargs)
     
     @property

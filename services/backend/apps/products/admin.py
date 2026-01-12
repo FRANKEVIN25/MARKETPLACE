@@ -20,13 +20,13 @@ class ProductAdmin(admin.ModelAdmin):
     list_display = [
         'name',
         'reference',
-        'provider_group',
+        'provider',
         'price',
         'active',
         'is_synced',
         'created_at'
     ]
-    list_filter = ['active', 'product_type', 'provider_group', 'category', 'created_at']
+    list_filter = ['active', 'product_type', 'provider', 'category', 'created_at']
     search_fields = ['name', 'reference', 'manufacturer_code']
     readonly_fields = [
         'slug',
@@ -39,7 +39,7 @@ class ProductAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Proveedor', {
-            'fields': ('provider_group',)
+            'fields': ('provider',)
         }),
         ('Información Básica', {
             'fields': ('name', 'reference', 'slug', 'product_type')

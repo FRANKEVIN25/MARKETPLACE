@@ -44,8 +44,8 @@ class BelongsToGroup(permissions.BasePermission):
             return False
         if request.user.is_superuser:
             return True
-        current_group = getattr(request, 'current_group', None)
-        if not current_group:
+        current_provider = getattr(request, 'current_provider', None)
+        if not current_provider:
             return False
-        # El objeto debe tener un campo 'provider_group'
-        return hasattr(obj, 'provider_group') and obj.provider_group == current_group
+        # El objeto debe tener un campo 'provider'
+        return hasattr(obj, 'provider') and obj.provider == current_provider
