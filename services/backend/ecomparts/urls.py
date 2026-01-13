@@ -41,7 +41,7 @@ urlpatterns = [
     #path('api/v1/core/', include('apps.core.urls')),
     path('api/v1/marketplace/', include('apps.marketplace.urls')),
     path('api/v1/products/', include('apps.products.urls')),
-    #path('api/v1/users/', include('apps.users.urls')),
+    path('api/v1/customer/', include('apps.customer.urls')),
 ]
 
 # Static and media files in development

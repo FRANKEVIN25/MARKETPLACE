@@ -36,13 +36,14 @@ INSTALLED_APPS = [
     'drf_spectacular',
     'django_celery_beat',
     'mptt',
+    'shortuuid', 
     
     # Local apps
     'apps.core',
     'apps.marketplace',
     'apps.products',
     'apps.vehicles',
-    'apps.users',
+    'apps.customer',
     'apps.sync',
 ]
 
