@@ -39,6 +39,7 @@ class BelongsToGroup(permissions.BasePermission):
     Permiso: El objeto pertenece al grupo del usuario.
     """
     message = "Este objeto no pertenece a tu grupo."
+    
     def has_object_permission(self, request, view, obj):
         if not request.user or not request.user.is_authenticated:
             return False

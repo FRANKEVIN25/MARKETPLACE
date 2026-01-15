@@ -58,6 +58,7 @@ services:
       - ./services/odoo/addons:/mnt/extra-addons
       - ./services/odoo/config/odoo.conf:/etc/odoo/odoo.conf:ro
       - odoo-web-data:/var/lib/odoo
+      - odoo-filestore:/opt/odoo/.local/share/Odoo
     environment:
       - HOST=postgres
       - PORT=${POSTGRES_PORT}
@@ -232,6 +233,8 @@ volumes:
   redis-data:
     driver: local
   odoo-web-data:
+    driver: local
+  odoo-filestore:      
     driver: local
   backend-static:
     driver: local

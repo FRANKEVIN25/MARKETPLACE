@@ -4,7 +4,7 @@ Modelos de Productos - Versión MVP
 from django.db import models
 from django.utils.text import slugify
 from mptt.models import MPTTModel, TreeForeignKey
-
+from django.core.exceptions import ValidationError
 
 class Category(MPTTModel):
     """
@@ -51,15 +51,15 @@ class ProductQuerySet(models.QuerySet):
     def for_group(self, provider):
         """Filtrar productos por proveedor"""
         if provider:
-            return self.filter(provider_group=provider)
+            return self.filter(provider=provider)
         return self.none()
     
     def for_marketplace(self):
         """Productos activos para el marketplace público"""
         return self.filter(
             active=True,
-            provider_group__is_approved=True,
-            provider_group__is_active=True
+            provider__is_approved=True,
+            provider__is_active=True
         )
 
 
@@ -133,9 +133,15 @@ class Product(models.Model):
         related_name='products'
     )
     
-    # Estado
     active = models.BooleanField(default=True)
-    
+    es_universal = models.BooleanField(default=False, db_index=True) # si es True no necesita compatibilidad
+
+    vehiculos_compatibles = models.ManyToManyField(
+        'vehicles.VariantVehiculo',
+        through='CompatibilidadProducto',
+        related_name='productos'
+    )    
+
     # Integración Odoo
     odoo_product_id = models.IntegerField(
         null=True,
@@ -182,3 +188,29 @@ class Product(models.Model):
     def is_synced(self):
         """Producto está sincronizado con Odoo"""
         return self.odoo_product_id is not None
+    
+
+class CompatibilidadProducto(models.Model):
+    producto = models.ForeignKey(Product, on_delete=models.CASCADE)
+    variante = models.ForeignKey('vehicles.VariantVehiculo', on_delete=models.CASCADE)
+    
+    # Campo extra que te agradecerán en el futuro:
+    notas_instalacion = models.CharField(max_length=255, blank=True, help_text="Ej: Solo aplica a frenos delanteros")
+
+    class Meta:
+        unique_together = ('producto', 'variante')
+        indexes = [
+            models.Index(fields=['variante', 'producto']),
+        ]    
+
+    def clean(self):
+        provider = self.producto.provider
+        from apps.vehicles.services.provider_variants import variantes_disponibles_para_proveedor
+        if not variantes_disponibles_para_proveedor(provider).filter(
+            id=self.variante_id
+        ).exists():
+            raise ValidationError(
+                "Esta variante no está autorizada para este proveedor."
+            )
+
+

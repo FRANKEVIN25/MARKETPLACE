@@ -27,7 +27,7 @@ class ProviderSerializer(serializers.ModelSerializer):
 class MembershipSerializer(serializers.ModelSerializer):
     user_username = serializers.CharField(source='user.username', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
-    group_name = serializers.CharField(source='provider.name', read_only=True)
+    provider_name = serializers.CharField(source='provider.name', read_only=True)
     
     class Meta:
         model = Member

@@ -21,21 +21,12 @@ class Provider(models.Model):
     help_text="URL-friendly identifier")
 
     # Datos de negocio
-    ruc = models.CharField(
-    max_length=20,
-    unique=True,
-    blank=True,
-    null=True,
-    help_text="RUC del proveedor (Perú)")
+    ruc = models.CharField(max_length=20, unique=True, blank=True, null=True, help_text="RUC del proveedor (Perú)")
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
 
     # Relación con Odoo
-    odoo_company_id = models.IntegerField(
-    null=True,
-    blank=True,
-    unique=True,
-    help_text="ID de la compañía en Odoo")
+    odoo_company_id = models.IntegerField(null=True, blank=True, unique=True, help_text="ID de la compañía en Odoo")
 
     # Gestión
     owner = models.ForeignKey(
@@ -49,6 +40,13 @@ class Provider(models.Model):
     is_approved = models.BooleanField(
     default=False,  
     help_text="Aprobado por SuperAdmin para operar en el marketplace")
+
+    # marcas autorizadas para este proveedor
+    marcas = models.ManyToManyField(
+            'vehicles.Marca',
+            through='ProviderMarca', 
+            related_name='proveedores'
+        )
 
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -124,3 +122,49 @@ class Member(models.Model):
     def save(self, *args, **kwargs):
         self.clean()
         super().save(*args, **kwargs)
+
+
+class ProviderMarca(models.Model):
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.CASCADE,
+        related_name='marcas_autorizadas'
+    )
+    marca = models.ForeignKey(
+        'vehicles.Marca',
+        on_delete=models.CASCADE,
+        related_name='proveedores_autorizados'
+    )
+
+    activo = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ('provider', 'marca')
+        indexes = [
+            models.Index(fields=['provider', 'marca']),
+        ]
+
+    def __str__(self):
+        return f"{self.provider.name} → {self.marca.nombre}"
+
+
+class ProviderVariantRestriccion(models.Model):
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.CASCADE,
+        related_name='variantes_restringidas'
+    )
+    variante = models.ForeignKey(
+        'vehicles.VariantVehiculo',
+        on_delete=models.CASCADE,
+        related_name='proveedores_restringidos'
+    )
+
+    class Meta:
+        unique_together = ('provider', 'variante')
+        indexes = [
+            models.Index(fields=['provider', 'variante']),
+        ]
+
+    def __str__(self):
+        return f"{self.provider.name}-{self.variante}"

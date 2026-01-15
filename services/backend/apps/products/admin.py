@@ -1,9 +1,19 @@
 """
 Admin de Productos
 """
-from django.contrib import admin
 from mptt.admin import MPTTModelAdmin
-from .models import Category, Product
+from .models import Category, Product, CompatibilidadProducto
+from django.contrib import admin
+from apps.vehicles.services.provider_variants import variantes_disponibles_para_proveedor
+from apps.marketplace.models import Member
+
+
+
+def get_provider_from_request(request):
+    try:
+        return Member.objects.get(user=request.user).provider
+    except Member.DoesNotExist:
+        return None
 
 
 @admin.register(Category)
@@ -71,3 +81,28 @@ class ProductAdmin(admin.ModelAdmin):
     
     is_synced.boolean = True
     is_synced.short_description = 'Sincronizado'
+
+    # El proveedor solo ve sus varientes y modelos
+    def formfield_for_manytomany(self, db_field, request, **kwargs):
+        if db_field.name == "vehiculos_compatibles":
+            provider = get_provider_from_request(request)
+
+            if provider:
+                kwargs["queryset"] = variantes_disponibles_para_proveedor(provider)
+            else:
+                kwargs["queryset"] = db_field.remote_field.model.objects.none()
+
+        return super().formfield_for_manytomany(db_field, request, **kwargs)    
+    
+
+@admin.register(CompatibilidadProducto)
+class CompatibilidadProductoAdmin(admin.ModelAdmin):
+    list_display = ['producto', 'variante']
+    autocomplete_fields = ['producto', 'variante']
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        provider = get_provider_from_request(request)
+        if provider:
+            return qs.filter(producto__provider=provider)
+        return qs.none()    

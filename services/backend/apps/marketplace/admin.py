@@ -2,15 +2,28 @@
 Admin de Marketplace
 """
 from django.contrib import admin
-from .models import Provider, Member
+from .models import Provider, Member, ProviderMarca, ProviderVariantRestriccion
+
+
+class ProviderMarcaInline(admin.TabularInline):
+    model = ProviderMarca
+    extra = 1
+    fields = ['marca', 'activo']
+
+
+class ProviderVariantRestriccionInline(admin.TabularInline):
+    model = ProviderVariantRestriccion
+    extra = 1
+    fields = ['variante']
 
 
 @admin.register(Provider)
-class ProviderGroupAdmin(admin.ModelAdmin):
+class ProviderAdmin(admin.ModelAdmin):
     list_display = ['name', 'owner', 'is_approved', 'is_active', 'get_members_count', 'created_at']
     list_filter = ['is_approved', 'is_active', 'created_at']
     search_fields = ['name', 'ruc', 'email']
     readonly_fields = ['slug', 'created_at', 'updated_at']
+    inlines = [ProviderMarcaInline]
     fieldsets = (
         ('Información Básica', {'fields': ('name', 'slug', 'owner')}),
         ('Datos de Negocio', {'fields': ('ruc', 'email', 'phone')}),
@@ -20,7 +33,7 @@ class ProviderGroupAdmin(admin.ModelAdmin):
     )
 
 @admin.register(Member)
-class GroupMembershipAdmin(admin.ModelAdmin):
+class MembershipAdmin(admin.ModelAdmin):
     list_display = ['user', 'provider', 'role', 'can_manage_products', 'joined_at']
     list_filter = ['role', 'provider', 'joined_at']
     readonly_fields = ['joined_at']
