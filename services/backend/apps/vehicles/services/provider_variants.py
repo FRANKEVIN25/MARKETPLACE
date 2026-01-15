@@ -2,26 +2,28 @@
 
 from apps.vehicles.models import VariantVehiculo
 from apps.marketplace.models import ProviderMarca, ProviderVariantRestriccion
-
+from django.db.models import Q
 def variantes_disponibles_para_proveedor(provider):
     """
     Regla:
     1. Solo variantes cuya MARCA esté autorizada al proveedor
     2. Excluir variantes explícitamente restringidas
     """
-
+    if not provider:
+        return VariantVehiculo.objects.none()
     # 1. Marcas autorizadas
     marcas_ids = provider.marcas.filter(
-        providermarca__activo=True
+        proveedores_autorizados__activo=True  # <- Corregido
     ).values_list('id', flat=True)
 
-    qs = VariantVehiculo.objects.filter(
+    # Variantes de modelos de marcas autorizadas
+    variantes_autorizadas = VariantVehiculo.objects.filter(
         modelo__marca_id__in=marcas_ids
     )
+    
+    # Excluir variantes específicamente restringidas
+    variantes_restringidas_ids = provider.variantes_restringidas.values_list(
+        'variante_id', flat=True
+    )
 
-    # 2. Excluir variantes restringidas explícitamente
-    variantes_bloqueadas = ProviderVariantRestriccion.objects.filter(
-        provider=provider
-    ).values_list('variante_id', flat=True)
-
-    return qs.exclude(id__in=variantes_bloqueadas)
+    return variantes_autorizadas.exclude(id__in=variantes_restringidas_ids)

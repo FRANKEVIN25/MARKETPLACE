@@ -128,7 +128,7 @@ class Motor(models.Model):
         partes = []
         
         # 1. Solo calcular litros si hay cilindrada
-        if self.cilindrada_cc:
+        if self.cilindrada_cc is not None and self.cilindrada_cc > 0:
             litros = self.cilindrada_cc / 1000
             partes.append(f"{litros:.1f}L")
         elif self.combustible == 'Ele':
