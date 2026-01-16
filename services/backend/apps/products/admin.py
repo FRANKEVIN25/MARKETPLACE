@@ -6,14 +6,7 @@ from .models import Category, Product, CompatibilidadProducto
 from django.contrib import admin
 from apps.vehicles.services.provider_variants import variantes_disponibles_para_proveedor
 from apps.marketplace.models import Member
-
-
-
-def get_provider_from_request(request):
-    try:
-        return Member.objects.get(user=request.user).provider
-    except Member.DoesNotExist:
-        return None
+from apps.marketplace.admin_utils import filter_queryset_by_provider, get_provider_from_request, ProviderFilter
 
 
 @admin.register(Category)
@@ -30,6 +23,7 @@ class CompatibilidadProductoInline(admin.TabularInline):
     autocomplete_fields = ['variante']
     fields = ['variante', 'notas_instalacion']
     
+    """
     def formfield_for_foreignkey(self, db_field, request, **kwargs):
         if db_field.name == "variante":
             # Obtener el provider del contexto del producto padre
@@ -40,6 +34,7 @@ class CompatibilidadProductoInline(admin.TabularInline):
                 kwargs["queryset"] = db_field.remote_field.model.objects.none()
         
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    """
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -53,7 +48,7 @@ class ProductAdmin(admin.ModelAdmin):
         'is_synced',
         'created_at'
     ]
-    list_filter = ['active', 'product_type', 'provider', 'category', 'created_at']
+    list_filter = ['active', 'product_type', 'category', 'created_at', ProviderFilter]
     search_fields = ['name', 'reference', 'manufacturer_code']
     readonly_fields = [
         'slug',
@@ -71,19 +66,10 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('provider',)
         }),
         ('Información Básica', {
-            'fields': ('name', 'reference', 'slug', 'product_type')
-        }),
-        ('Contenido', {
-            'fields': ('description', 'image', 'manufacturer_code')
+            'fields': ('name', 'reference', 'manufacturer_code','product_type','price', 'active', 'description', 'image', 'slug')
         }),
         ('Clasificación', {
             'fields': ('category',)
-        }),
-        ('Precio', {
-            'fields': ('price',)
-        }),
-        ('Estado', {
-            'fields': ('active',)
         }),
         ('Integración Odoo', {
             'fields': ('odoo_product_id', 'odoo_template_id', 'last_synced_at'),
@@ -95,6 +81,28 @@ class ProductAdmin(admin.ModelAdmin):
         }),
     )
     
+    """
+    def get_queryset(self, request):
+        # MULTI-TENANCY: Filtrar productos por proveedor del usuario
+        # Superuser ve todos los productos
+        # Staff ve solo productos de su proveedor
+
+        qs = super().get_queryset(request)
+        return filter_queryset_by_provider(qs, request, provider_field='provider')
+    
+    def formfield_for_foreignkey(self, db_field, request, **kwargs):
+
+        # MULTI-TENANCY: Restringir el campo 'provider' al proveedor del usuario
+        if db_field.name == 'provider':
+            if not request.user.is_superuser:
+                provider = get_provider_from_request(request)
+                if provider:
+                    kwargs['queryset'] = provider.__class__.objects.filter(id=provider.id)
+                else:
+                    kwargs['queryset'] = db_field.remote_field.model.objects.none()
+        
+        return super().formfield_for_foreignkey(db_field, request, **kwargs)
+    """ 
     def is_synced(self, obj):
         return obj.is_synced
     
@@ -103,7 +111,7 @@ class ProductAdmin(admin.ModelAdmin):
 
 
 @admin.register(CompatibilidadProducto)
-class CompatibilidadProductoAdmin(admin.ModelAdmin):
+class CompatibilidadesAdmin(admin.ModelAdmin):
     list_display = ['producto', 'variante', 'notas_instalacion']
     list_filter = ['producto__provider']
     autocomplete_fields = ['producto', 'variante']
@@ -113,6 +121,8 @@ class CompatibilidadProductoAdmin(admin.ModelAdmin):
         'variante__modelo__nombre',
         'variante__modelo__marca__nombre'
     ]
+
+    """
 
     def get_queryset(self, request):
         qs = super().get_queryset(request)
@@ -131,3 +141,5 @@ class CompatibilidadProductoAdmin(admin.ModelAdmin):
             kwargs["queryset"] = Product.objects.filter(provider=provider)
         
         return super().formfield_for_foreignkey(db_field, request, **kwargs)
+
+    """

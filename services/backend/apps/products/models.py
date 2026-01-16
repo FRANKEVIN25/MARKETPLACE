@@ -87,7 +87,7 @@ class Product(models.Model):
         ('product', 'Almacenable'),
     ]
     
-    # 🔑 CAMPO CRÍTICO: Relación con el proveedor
+    # CAMPO CRÍTICO: Relación con el proveedor
     provider = models.ForeignKey(
         'marketplace.Provider',
         on_delete=models.CASCADE,

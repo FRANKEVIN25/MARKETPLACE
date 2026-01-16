@@ -21,6 +21,7 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS',
 
 # Application definition
 INSTALLED_APPS = [
+    'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -261,4 +262,23 @@ SPECTACULAR_SETTINGS = {
     'VERSION': '1.0.0',
     'SERVE_INCLUDE_SCHEMA': False,
     'COMPONENT_SPLIT_REQUEST': True,
+}
+
+
+JAZZMIN_SETTINGS = {
+    'show_ui_builder': False,
+    'color': 'blue',
+    # Configuración del sidebar
+    "show_sidebar": True,
+    "navigation_expanded": False,  # Sidebar colapsado por defecto
+    "hide_apps": [],  # Apps a ocultar completamente
+
+"icons": {
+        "products.Category": "fas fa-list",
+        "vehicles.Marca": "fas fa-tag",
+        "vehicles.ModeloVehiculo": "fas fa-car",
+        "vehicles.Motor": "fas fa-cog",
+        "products.Product": "fas fa-box",
+        "vehicles.VarianteVehiculo": "fas fa-cogs",
+    },
 }
