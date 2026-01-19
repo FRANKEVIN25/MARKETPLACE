@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================
+         FORM VIEW - Campos adicionales en productos
+         ======================================== -->
+    
+    <record id="product_template_form_view_autopartes" model="ir.ui.view">
+        <field name="name">product.template.form.autopartes</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_only_form_view"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//field[@name='barcode']" position="after">
+                <field name="codigo_fabricacion"/>
+                <field name="lado"/>
+                <field name="calidad"/>
+                <field name="es_universal"/>
+            </xpath>
+
+            <xpath expr="//field[@name='es_universal']" position="after">
+                <field name="django_external_id" readonly="1" groups="base.group_no_one"/>
+                <field name="django_short_id" readonly="1" groups="base.group_no_one"/>
+            </xpath>
+
+            <xpath expr="//page[@name='inventory']" position="after">
+                <page string="Compatibilidad Vehicular" name="compatibilidad_vehicular">
+                    <field name="compatibilidad_vehiculo_ids">
+                        <list editable="bottom">
+                            <field name="variante_id"/>
+                            <field name="marca_id" readonly="1"/>
+                            <field name="modelo_id" readonly="1"/>
+                            <field name="anio_desde" readonly="1"/>
+                            <field name="anio_hasta" readonly="1"/>
+                            <field name="notas"/>
+                        </list>
+                    </field>
+                </page>
+            </xpath>
+
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_ver_vehiculos_compatibles"
+                        type="object"
+                        class="oe_stat_button"
+                        icon="fa-car"
+                        invisible="cantidad_vehiculos_compatibles == 0">
+                    <field name="cantidad_vehiculos_compatibles"
+                           widget="statinfo"
+                           string="Vehículos"/>
+                </button>
+            </xpath>
+
+        </field>
+    </record>
+
+    <!-- ========================================
+         TREE VIEW - Extensión de lista de productos
+         ======================================== -->
+    
+    <record id="product_template_tree_view_autopartes" model="ir.ui.view">
+        <field name="name">product.template.tree.autopartes</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_tree_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='list_price']" position="after">
+                <field name="lado" optional="hide"/>
+                <field name="calidad" optional="hide"/>
+                <field name="cantidad_vehiculos_compatibles" string="Vehículos"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ========================================
+         SEARCH VIEW - Filtros y búsquedas
+         ======================================== 
+
+    <record id="product_template_search_view_autopartes" model="ir.ui.view">
+        <field name="name">product.template.search.autopartes</field>
+        <field name="model">product.template</field>
+        <field name="inherit_id" ref="product.product_template_search_view"/>
+        <field name="arch" type="xml">
+
+            <xpath expr="//filter[@name='inactive']" position="after">
+                <separator/>
+                <filter string="Original" domain="[('calidad','=','original')]"/>
+                <filter string="Genuino" domain="[('calidad','=','genuine')]"/>
+                <filter string="OEM" domain="[('calidad','=','oem')]"/>
+                <filter string="Economico" domain="[('calidad','=','economy')]"/>
+                <separator/>
+                <filter string="Universal" domain="[('es_universal','=',True)]"/>
+                <filter string="Con Compatibilidad"
+                        domain="[('cantidad_vehiculos_compatibles','>',0)]"/>
+            </xpath>
+
+        </field>
+    </record>
+    -->
+</odoo>

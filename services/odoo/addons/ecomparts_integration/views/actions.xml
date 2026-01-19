@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================
+         ACTIONS
+         ======================================== -->
+
+    <!-- Marcas de Vehículos -->
+    <record id="action_vehiculo_marca" model="ir.actions.act_window">
+        <field name="name">Marcas</field>
+        <field name="res_model">vehiculo.marca</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Gestiona las marcas de vehículos disponibles en el catálogo.
+            </p>
+        </field>
+    </record>
+
+    <!-- Modelos de Vehículos -->
+    <record id="action_vehiculo_modelo" model="ir.actions.act_window">
+        <field name="name">Modelos</field>
+        <field name="res_model">vehiculo.modelo</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Gestiona los modelos de vehículos por marca.
+            </p>
+        </field>
+    </record>
+
+    <!-- Variantes de Vehículos -->
+    <record id="action_vehiculo_variante" model="ir.actions.act_window">
+        <field name="name">Variantes</field>
+        <field name="res_model">vehiculo.variante</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Gestiona las variantes de vehículos (motor, transmisión, tracción, años).
+            </p>
+        </field>
+    </record>
+
+    <!-- Compatibilidad Producto-Vehículo -->
+    <record id="action_producto_vehiculo_compatibilidad" model="ir.actions.act_window">
+        <field name="name">Compatibilidades Producto-Vehículo</field>
+        <field name="res_model">producto.vehiculo.compatibilidad</field>
+        <field name="view_mode">list,form</field>
+        <field name="help" type="html">
+            <p class="o_view_nocontent_smiling_face">
+                Gestiona la compatibilidad entre productos y variantes de vehículos.
+            </p>
+        </field>
+    </record>
+
+</odoo>

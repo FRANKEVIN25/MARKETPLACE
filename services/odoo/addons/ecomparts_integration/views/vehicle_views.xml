@@ -1,0 +1,169 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!-- ========================================
+         MARCAS DE VEHÍCULOS - VISTAS
+         ======================================== -->
+    
+    <record id="view_vehiculo_marca_tree" model="ir.ui.view">
+        <field name="name">vehiculo.marca.tree</field>
+        <field name="model">vehiculo.marca</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="nombre"/>
+                <field name="slug"/>
+                <field name="activo" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_marca_form" model="ir.ui.view">
+        <field name="name">vehiculo.marca.form</field>
+        <field name="model">vehiculo.marca</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="nombre" required="1"/>
+                        <field name="slug" required="1"/>
+                        <field name="activo"/>
+                    </group>
+                    <group>
+                        <field name="django_external_id" readonly="1" groups="base.group_no_one"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================
+         MODELOS DE VEHÍCULOS - VISTAS
+         ======================================== -->
+    
+    <record id="view_vehiculo_modelo_tree" model="ir.ui.view">
+        <field name="name">vehiculo.modelo.tree</field>
+        <field name="model">vehiculo.modelo</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="marca_id"/>
+                <field name="nombre"/>
+                <field name="slug"/>
+                <field name="activo" widget="boolean_toggle"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_modelo_form" model="ir.ui.view">
+        <field name="name">vehiculo.modelo.form</field>
+        <field name="model">vehiculo.modelo</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="marca_id" required="1"/>
+                        <field name="nombre" required="1"/>
+                        <field name="slug" required="1"/>
+                        <field name="activo"/>
+                    </group>
+                    <group>
+                        <field name="django_external_id" readonly="1" groups="base.group_no_one"/>
+                    </group>
+                    <notebook>
+                        <page string="Variantes">
+                            <field name="variante_ids">
+                                <list>
+                                    <field name="nombre"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================
+         VARIANTES DE VEHÍCULOS - VISTAS
+         ======================================== -->
+    
+    <record id="view_vehiculo_variante_tree" model="ir.ui.view">
+        <field name="name">vehiculo.variante.tree</field>
+        <field name="model">vehiculo.variante</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="modelo_id"/>
+                <field name="motor_id"/>
+                <field name="transmision_id"/>
+                <field name="traccion_id"/>
+                <field name="anio_desde"/>
+                <field name="anio_hasta"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_variante_form" model="ir.ui.view">
+        <field name="name">vehiculo.variante.form</field>
+        <field name="model">vehiculo.variante</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="modelo_id" required="1"/>
+                        <field name="motor_id" required="0"/>
+                        <field name="transmision_id" required="0"/>
+                        <field name="traccion_id" required="0"/>
+                    </group>
+                    <group>
+                        <field name="anio_desde" required="1"/>
+                        <field name="anio_hasta"/>
+                    </group>
+                    <group>
+                        <field name="django_external_id" readonly="1" groups="base.group_no_one"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- ========================================
+         COMPATIBILIDAD PRODUCTO-VEHÍCULO
+         ======================================== -->
+    
+    <record id="view_producto_vehiculo_compatibilidad_tree" model="ir.ui.view">
+        <field name="name">producto.vehiculo.compatibilidad.tree</field>
+        <field name="model">producto.vehiculo.compatibilidad</field>
+        <field name="arch" type="xml">
+            <list>
+                <field name="producto_id"/>
+                <field name="marca_id"/>
+                <field name="modelo_id"/>
+                <field name="variante_id"/>
+                <field name="anio_desde"/>
+                <field name="anio_hasta"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_producto_vehiculo_compatibilidad_form" model="ir.ui.view">
+        <field name="name">producto.vehiculo.compatibilidad.form</field>
+        <field name="model">producto.vehiculo.compatibilidad</field>
+        <field name="arch" type="xml">
+            <form>
+                <sheet>
+                    <group>
+                        <field name="producto_id" required="1"/>
+                        <field name="variante_id" required="1"/>
+                    </group>
+                    <group>
+                        <field name="marca_id" readonly="1"/>
+                        <field name="modelo_id" readonly="1"/>
+                        <field name="anio_desde" readonly="1"/>
+                        <field name="anio_hasta" readonly="1"/>
+                    </group>
+                    <field name="notas"/>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+</odoo>
