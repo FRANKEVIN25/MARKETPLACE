@@ -2,19 +2,12 @@
 Admin de Marketplace
 """
 from django.contrib import admin
-from .models import Provider, Member, ProviderMarca, ProviderVariantRestriccion
-
+from .models import Provider, Member, ProviderMarca
 
 class ProviderMarcaInline(admin.TabularInline):
     model = ProviderMarca
     extra = 1
     fields = ['marca', 'activo']
-
-
-class ProviderVariantRestriccionInline(admin.TabularInline):
-    model = ProviderVariantRestriccion
-    extra = 1
-    fields = ['variante']
 
 
 @admin.register(Provider)

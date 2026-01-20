@@ -45,7 +45,7 @@ services:
   odoo:
     build:
       context: ./services/odoo
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.accounting
     container_name: ecomparts-odoo
     depends_on:
       postgres:

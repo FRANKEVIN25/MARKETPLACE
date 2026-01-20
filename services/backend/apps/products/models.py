@@ -203,14 +203,5 @@ class CompatibilidadProducto(models.Model):
             models.Index(fields=['variante', 'producto']),
         ]    
 
-    def clean(self):
-        provider = self.producto.provider
-        from apps.vehicles.services.provider_variants import variantes_disponibles_para_proveedor
-        if not variantes_disponibles_para_proveedor(provider).filter(
-            id=self.variante_id
-        ).exists():
-            raise ValidationError(
-                "Esta variante no está autorizada para este proveedor."
-            )
 
 
