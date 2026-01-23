@@ -35,6 +35,7 @@
         'security/ir.model.access.csv',
         
         # Data
+        'data/vehicle_variants_seed.xml',
         #'data/categories_data.xml',
         #'data/vehicle_variant_sequence.xml',
         

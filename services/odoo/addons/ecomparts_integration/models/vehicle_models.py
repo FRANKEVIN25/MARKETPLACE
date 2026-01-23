@@ -112,6 +112,7 @@ class TransmisionVehiculo(models.Model):
     _name = 'vehiculo.transmision'
     _description = 'Transmisión de Vehículo'
     _order = 'tipo, velocidades'
+    _rec_name = 'display_name'    
 
     tipo = fields.Selection(
         selection=[
@@ -139,6 +140,20 @@ class TransmisionVehiculo(models.Model):
         readonly=True
     )
 
+    display_name = fields.Char(
+        compute='_compute_display_name',
+        store=True
+    )
+
+    @api.depends('tipo', 'velocidades')
+    def _compute_display_name(self):
+        for rec in self:
+            label = dict(self._fields['tipo'].selection).get(rec.tipo, '')
+            if rec.velocidades:
+                rec.display_name = f"{label} {rec.velocidades}V"
+            else:
+                rec.display_name = label
+
     _sql_constraints = [
         ('transmision_unique', 'unique(tipo, velocidades)',
          'La transmisión ya existe'),
@@ -148,6 +163,7 @@ class TraccionVehiculo(models.Model):
     _name = 'vehiculo.traccion'
     _description = 'Tracción de Vehículo'
     _order = 'tipo'
+    _rec_name = 'display_name'
 
     tipo = fields.Selection(
         selection=[
@@ -167,11 +183,22 @@ class TraccionVehiculo(models.Model):
         readonly=True
     )
 
+    display_name = fields.Char(
+        compute='_compute_display_name',
+        store=True
+    )
+
+    @api.depends('tipo')
+    def _compute_display_name(self):
+        for rec in self:
+            rec.display_name = dict(
+                self._fields['tipo'].selection
+            ).get(rec.tipo)
+
     _sql_constraints = [
         ('traccion_unique', 'unique(tipo)',
          'La tracción ya existe'),
-    ]
-   
+    ]   
 
 class MotorVehiculo(models.Model):
     _name = 'vehiculo.motor'

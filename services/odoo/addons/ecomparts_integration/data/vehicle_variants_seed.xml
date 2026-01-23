@@ -1,0 +1,407 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!-- ========================================
+             MARCAS DE VEHÍCULOS
+             ======================================== -->
+        <record id="marca_toyota" model="vehiculo.marca">
+            <field name="nombre">Toyota</field>
+            <field name="slug">toyota</field>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="marca_honda" model="vehiculo.marca">
+            <field name="nombre">Honda</field>
+            <field name="slug">honda</field>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="marca_ford" model="vehiculo.marca">
+            <field name="nombre">Ford</field>
+            <field name="slug">ford</field>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="marca_hyundai" model="vehiculo.marca">
+            <field name="nombre">Hyundai</field>
+            <field name="slug">hyundai</field>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="marca_tesla" model="vehiculo.marca">
+            <field name="nombre">Tesla</field>
+            <field name="slug">tesla</field>
+            <field name="activo">True</field>
+        </record>
+
+        <!-- ========================================
+             MODELOS DE VEHÍCULOS
+             ======================================== -->
+        <!-- Toyota -->
+        <record id="modelo_corolla" model="vehiculo.modelo">
+            <field name="nombre">Corolla</field>
+            <field name="slug">corolla</field>
+            <field name="marca_id" ref="marca_toyota"/>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="modelo_rav4" model="vehiculo.modelo">
+            <field name="nombre">RAV4</field>
+            <field name="slug">rav4</field>
+            <field name="marca_id" ref="marca_toyota"/>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="modelo_hilux" model="vehiculo.modelo">
+            <field name="nombre">Hilux</field>
+            <field name="slug">hilux</field>
+            <field name="marca_id" ref="marca_toyota"/>
+            <field name="activo">True</field>
+        </record>
+
+        <!-- Honda -->
+        <record id="modelo_civic" model="vehiculo.modelo">
+            <field name="nombre">Civic</field>
+            <field name="slug">civic</field>
+            <field name="marca_id" ref="marca_honda"/>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="modelo_crv" model="vehiculo.modelo">
+            <field name="nombre">CR-V</field>
+            <field name="slug">cr-v</field>
+            <field name="marca_id" ref="marca_honda"/>
+            <field name="activo">True</field>
+        </record>
+
+        <!-- Ford -->
+        <record id="modelo_f150" model="vehiculo.modelo">
+            <field name="nombre">F-150</field>
+            <field name="slug">f-150</field>
+            <field name="marca_id" ref="marca_ford"/>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="modelo_mustang" model="vehiculo.modelo">
+            <field name="nombre">Mustang</field>
+            <field name="slug">mustang</field>
+            <field name="marca_id" ref="marca_ford"/>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="modelo_explorer" model="vehiculo.modelo">
+            <field name="nombre">Explorer</field>
+            <field name="slug">explorer</field>
+            <field name="marca_id" ref="marca_ford"/>
+            <field name="activo">True</field>
+        </record>
+
+        <!-- Hyundai -->
+        <record id="modelo_tucson" model="vehiculo.modelo">
+            <field name="nombre">Tucson</field>
+            <field name="slug">tucson</field>
+            <field name="marca_id" ref="marca_hyundai"/>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="modelo_elantra" model="vehiculo.modelo">
+            <field name="nombre">Elantra</field>
+            <field name="slug">elantra</field>
+            <field name="marca_id" ref="marca_hyundai"/>
+            <field name="activo">True</field>
+        </record>
+
+        <!-- Tesla -->
+        <record id="modelo_model3" model="vehiculo.modelo">
+            <field name="nombre">Model 3</field>
+            <field name="slug">model-3</field>
+            <field name="marca_id" ref="marca_tesla"/>
+            <field name="activo">True</field>
+        </record>
+
+        <record id="modelo_modely" model="vehiculo.modelo">
+            <field name="nombre">Model Y</field>
+            <field name="slug">model-y</field>
+            <field name="marca_id" ref="marca_tesla"/>
+            <field name="activo">True</field>
+        </record>
+
+        <!-- ========================================
+             TRANSMISIONES
+             ======================================== -->
+        <record id="transmision_mt5" model="vehiculo.transmision">
+            <field name="tipo">MT</field>
+            <field name="velocidades">5</field>
+        </record>
+
+        <record id="transmision_mt6" model="vehiculo.transmision">
+            <field name="tipo">MT</field>
+            <field name="velocidades">6</field>
+        </record>
+
+        <record id="transmision_at6" model="vehiculo.transmision">
+            <field name="tipo">AT</field>
+            <field name="velocidades">6</field>
+        </record>
+
+        <record id="transmision_at8" model="vehiculo.transmision">
+            <field name="tipo">AT</field>
+            <field name="velocidades">8</field>
+        </record>
+
+        <record id="transmision_cvt" model="vehiculo.transmision">
+            <field name="tipo">CVT</field>
+        </record>
+
+        <record id="transmision_dct7" model="vehiculo.transmision">
+            <field name="tipo">DCT</field>
+            <field name="velocidades">7</field>
+        </record>
+
+        <record id="transmision_red" model="vehiculo.transmision">
+            <field name="tipo">RED</field>
+        </record>
+
+        <!-- ========================================
+             TRACCIONES
+             ======================================== -->
+        <record id="traccion_4x2" model="vehiculo.traccion">
+            <field name="tipo">4x2</field>
+        </record>
+
+        <record id="traccion_4x4" model="vehiculo.traccion">
+            <field name="tipo">4x4</field>
+        </record>
+
+        <record id="traccion_awd" model="vehiculo.traccion">
+            <field name="tipo">AWD</field>
+        </record>
+
+        <!-- ========================================
+             MOTORES
+             ======================================== -->
+        <record id="motor_gasolina_1600" model="vehiculo.motor">
+            <field name="combustible">GSL</field>
+            <field name="cilindrada_cc">1600</field>
+            <field name="codigo_motor">G4FG</field>
+            <field name="tecnologia">D-CVVT</field>
+        </record>
+
+        <record id="motor_gasolina_2000" model="vehiculo.motor">
+            <field name="combustible">GSL</field>
+            <field name="cilindrada_cc">2000</field>
+            <field name="codigo_motor">M20A-FKS</field>
+            <field name="tecnologia">VVT-iE</field>
+        </record>
+
+        <record id="motor_hibrido_1800" model="vehiculo.motor">
+            <field name="combustible">Hib</field>
+            <field name="cilindrada_cc">1800</field>
+            <field name="codigo_motor">2ZR-FXE</field>
+            <field name="tecnologia">Hybrid Synergy Drive</field>
+        </record>
+
+        <record id="motor_electrico" model="vehiculo.motor">
+            <field name="combustible">Ele</field>
+            <field name="cilindrada_cc">0</field>
+            <field name="codigo_motor">Dual Motor</field>
+            <field name="tecnologia">Tesla-Electric</field>
+        </record>
+
+        <record id="motor_diesel_2800" model="vehiculo.motor">
+            <field name="combustible">Dis</field>
+            <field name="cilindrada_cc">2800</field>
+            <field name="codigo_motor">1GD-FTV</field>
+            <field name="tecnologia">Turbo Diesel Intercooler</field>
+        </record>
+
+        <!-- ========================================
+             VARIANTES DE VEHÍCULOS (20 registros)
+             ======================================== -->
+        <!-- Variantes Toyota Corolla -->
+        <record id="variante_corolla_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_corolla"/>
+            <field name="motor_id" ref="motor_gasolina_1600"/>
+            <field name="transmision_id" ref="transmision_mt5"/>
+            <field name="traccion_id" ref="traccion_4x2"/>
+            <field name="anio_desde">2015</field>
+            <field name="anio_hasta">2020</field>
+        </record>
+
+        <record id="variante_corolla_2" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_corolla"/>
+            <field name="motor_id" ref="motor_gasolina_1600"/>
+            <field name="transmision_id" ref="transmision_cvt"/>
+            <field name="traccion_id" ref="traccion_4x2"/>
+            <field name="anio_desde">2020</field>
+            <field name="anio_hasta">2024</field>
+        </record>
+
+        <record id="variante_corolla_3" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_corolla"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at8"/>
+            <field name="traccion_id" ref="traccion_4x2"/>
+            <field name="anio_desde">2018</field>
+        </record>
+
+        <!-- Variantes Toyota RAV4 -->
+        <record id="variante_rav4_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_rav4"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at8"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2016</field>
+            <field name="anio_hasta">2021</field>
+        </record>
+
+        <record id="variante_rav4_2" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_rav4"/>
+            <field name="motor_id" ref="motor_hibrido_1800"/>
+            <field name="transmision_id" ref="transmision_cvt"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2020</field>
+            <field name="anio_hasta">2024</field>
+        </record>
+
+        <record id="variante_rav4_3" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_rav4"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at6"/>
+            <field name="traccion_id" ref="traccion_4x4"/>
+            <field name="anio_desde">2017</field>
+        </record>
+
+        <!-- Variantes Toyota Hilux -->
+        <record id="variante_hilux_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_hilux"/>
+            <field name="motor_id" ref="motor_diesel_2800"/>
+            <field name="transmision_id" ref="transmision_at6"/>
+            <field name="traccion_id" ref="traccion_4x4"/>
+            <field name="anio_desde">2015</field>
+            <field name="anio_hasta">2022</field>
+        </record>
+
+        <record id="variante_hilux_2" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_hilux"/>
+            <field name="motor_id" ref="motor_diesel_2800"/>
+            <field name="transmision_id" ref="transmision_at8"/>
+            <field name="traccion_id" ref="traccion_4x4"/>
+            <field name="anio_desde">2022</field>
+            <field name="anio_hasta">2024</field>
+        </record>
+
+        <!-- Variantes Honda Civic -->
+        <record id="variante_civic_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_civic"/>
+            <field name="motor_id" ref="motor_gasolina_1600"/>
+            <field name="transmision_id" ref="transmision_mt5"/>
+            <field name="traccion_id" ref="traccion_4x2"/>
+            <field name="anio_desde">2016</field>
+            <field name="anio_hasta">2021</field>
+        </record>
+
+        <record id="variante_civic_2" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_civic"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at6"/>
+            <field name="traccion_id" ref="traccion_4x2"/>
+            <field name="anio_desde">2021</field>
+        </record>
+
+        <!-- Variantes Honda CR-V -->
+        <record id="variante_crv_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_crv"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at8"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2017</field>
+            <field name="anio_hasta">2022</field>
+        </record>
+
+        <record id="variante_crv_2" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_crv"/>
+            <field name="motor_id" ref="motor_hibrido_1800"/>
+            <field name="transmision_id" ref="transmision_cvt"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2022</field>
+        </record>
+
+        <!-- Variantes Ford F-150 -->
+        <record id="variante_f150_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_f150"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at6"/>
+            <field name="traccion_id" ref="traccion_4x4"/>
+            <field name="anio_desde">2015</field>
+            <field name="anio_hasta">2020</field>
+        </record>
+
+        <record id="variante_f150_2" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_f150"/>
+            <field name="motor_id" ref="motor_diesel_2800"/>
+            <field name="transmision_id" ref="transmision_at8"/>
+            <field name="traccion_id" ref="traccion_4x4"/>
+            <field name="anio_desde">2020</field>
+        </record>
+
+        <!-- Variantes Ford Mustang -->
+        <record id="variante_mustang_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_mustang"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at6"/>
+            <field name="traccion_id" ref="traccion_4x2"/>
+            <field name="anio_desde">2018</field>
+            <field name="anio_hasta">2023</field>
+        </record>
+
+        <!-- Variantes Ford Explorer -->
+        <record id="variante_explorer_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_explorer"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at8"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2019</field>
+            <field name="anio_hasta">2024</field>
+        </record>
+
+        <!-- Variantes Hyundai Tucson -->
+        <record id="variante_tucson_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_tucson"/>
+            <field name="motor_id" ref="motor_gasolina_1600"/>
+            <field name="transmision_id" ref="transmision_at6"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2020</field>
+            <field name="anio_hasta">2024</field>
+        </record>
+
+        <!-- Variantes Hyundai Elantra -->
+        <record id="variante_elantra_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_elantra"/>
+            <field name="motor_id" ref="motor_gasolina_2000"/>
+            <field name="transmision_id" ref="transmision_at8"/>
+            <field name="traccion_id" ref="traccion_4x2"/>
+            <field name="anio_desde">2021</field>
+        </record>
+
+        <!-- Variantes Tesla Model 3 -->
+        <record id="variante_model3_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_model3"/>
+            <field name="motor_id" ref="motor_electrico"/>
+            <field name="transmision_id" ref="transmision_red"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2020</field>
+            <field name="anio_hasta">2024</field>
+        </record>
+
+        <!-- Variantes Tesla Model Y -->
+        <record id="variante_modely_1" model="vehiculo.variante">
+            <field name="modelo_id" ref="modelo_modely"/>
+            <field name="motor_id" ref="motor_electrico"/>
+            <field name="transmision_id" ref="transmision_red"/>
+            <field name="traccion_id" ref="traccion_awd"/>
+            <field name="anio_desde">2021</field>
+        </record>
+
+    </data>
+</odoo>
