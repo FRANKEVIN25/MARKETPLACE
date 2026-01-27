@@ -26,22 +26,39 @@ export interface Category {
   children_count: number;
 }
 
+// Stock de un producto en almacén
+export interface StockItem {
+  id: number;
+  warehouse: number;
+  warehouse_name: string;
+  warehouse_city: string;
+  quantity: number;
+  is_low_stock: boolean;
+  is_out_of_stock: boolean;
+  updated_at: string;
+}
+
 // Producto
 export interface Product {
   id: number;
   name: string;
   reference: string;
   slug: string;
-  provider_group: number;
+  provider?: number;
   provider_name: string;
   product_type: 'consu' | 'service' | 'product';
   manufacturer_code?: string;
   description?: string;
   image?: string;
   price: string;
+  price_with_tax?: string;
+  tax_percent?: string;
   category?: number;
   category_name?: string;
   active: boolean;
+  es_universal?: boolean;
+  total_stock?: number;
+  stock_items?: StockItem[];
   is_synced: boolean;
   created_at: string;
   updated_at: string;

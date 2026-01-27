@@ -21,7 +21,7 @@ ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS',
 
 # Application definition
 INSTALLED_APPS = [
-    # 'jazzmin',
+    #'jazzmin',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.marketplace',
     'apps.products',
+    'apps.orders',
     'apps.vehicles',
     'apps.customer',
     'apps.sync',

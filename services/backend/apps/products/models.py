@@ -5,6 +5,7 @@ from django.db import models
 from django.utils.text import slugify
 from mptt.models import MPTTModel, TreeForeignKey
 from django.core.exceptions import ValidationError
+from django.db.models import Sum
 
 class Category(MPTTModel):
     """
@@ -121,9 +122,11 @@ class Product(models.Model):
 
     description = models.TextField(blank=True, null=True)
     
-    # Precio
+    # Precio (BASE IMPONIBLE)
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio base")
-    
+    # En Perú IGV es 18%, en otros países IVA varía
+    tax_percent = models.DecimalField(max_digits=5, decimal_places=2, default=18.00)
+
     # Categoría (UNIVERSAL - compartida)
     category = models.ForeignKey(
         Category,
@@ -132,7 +135,7 @@ class Product(models.Model):
         blank=True,
         related_name='products'
     )
-    
+
     active = models.BooleanField(default=True)
     es_universal = models.BooleanField(default=False, db_index=True) # si es True no necesita compatibilidad
 
@@ -176,14 +179,23 @@ class Product(models.Model):
     
     def __str__(self):
         return f"{self.name} ({self.provider.name})"
-    
+   
+
     def save(self, *args, **kwargs):
         if not self.slug:
             # Slug único: nombre-proveedor-id
             base_slug = slugify(self.name)
             self.slug = f"{base_slug}-{self.provider.slug}"
         super().save(*args, **kwargs)
-    
+
+    @property
+    def total_stock(self):
+        return (
+            self.stock_items
+            .aggregate(total=Sum('quantity'))
+            .get('total') or 0
+        )
+
     @property
     def is_synced(self):
         """Producto está sincronizado con Odoo"""
@@ -191,8 +203,15 @@ class Product(models.Model):
     
 
 class CompatibilidadProducto(models.Model):
-    producto = models.ForeignKey(Product, on_delete=models.CASCADE)
-    variante = models.ForeignKey('vehicles.VariantVehiculo', on_delete=models.CASCADE)
+    producto = models.ForeignKey(
+        Product,
+        on_delete=models.CASCADE,
+        related_name='compatibilidades'
+    )
+    variante = models.ForeignKey(
+        'vehicles.VariantVehiculo',
+        on_delete=models.CASCADE
+    )
     
     # Campo extra que te agradecerán en el futuro:
     notas_instalacion = models.CharField(max_length=255, blank=True, help_text="Ej: Solo aplica a frenos delanteros")
@@ -205,3 +224,109 @@ class CompatibilidadProducto(models.Model):
 
 
 
+"""Gestión de Almacenes y Stock - Critical para Marketplace Multiproveedor"""
+
+
+class Warehouse(models.Model):
+    """
+    Almacén de un proveedor específico.
+    Representa ubicaciones físicas donde se almacenan productos.
+    """
+    provider = models.ForeignKey(
+        'marketplace.Provider',
+        on_delete=models.CASCADE,
+        related_name='warehouses',
+        verbose_name='Proveedor'
+    )
+
+    name = models.CharField(max_length=100, verbose_name='Nombre')
+    city = models.CharField(max_length=100, blank=True, verbose_name='Ciudad')
+    address = models.CharField(max_length=255, blank=True, verbose_name='Dirección')
+
+    # Vínculo Odoo
+    odoo_warehouse_id = models.IntegerField(
+        null=True,
+        blank=True,
+        help_text="ID del warehouse en Odoo"
+    )
+
+    is_active = models.BooleanField(default=True, verbose_name='Activo')
+    
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'products_warehouse'
+        verbose_name = 'Almacén'
+        verbose_name_plural = 'Almacenes'
+        unique_together = [('provider', 'name')]
+        indexes = [
+            models.Index(fields=['provider', 'is_active']),
+            models.Index(fields=['provider']),
+        ]
+        ordering = ['provider', 'name']
+
+    def __str__(self):
+        return f"{self.provider.name} - {self.name}"
+
+    @property
+    def total_stock(self):
+        """Stock total en este almacén"""
+        return self.stock_items.aggregate(total=Sum('quantity')).get('total') or 0
+
+
+class StockItem(models.Model):
+    """
+    Cantidad de un producto en un almacén específico.
+    Es el registro REAL del stock disponible por ubicación.
+    """
+    product = models.ForeignKey(
+        'products.Product',
+        on_delete=models.CASCADE,
+        related_name='stock_items',
+        verbose_name='Producto'
+    )
+    
+    warehouse = models.ForeignKey(
+        Warehouse,
+        on_delete=models.CASCADE,
+        related_name='stock_items',
+        verbose_name='Almacén'
+    )
+
+    quantity = models.IntegerField(
+        default=0,
+        verbose_name='Cantidad',
+        help_text='Cantidad disponible en el almacén'
+    )
+    
+    # Para auditoría y control
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'products_stockitem'
+        verbose_name = 'Stock de Producto'
+        verbose_name_plural = 'Stocks de Productos'
+        unique_together = [('product', 'warehouse')]
+        indexes = [
+            models.Index(fields=['product']),
+            models.Index(fields=['warehouse']),
+            models.Index(fields=['product', 'warehouse']),
+            models.Index(fields=['warehouse', 'quantity']),
+        ]
+        ordering = ['warehouse', 'product']
+
+    def __str__(self):
+        return f"{self.product.name} - {self.warehouse.name}: {self.quantity} uds"
+
+    @property
+    def is_low_stock(self):
+        """Indicador simple: stock bajo (< 5)"""
+        return self.quantity < 5
+
+    @property
+    def is_out_of_stock(self):
+        """Sin stock"""
+        return self.quantity == 0
