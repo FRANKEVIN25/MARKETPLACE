@@ -57,7 +57,7 @@ class ProductQuerySet(models.QuerySet):
     def for_marketplace(self):
         """Productos activos para el marketplace público"""
         return self.filter(
-            active=True,
+            is_active=True,
             provider__is_approved=True,
             provider__is_active=True
         )
@@ -86,6 +86,16 @@ class Product(models.Model):
         ('service', 'Servicio'),
         ('product', 'Almacenable'),
     ]
+    odoo_id = models.IntegerField(null=True, blank=True)
+    odoo_state = models.CharField(
+        max_length=20, 
+        choices=[
+            ('pending', 'Pendiente'),
+            ('synced', 'Sincronizado'),
+            ('failed', 'Fallido')
+        ],
+        default='pending'
+    )
     
     # CAMPO CRÍTICO: Relación con el proveedor
     provider = models.ForeignKey(
@@ -124,6 +134,45 @@ class Product(models.Model):
     # Precio
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio base")
     
+    # ====== CAMPOS PARA SINCRONIZACIÓN CON ODOO ======
+    cost = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="Costo del producto (desde Odoo)"
+    )
+    stock = models.IntegerField(
+        default=0,
+        help_text="Stock disponible (sincronizado desde Odoo)"
+    )
+    sku = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="SKU del producto (default_code en Odoo)"
+    )
+    barcode = models.CharField(
+        max_length=100,
+        blank=True,
+        help_text="Código de barras"
+    )
+    weight = models.DecimalField(
+        max_digits=8,
+        decimal_places=2,
+        default=0,
+        help_text="Peso en kg"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        help_text="Producto activo en marketplace"
+    )
+    last_sync_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Última sincronización desde Odoo"
+    )
+    # ====== FIN CAMPOS SINCRONIZACIÓN ======
+    
     # Categoría (UNIVERSAL - compartida)
     category = models.ForeignKey(
         Category,
@@ -133,8 +182,12 @@ class Product(models.Model):
         related_name='products'
     )
     
-    active = models.BooleanField(default=True)
-    es_universal = models.BooleanField(default=False, db_index=True) # si es True no necesita compatibilidad
+    # Compatibilidad con vehículos
+    es_universal = models.BooleanField(
+        default=False, 
+        db_index=True,
+        help_text="Si es True no necesita compatibilidad con vehículos"
+    )
 
     vehiculos_compatibles = models.ManyToManyField(
         'vehicles.VariantVehiculo',
@@ -153,7 +206,11 @@ class Product(models.Model):
         blank=True,
         help_text="ID de la plantilla en Odoo (product.template)"
     )
-    last_synced_at = models.DateTimeField(null=True, blank=True)
+    last_synced_at = models.DateTimeField(
+        null=True, 
+        blank=True,
+        help_text="Última vez que se sincronizó con Odoo (deprecated, usar last_sync_at)"
+    )
     
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
@@ -169,9 +226,10 @@ class Product(models.Model):
         # Referencia única dentro del proveedor
         unique_together = [['provider', 'reference']]
         indexes = [
-            models.Index(fields=['provider', 'active']),
+            models.Index(fields=['provider', 'is_active']),
             models.Index(fields=['reference']),
             models.Index(fields=['odoo_product_id']),
+            models.Index(fields=['sku']),
         ]
     
     def __str__(self):
@@ -179,7 +237,7 @@ class Product(models.Model):
     
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Slug único: nombre-proveedor-id
+            # Slug único: nombre-proveedor
             base_slug = slugify(self.name)
             self.slug = f"{base_slug}-{self.provider.slug}"
         super().save(*args, **kwargs)
@@ -189,19 +247,34 @@ class Product(models.Model):
         """Producto está sincronizado con Odoo"""
         return self.odoo_product_id is not None
     
+    @property
+    def disponible(self):
+        """Producto tiene stock disponible"""
+        return self.is_active and self.stock > 0
+
 
 class CompatibilidadProducto(models.Model):
+    """
+    Tabla intermedia para compatibilidad producto-vehículo
+    """
     producto = models.ForeignKey(Product, on_delete=models.CASCADE)
     variante = models.ForeignKey('vehicles.VariantVehiculo', on_delete=models.CASCADE)
     
     # Campo extra que te agradecerán en el futuro:
-    notas_instalacion = models.CharField(max_length=255, blank=True, help_text="Ej: Solo aplica a frenos delanteros")
+    notas_instalacion = models.CharField(
+        max_length=255, 
+        blank=True, 
+        help_text="Ej: Solo aplica a frenos delanteros"
+    )
 
     class Meta:
+        db_table = 'products_compatibilidad'
+        verbose_name = 'Compatibilidad Producto-Vehículo'
+        verbose_name_plural = 'Compatibilidades Producto-Vehículo'
         unique_together = ('producto', 'variante')
         indexes = [
             models.Index(fields=['variante', 'producto']),
-        ]    
-
-
-
+        ]
+    
+    def __str__(self):
+        return f"{self.producto.name} → {self.variante}"

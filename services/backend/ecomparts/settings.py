@@ -211,7 +211,7 @@ CELERY_TIMEZONE = TIME_ZONE
 
 # Odoo Connection
 ODOO_CONFIG = {
-'URL': os.environ.get('ODOO_URL', 'http://ecomparts-odoo:8069'),
+'URL': os.environ.get('ODOO_URL', 'http://ecomparts-odoo-shared:8069'),
 'DB': os.environ.get('ODOO_DB', 'ecomparts_odoo'),
 'USERNAME': os.environ.get('ODOO_USERNAME', 'admin@ecomparts.local'),
 'PASSWORD': os.environ.get('ODOO_PASSWORD', ''),
@@ -282,3 +282,11 @@ JAZZMIN_SETTINGS = {
         "vehicles.VarianteVehiculo": "fas fa-cogs",
     },
 }
+
+# ==============================================
+# ODOO - Variables individuales para compatibilidad
+# ==============================================
+ODOO_URL = ODOO_CONFIG['URL']
+ODOO_DB = ODOO_CONFIG['DB']
+ODOO_USERNAME = ODOO_CONFIG['USERNAME']
+ODOO_PASSWORD = ODOO_CONFIG['PASSWORD']

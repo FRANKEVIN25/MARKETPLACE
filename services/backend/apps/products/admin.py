@@ -7,7 +7,6 @@ from django.contrib import admin
 from apps.marketplace.models import Member
 
 
-
 @admin.register(Category)
 class CategoryAdmin(MPTTModelAdmin):
     list_display = ['name', 'parent', 'is_active', 'created_at']
@@ -15,6 +14,7 @@ class CategoryAdmin(MPTTModelAdmin):
     search_fields = ['name', 'slug']
     readonly_fields = ['slug', 'created_at', 'updated_at']
     mptt_level_indent = 20
+
 
 class CompatibilidadProductoInline(admin.TabularInline):
     model = CompatibilidadProducto
@@ -30,36 +30,53 @@ class ProductAdmin(admin.ModelAdmin):
         'reference',
         'provider',
         'price',
-        'active',
+        'stock',
+        'is_active',
         'es_universal',
         'is_synced',
         'created_at'
     ]
-    list_filter = ['active', 'product_type', 'category', 'created_at']
-    search_fields = ['name', 'reference', 'manufacturer_code']
+    list_filter = ['is_active', 'product_type', 'category', 'provider', 'created_at']
+    search_fields = ['name', 'reference', 'manufacturer_code', 'sku', 'barcode']
     readonly_fields = [
         'slug',
         'odoo_product_id',
         'odoo_template_id',
         'last_synced_at',
+        'last_sync_at',
         'created_at',
         'updated_at'
     ]
-
     inlines = [CompatibilidadProductoInline]
-
+    
     fieldsets = (
         ('Proveedor', {
             'fields': ('provider',)
         }),
         ('Información Básica', {
-            'fields': ('name', 'reference', 'manufacturer_code','product_type','price', 'active', 'description', 'image', 'slug')
+            'fields': (
+                'name', 
+                'reference', 
+                'sku',
+                'manufacturer_code',
+                'barcode',
+                'product_type',
+                'price',
+                'cost',
+                'is_active', 
+                'description', 
+                'image', 
+                'slug'
+            )
+        }),
+        ('Stock', {
+            'fields': ('stock', 'weight')
         }),
         ('Clasificación', {
-            'fields': ('category',)
+            'fields': ('category', 'es_universal')
         }),
         ('Integración Odoo', {
-            'fields': ('odoo_product_id', 'odoo_template_id', 'last_synced_at'),
+            'fields': ('odoo_product_id', 'odoo_template_id', 'last_synced_at', 'last_sync_at'),
             'classes': ('collapse',)
         }),
         ('Metadata', {
@@ -67,7 +84,7 @@ class ProductAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
-
+    
     def is_synced(self, obj):
         return obj.is_synced
     
@@ -86,4 +103,3 @@ class CompatibilidadesAdmin(admin.ModelAdmin):
         'variante__modelo__nombre',
         'variante__modelo__marca__nombre'
     ]
-
