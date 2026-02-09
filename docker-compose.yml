@@ -27,7 +27,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ecomparts-redis
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    # en producion ponerlo en yes
+    command: redis-server --appendonly no --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     networks:
@@ -119,6 +120,8 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
+    #command es peligroso en desarrollo y en producción.
+    #command mas amigable: gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 4
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&

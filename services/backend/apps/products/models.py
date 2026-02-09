@@ -46,35 +46,6 @@ class Category(MPTTModel):
         super().save(*args, **kwargs)
 
 
-class ProductQuerySet(models.QuerySet):
-    """QuerySet personalizado con filtros por tenant"""
-    
-    def for_group(self, provider):
-        """Filtrar productos por proveedor"""
-        if provider:
-            return self.filter(provider=provider)
-        return self.none()
-    
-    def for_marketplace(self):
-        """Productos activos para el marketplace público"""
-        return self.filter(
-            active=True,
-            provider__is_approved=True,
-            provider__is_active=True
-        )
-
-
-class ProductManager(models.Manager):
-    """Manager con soporte para multi-tenancy"""
-    
-    def get_queryset(self):
-        return ProductQuerySet(self.model, using=self._db)
-    
-    def for_group(self, provider):
-        return self.get_queryset().for_group(provider)
-    
-    def for_marketplace(self):
-        return self.get_queryset().for_marketplace()
 
 
 class Product(models.Model):
@@ -162,7 +133,6 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    objects = ProductManager() 
     
     class Meta:
         db_table = 'products_product'

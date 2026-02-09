@@ -40,12 +40,11 @@ RUN pip install --no-cache-dir --upgrade pip && \
     pip install --no-cache-dir -r ${ODOO_HOME}/odoo-server/requirements.txt
 
 # Instalar dependencias del módulo de contabilidad
-RUN pip install --no-cache-dir --target=/opt/qiflibs qifparse && \
-    pip install --no-cache-dir openpyxl && \
-    pip install --no-cache-dir ofxparse
-
-# Configurar PYTHONPATH para qifparse
-ENV PYTHONPATH="/opt/qiflibs"
+# Instalar dependencias del módulo de contabilidad
+RUN pip install --no-cache-dir \
+    qifparse \
+    openpyxl \
+    ofxparse
 
 # Copiar addons personalizados
 COPY --chown=odoo:odoo addons/ /mnt/extra-addons/
