@@ -1,4 +1,4 @@
-# ECOMPARTS PERÚ 🚗
+# ECOMPARTS PERÚ 
 
 Marketplace Multi-Tenant de Autopartes
 
