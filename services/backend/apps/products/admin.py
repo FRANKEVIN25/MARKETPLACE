@@ -9,7 +9,6 @@ from django.utils.html import format_html
 from django.db.models import Sum
 
 
-
 @admin.register(Category)
 class CategoryAdmin(MPTTModelAdmin):
     list_display = ['name', 'parent', 'is_active', 'created_at']
@@ -54,6 +53,7 @@ class ProductAdmin(admin.ModelAdmin):
         'odoo_product_id',
         'odoo_template_id',
         'last_synced_at',
+        'last_sync_at',
         'created_at',
         'updated_at',
         'total_stock',
@@ -77,7 +77,7 @@ class ProductAdmin(admin.ModelAdmin):
             'description': 'Stock total agregado de todos los almacenes'
         }),
         ('Integración Odoo', {
-            'fields': ('odoo_product_id', 'odoo_template_id', 'last_synced_at'),
+            'fields': ('odoo_product_id', 'odoo_template_id', 'last_synced_at', 'last_sync_at'),
             'classes': ('collapse',)
         }),
         ('Metadata', {

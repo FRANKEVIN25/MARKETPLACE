@@ -58,6 +58,16 @@ class Product(models.Model):
         ('service', 'Servicio'),
         ('product', 'Almacenable'),
     ]
+    odoo_id = models.IntegerField(null=True, blank=True)
+    odoo_state = models.CharField(
+        max_length=20, 
+        choices=[
+            ('pending', 'Pendiente'),
+            ('synced', 'Sincronizado'),
+            ('failed', 'Fallido')
+        ],
+        default='pending'
+    )
     
     # CAMPO CRÍTICO: Relación con el proveedor
     provider = models.ForeignKey(
@@ -97,7 +107,8 @@ class Product(models.Model):
     price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio base")
     # En Perú IGV es 18%, en otros países IVA varía
     tax_percent = models.DecimalField(max_digits=5, decimal_places=2, default=18.00)
-
+    
+    
     # Categoría (UNIVERSAL - compartida)
     category = models.ForeignKey(
         Category,
@@ -127,8 +138,15 @@ class Product(models.Model):
         blank=True,
         help_text="ID de la plantilla en Odoo (product.template)"
     )
-    last_synced_at = models.DateTimeField(null=True, blank=True)
-    
+
+    # ====== CAMPOS PARA SINCRONIZACIÓN CON ODOO ======
+
+    last_sync_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Última sincronización desde Odoo"
+    )
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -142,9 +160,10 @@ class Product(models.Model):
         # Referencia única dentro del proveedor
         unique_together = [['provider', 'reference']]
         indexes = [
-            models.Index(fields=['provider', 'active']),
+            models.Index(fields=['provider', 'is_active']),
             models.Index(fields=['reference']),
             models.Index(fields=['odoo_product_id']),
+            models.Index(fields=['sku']),
         ]
     
     def __str__(self):
@@ -153,7 +172,7 @@ class Product(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Slug único: nombre-proveedor-id
+            # Slug único: nombre-proveedor
             base_slug = slugify(self.name)
             self.slug = f"{base_slug}-{self.provider.slug}"
         super().save(*args, **kwargs)
@@ -171,6 +190,11 @@ class Product(models.Model):
         """Producto está sincronizado con Odoo"""
         return self.odoo_product_id is not None
     
+    @property
+    def disponible(self):
+        """Producto tiene stock disponible"""
+        return self.is_active and self.stock > 0
+
 
 class CompatibilidadProducto(models.Model):
     producto = models.ForeignKey(
@@ -184,9 +208,16 @@ class CompatibilidadProducto(models.Model):
     )
     
     # Campo extra que te agradecerán en el futuro:
-    notas_instalacion = models.CharField(max_length=255, blank=True, help_text="Ej: Solo aplica a frenos delanteros")
+    notas_instalacion = models.CharField(
+        max_length=255, 
+        blank=True, 
+        help_text="Ej: Solo aplica a frenos delanteros"
+    )
 
     class Meta:
+        db_table = 'products_compatibilidad'
+        verbose_name = 'Compatibilidad Producto-Vehículo'
+        verbose_name_plural = 'Compatibilidades Producto-Vehículo'
         unique_together = ('producto', 'variante')
         indexes = [
             models.Index(fields=['variante', 'producto']),

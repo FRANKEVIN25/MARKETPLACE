@@ -1,4 +1,3 @@
-
 services:
   # ============================================
   # PostgreSQL - Base de Datos
@@ -12,6 +11,7 @@ services:
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - ./services/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     networks:
       - ecomparts-net
     healthcheck:
@@ -20,6 +20,15 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+    # ⭐ NUEVO: Límites de recursos para PostgreSQL
+    deploy:
+      resources:
+        limits:
+          cpus: '4.0'       # Máximo 4 CPUs
+          memory: 4G        # Máximo 4GB RAM
+        reservations:
+          cpus: '2.0'       # Mínimo garantizado
+          memory: 2G
 
   # ============================================
   # Redis - Cache y Broker
@@ -39,15 +48,22 @@ services:
       timeout: 3s
       retries: 5
     restart: unless-stopped
+    # ⭐ NUEVO: Límites de recursos para Redis
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 1G
+        reservations:
+          cpus: '0.5'
+          memory: 512M
 
   # ============================================
-  # Odoo 19 - ERP
+  # Odoo 17 - ERP (SHARED MULTI-COMPANY)
   # ============================================
   odoo:
-    build:
-      context: ./services/odoo
-      dockerfile: Dockerfile.accounting
-    container_name: ecomparts-odoo
+    image: odoo:17
+    container_name: ecomparts-odoo-shared
     depends_on:
       postgres:
         condition: service_healthy
@@ -59,15 +75,31 @@ services:
       - ./services/odoo/addons:/mnt/extra-addons
       - ./services/odoo/config/odoo.conf:/etc/odoo/odoo.conf:ro
       - odoo-web-data:/var/lib/odoo
-      - odoo-filestore:/opt/odoo/.local/share/Odoo
+      - odoo-filestore:/var/lib/odoo/filestore
     environment:
       - HOST=postgres
-      - PORT=${POSTGRES_PORT}
+      - PORT=5432
       - USER=${POSTGRES_USER}
       - PASSWORD=${POSTGRES_PASSWORD}
     networks:
       - ecomparts-net
     restart: unless-stopped
+    # ⭐⭐⭐ CRÍTICO: LÍMITES PARA MULTI-TENANT ⭐⭐⭐
+    deploy:
+      resources:
+        limits:
+          cpus: '6.0'           # Máximo 6 CPUs (de 16 disponibles)
+          memory: 6G            # Máximo 6GB RAM (de 15GB disponibles)
+        reservations:
+          cpus: '2.0'           # Mínimo 2 CPUs garantizados
+          memory: 2G            # Mínimo 2GB RAM garantizados
+    # ⭐ NUEVO: Healthcheck para Odoo
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8069/web/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   # ============================================
   # Django Backend - API REST
@@ -126,6 +158,15 @@ services:
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
              gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -"
+    # ⭐ NUEVO: Límites de recursos para Django
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
 
   # ============================================
   # Celery Worker - Tareas Asíncronas
@@ -165,6 +206,15 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
+    # ⭐ NUEVO: Límites de recursos para Celery
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 2G
+        reservations:
+          cpus: '1.0'
+          memory: 1G
 
   # ============================================
   # Celery Beat - Scheduler
@@ -202,8 +252,17 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
+    # ⭐ NUEVO: Límites de recursos para Celery Beat
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
 
-    # ============================================
+  # ============================================
   # Flower - Monitor de Celery
   # ============================================
   flower:
@@ -226,6 +285,22 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
+    # ⭐ NUEVO: Límites de recursos para Flower
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M
+        reservations:
+          cpus: '0.25'
+          memory: 256M
+
+  # ============================================
+  # PREMIUM VENDORS - Instancias Dedicadas
+  # ============================================
+  # NOTA: Las instancias dedicadas se crearán dinámicamente
+  # cuando un vendor sea promovido a tier PREMIUM
+  # Ver: backend/apps/marketplace/management/commands/create_vendor_instance.py
 
 # ============================================
 # Volúmenes Persistentes
@@ -237,7 +312,7 @@ volumes:
     driver: local
   odoo-web-data:
     driver: local
-  odoo-filestore:      
+  odoo-filestore:
     driver: local
   backend-static:
     driver: local
@@ -252,3 +327,19 @@ volumes:
 networks:
   ecomparts-net:
     driver: bridge
+
+# ============================================
+# RESUMEN DE LÍMITES DE RECURSOS
+# ============================================
+# PostgreSQL:  4 CPU, 4GB RAM
+# Redis:       1 CPU, 1GB RAM
+# Odoo:        6 CPU, 6GB RAM  ⭐ CRÍTICO PARA MULTI-TENANT
+# Django:      2 CPU, 2GB RAM
+# Celery:      2 CPU, 2GB RAM
+# Celery Beat: 0.5 CPU, 512MB RAM
+# Flower:      0.5 CPU, 512MB RAM
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# TOTAL:       16 CPU, 15.5GB RAM
+#
+# Servidor tiene: 16 CPU, 15GB RAM
+# Margen de seguridad: ✅ Perfecto

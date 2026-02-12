@@ -4,54 +4,39 @@ __pycache__/
 *$py.class
 *.so
 .Python
-env/
-venv/
-.venv/
 *.egg-info/
-.eggs/
 dist/
 build/
+venv/
+env/
 
 # Django
 *.log
 db.sqlite3
-db.sqlite3-journal
-/staticfiles/
-/media/
-/services/backend/staticfiles/
-/services/backend/media/
-/services/backend/logs/
-
-# Odoo
-/services/odoo/odoo-server/
-/services/odoo/addons/*
-!/services/odoo/addons/ecomparts_integration/
-
-# Docker volumes
-postgres-data/
-redis-data/
-odoo-web-data/
+media/
+staticfiles/
 
 # Environment
 .env
 .env.local
-.env.*.local
+*.backup
+
+# Backups
+*_backup/
+*.bak
 
 # IDE
 .vscode/
 .idea/
 *.swp
 *.swo
-*~
+
+# Docker
+*.pid
 
 # OS
 .DS_Store
 Thumbs.db
 
-# Logs
-*.log
-logs/
-
-# Temporary
-tmp/
-temp/
+# Odoo backups
+services/odoo/addons_backup/
