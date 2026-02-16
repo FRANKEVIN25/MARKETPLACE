@@ -58,10 +58,12 @@ services:
           memory: 512M
 
   # ============================================
-  # Odoo 17 - ERP (SHARED MULTI-COMPANY)
+  # ODOO 18 - ERP COMPARTIDO (CUSTOM BUILD)
   # ============================================
   odoo:
-    image: odoo:17
+    build:
+      context: ./services/odoo
+      dockerfile: Dockerfile
     container_name: ecomparts-odoo-shared
     depends_on:
       postgres:
@@ -70,6 +72,7 @@ services:
         condition: service_healthy
     ports:
       - "${ODOO_PORT:-8070}:8069"
+      - "8072:8072"  # Longpolling
     volumes:
       - ./services/odoo/addons:/mnt/extra-addons
       - ./services/odoo/config/odoo.conf:/etc/odoo/odoo.conf:ro
@@ -83,22 +86,20 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
-    # ⭐⭐⭐ CRÍTICO: LÍMITES PARA MULTI-TENANT ⭐⭐⭐
     deploy:
       resources:
         limits:
-          cpus: '6.0'           # Máximo 6 CPUs (de 16 disponibles)
-          memory: 6G            # Máximo 6GB RAM (de 15GB disponibles)
+          cpus: '6.0'
+          memory: 6G
         reservations:
-          cpus: '2.0'           # Mínimo 2 CPUs garantizados
-          memory: 2G            # Mínimo 2GB RAM garantizados
-    # ⭐ NUEVO: Healthcheck para Odoo
+          cpus: '2.0'
+          memory: 2G
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8069/web/health || exit 1"]
+      test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 60s
+      start_period: 40s
 
   # ============================================
   # Django Backend - API REST

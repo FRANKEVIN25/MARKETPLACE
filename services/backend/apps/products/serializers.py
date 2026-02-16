@@ -21,22 +21,23 @@ class CategorySerializer(serializers.ModelSerializer):
 
 class ProductSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source='provider.name', read_only=True)
-    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     is_synced = serializers.BooleanField(read_only=True)
+    provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider', 'provider_name',
+            'provider_group', 'provider_name',
             'product_type', 'manufacturer_code',
             'description', 'image', 'price',
             'category', 'category_name',
-            'active', 'is_synced',
+            'is_active', 'is_synced',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'slug', 'is_synced',
+            'slug', 'is_synced', 'provider_group', 'provider_name',
             'odoo_product_id', 'odoo_template_id',
             'last_synced_at', 'created_at', 'updated_at'
         ]

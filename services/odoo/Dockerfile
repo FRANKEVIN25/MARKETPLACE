@@ -1,13 +1,13 @@
 FROM python:3.11-slim-bullseye
 
-ARG ODOO_VERSION=19.0
+ARG ODOO_VERSION=18.0
 ARG ODOO_HOME=/opt/odoo
 ARG ODOO_USER=odoo
 
 # Metadata
 LABEL maintainer="ECOMPARTS PERÚ"
 LABEL version="1.0"
-LABEL description="Odoo 19 Community - ECOMPARTS Marketplace"
+LABEL description="Odoo 18 Community - ECOMPARTS Marketplace Multi-Tenant"
 
 # Dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -25,41 +25,52 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     postgresql-client \
+    wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/*
 
-# Crear usuario Odoo (sin privilegios)
+# Crear usuario Odoo
 RUN useradd -m -d ${ODOO_HOME} -U -r ${ODOO_USER}
 
-# Clonar Odoo 19
+# Clonar Odoo 18
 WORKDIR ${ODOO_HOME}
 RUN git clone --depth 1 --branch ${ODOO_VERSION} \
     https://github.com/odoo/odoo.git ${ODOO_HOME}/odoo-server
 
-# Instalar dependencias Python de Odoo
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r ${ODOO_HOME}/odoo-server/requirements.txt
+# 🔧 PARCHE: cbor2 a versión funcional
+RUN sed -i 's/cbor2==5.4.2/cbor2==5.4.6/g' ${ODOO_HOME}/odoo-server/requirements.txt
 
-# Copiar addons personalizados
-COPY --chown=odoo:odoo addons/ /mnt/extra-addons/
+# ✅ PASO 1: Instalar setuptools, pip, wheel y gevent + zope.interface
+RUN pip install --no-cache-dir --upgrade pip wheel setuptools==70.0.0 && \
+    pip install --no-cache-dir gevent "zope.interface==7.0.3" "zope.event==5.0"
 
-# Copiar configuración
-COPY --chown=odoo:odoo config/odoo.conf /etc/odoo/odoo.conf
+# ✅ PASO 2: Instalar requirements de Odoo
+RUN pip install --no-cache-dir --no-build-isolation -r ${ODOO_HOME}/odoo-server/requirements.txt
+
+# ✅ PASO 3: Paquetes extra
+RUN pip install --no-cache-dir openpyxl ofxparse qifparse
+
+# Crear directorios necesarios
+RUN mkdir -p /mnt/extra-addons \
+    /var/lib/odoo \
+    /etc/odoo \
+    ${ODOO_HOME}/.local/share/Odoo
 
 # Permisos
-RUN chown -R ${ODOO_USER}:${ODOO_USER} ${ODOO_HOME} /mnt/extra-addons /etc/odoo
+RUN chown -R ${ODOO_USER}:${ODOO_USER} \
+    ${ODOO_HOME} \
+    /mnt/extra-addons \
+    /var/lib/odoo \
+    /etc/odoo
 
-# Crear directorio para filestore
-RUN mkdir -p /var/lib/odoo && chown -R ${ODOO_USER}:${ODOO_USER} /var/lib/odoo
-# Crear directorio para filestore
-RUN mkdir -p /opt/odoo/.local/share/Odoo && chown -R ${ODOO_USER}:${ODOO_USER} /opt/odoo/.local/share/Odoo
-
+# Cambiar a usuario odoo
 USER ${ODOO_USER}
 
+# Agregar odoo-bin al PATH
 ENV PATH="${ODOO_HOME}/odoo-server:${PATH}"
 
-# Puerto
-EXPOSE 8069
+# Exponer puertos
+EXPOSE 8069 8072
 
-# Entrypoint
+# Comando por defecto
 ENTRYPOINT ["odoo-bin"]
 CMD ["-c", "/etc/odoo/odoo.conf"]

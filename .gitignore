@@ -40,3 +40,7 @@ Thumbs.db
 
 # Odoo backups
 services/odoo/addons_backup/
+
+# Backups SQL
+backups/
+*.sql

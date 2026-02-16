@@ -9,7 +9,34 @@
   <meta name="description" content="Encuentra repuestos de calidad de múltiples proveedores" />
 </svelte:head>
 
-<!-- Hero Section -->
+<div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">💼</span>
+        <div>
+          <p class="font-bold">¿Vendes autopartes?</p>
+          <p class="text-sm text-blue-100">Únete a ECOMPARTS y llega a miles de clientes</p>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <a
+          href="/vendedor"
+          class="px-4 py-2 bg-white/20 hover:bg-white/30 rounded-lg transition-colors text-sm font-medium"
+        >
+          Ver planes
+        </a>
+        <a
+          href="/vendedor/registro"
+          class="px-4 py-2 bg-white text-blue-600 rounded-lg font-medium hover:bg-blue-50 transition-colors text-sm"
+        >
+          Registrarme
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+
 <section class="bg-gradient-to-r from-blue-600 via-blue-700 to-blue-900 text-white">
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-20 md:py-32">
     <div class="max-w-3xl">
@@ -26,13 +53,12 @@
   </div>
 </section>
 
-<!-- Productos Destacados -->
 <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
   <div class="mb-12">
     <h2 class="text-4xl font-bold text-gray-900 mb-3">Productos Destacados</h2>
     <p class="text-gray-600 text-lg">Últimos productos agregados al marketplace</p>
   </div>
-
+  
   {#if data.error}
     <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
       <p class="font-semibold">Error al cargar productos</p>
