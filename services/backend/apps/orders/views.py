@@ -256,9 +256,9 @@ class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
             sub_order.confirmed_at = timezone.now()
             sub_order.rejection_reason = ''
             
-            # TODO: Aquí se lanzará la tarea Celery para crear Sale Order en Odoo
-            # from apps.orders.tasks import create_odoo_sale_order
-            # create_odoo_sale_order.delay(sub_order.id)
+            # Lanzar tarea Celery para crear Sale Order en Odoo
+            from apps.orders.tasks import create_odoo_sale_order
+            create_odoo_sale_order.delay(sub_order.id)
             
             message = 'Pago confirmado correctamente'
         else:
