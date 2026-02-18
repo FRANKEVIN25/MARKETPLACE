@@ -43,6 +43,7 @@ INSTALLED_APPS = [
     'apps.core',
     'apps.marketplace',
     'apps.products',
+    'apps.orders',
     'apps.vehicles',
     'apps.customer',
     'apps.sync',

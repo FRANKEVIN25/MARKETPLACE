@@ -147,6 +147,75 @@ class Provider(models.Model):
         related_name='proveedores'
     )
 
+    # ============================================
+    # CONFIGURACIÓN TRIBUTARIA (Multi-tenant)
+    # ============================================
+    TAX_REGIME_CHOICES = [
+        ('RUS', 'Régimen Único Simplificado'),
+        ('RER', 'Régimen Especial de Renta'),
+        ('RMT', 'Régimen MYPE Tributario'),
+        ('GENERAL', 'Régimen General'),
+    ]
+    
+    COMPROBANTE_CHOICES = [
+        ('boleta', 'Solo Boleta'),
+        ('factura', 'Solo Factura'),
+        ('ambos', 'Boleta y Factura'),
+    ]
+    
+    tax_regime = models.CharField(
+        max_length=20,
+        choices=TAX_REGIME_CHOICES,
+        default='GENERAL',
+        verbose_name="Régimen Tributario"
+    )
+    
+    igv_applicable = models.BooleanField(
+        default=True,
+        verbose_name="Aplica IGV (18%)",
+        help_text="False solo para RUS"
+    )
+    
+    emite_comprobante = models.CharField(
+        max_length=20,
+        choices=COMPROBANTE_CHOICES,
+        default='ambos',
+        verbose_name="Tipo de Comprobante"
+    )
+    
+    # ============================================
+    # DATOS DE PAGO (Modelo Descentralizado)
+    # ============================================
+    banco_nombre = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="Nombre del Banco"
+    )
+    
+    banco_cuenta = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="Número de Cuenta"
+    )
+    
+    banco_cci = models.CharField(
+        max_length=50,
+        blank=True,
+        verbose_name="CCI Interbancario"
+    )
+    
+    yape_numero = models.CharField(
+        max_length=15,
+        blank=True,
+        verbose_name="Número Yape"
+    )
+    
+    plin_numero = models.CharField(
+        max_length=15,
+        blank=True,
+        verbose_name="Número Plin"
+    )
+    
     # ====== METADATA ======
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
