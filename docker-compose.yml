@@ -43,11 +43,7 @@ services:
     # ⭐ NUEVO: Límites de recursos para Redis
 
   # ============================================
-<<<<<<< HEAD
   # Odoo 18 - ERP (SHARED MULTI-COMPANY)
-=======
-  # ODOO 18 - ERP COMPARTIDO (CUSTOM BUILD)
->>>>>>> 4c52ae2401a3049d55e79e5829da220caa614151
   # ============================================
   odoo:
     build:
@@ -61,11 +57,7 @@ services:
         condition: service_healthy
     ports:
       - "${ODOO_PORT:-8070}:8069"
-<<<<<<< HEAD
-      - "8072:8072"
-=======
       - "8072:8072"  # Longpolling
->>>>>>> 4c52ae2401a3049d55e79e5829da220caa614151
     volumes:
       - ./services/odoo/addons:/mnt/extra-addons
       - ./services/odoo/config/odoo.conf:/etc/odoo/odoo.conf:ro
