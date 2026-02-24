@@ -51,13 +51,14 @@
                 <field name="name" string="Account Report"/>
                 <field name="type"/>
                 <field name="account_report_id"/>
-                <field name="parent_id"/>
-                <group>
+                <group expand="0" string="Group By">
                     <filter string="Parent Report"
-                            name="group_by_parent_rep"
+                            name="filter_parent_rep"
+                            domain=""
                             context="{'group_by':'parent_id'}"/>
                     <filter string="Report Type"
-                            name="group_by_rep_type"
+                            name="filter_rep_type"
+                            domain="[]"
                             context="{'group_by':'type'}"/>
                 </group>
             </search>

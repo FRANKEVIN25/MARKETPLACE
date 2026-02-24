@@ -6,17 +6,21 @@ set -e
 # Crea las BDs necesarias para el marketplace
 # ============================================
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-    -- Crear BD para Odoo Shared (Multi-Company)
-    CREATE DATABASE ecomparts_odoo_shared;
-    GRANT ALL PRIVILEGES ON DATABASE ecomparts_odoo_shared TO ecomparts_user;
+create_db_if_missing() {
+    local dbname="$1"
+    local exists
+    exists=$(psql -U "$POSTGRES_USER" -d postgres -tAc "SELECT 1 FROM pg_database WHERE datname='$dbname'" )
+    if [ "$exists" = '1' ]; then
+        echo "Database $dbname already exists, skipping create"
+    else
+        echo "Creating database $dbname"
+        psql -U "$POSTGRES_USER" -d postgres -c "CREATE DATABASE \"$dbname\";"
+        psql -U "$POSTGRES_USER" -d postgres -c "GRANT ALL PRIVILEGES ON DATABASE \"$dbname\" TO \"$POSTGRES_USER\";"
+    fi
+}
 
-    -- Crear BD para Django Marketplace
-    CREATE DATABASE ecomparts_marketplace;
-    GRANT ALL PRIVILEGES ON DATABASE ecomparts_marketplace TO ecomparts_user;
+# Crear las bases esperadas por la configuración/.env
+create_db_if_missing "ecomparts_odoo"
+create_db_if_missing "ecomparts_marketplace"
 
-    -- Log de éxito
-    \echo '✅ Bases de datos creadas correctamente:'
-    \echo '   - ecomparts_odoo_shared (Odoo Multi-Company)'
-    \echo '   - ecomparts_marketplace (Django)'
-EOSQL
+echo '✅ Bases de datos verificadas/creadas correctamente'

@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data-v2:/var/lib/postgresql/data
       - ./services/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     networks:
       - ecomparts-net
@@ -59,10 +59,12 @@ services:
           memory: 512M
 
   # ============================================
-  # Odoo 17 - ERP (SHARED MULTI-COMPANY)
+  # Odoo 18 - ERP (SHARED MULTI-COMPANY)
   # ============================================
   odoo:
-    image: odoo:17
+    build:
+      context: ./services/odoo
+      dockerfile: Dockerfile
     container_name: ecomparts-odoo-shared
     depends_on:
       postgres:
@@ -71,11 +73,12 @@ services:
         condition: service_healthy
     ports:
       - "${ODOO_PORT:-8070}:8069"
+      - "8072:8072"
     volumes:
       - ./services/odoo/addons:/mnt/extra-addons
       - ./services/odoo/config/odoo.conf:/etc/odoo/odoo.conf:ro
-      - odoo-web-data:/var/lib/odoo
-      - odoo-filestore:/var/lib/odoo/filestore
+      - odoo-web-data-v2:/var/lib/odoo
+      - odoo-filestore-v2:/var/lib/odoo/filestore
     environment:
       - HOST=postgres
       - PORT=5432
@@ -88,7 +91,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '6.0'           # Máximo 6 CPUs (de 16 disponibles)
+          cpus: '4.0'           # Máximo 6 CPUs (de 16 disponibles)
           memory: 6G            # Máximo 6GB RAM (de 15GB disponibles)
         reservations:
           cpus: '2.0'           # Mínimo 2 CPUs garantizados
@@ -308,11 +311,17 @@ services:
 volumes:
   postgres-data:
     driver: local
+  postgres-data-v2:
+    driver: local
   redis-data:
     driver: local
   odoo-web-data:
     driver: local
+  odoo-web-data-v2:
+    driver: local
   odoo-filestore:
+    driver: local
+  odoo-filestore-v2:
     driver: local
   backend-static:
     driver: local

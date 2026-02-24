@@ -3,7 +3,7 @@
 #
 #    Cybrosys Technologies Pvt. Ltd.
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
+#    Copyright (C) 2024-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
 #    Author: Cybrosys Techno Solutions(<https://www.cybrosys.com>)
 #
 #    You can modify it under the terms of the GNU LESSER
@@ -105,6 +105,16 @@ class AccountJournal(models.Model):
                 'tag': 'manual_reconciliation_view',
                 'context': action_context,
             }
+
+    def create_cash_statement(self):
+        """for redirecting in to bank statement lines"""
+        return {
+            'name': _("Statements"),
+            'type': 'ir.actions.act_window',
+            'res_model': 'account.bank.statement.line',
+            'view_mode': 'list,form',
+            'context': {'default_journal_id': self.id},
+        }
 
     def action_import_wizard(self):
         """Function to open wizard"""

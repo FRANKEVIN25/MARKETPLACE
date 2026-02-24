@@ -140,12 +140,6 @@ class Provider(models.Model):
         help_text="Aprobado por SuperAdmin para operar en el marketplace"
     )
 
-    # Marcas autorizadas para este proveedor
-    marcas = models.ManyToManyField(
-        'vehicles.Marca',
-        through='ProviderMarca', 
-        related_name='proveedores'
-    )
 
     # ====== METADATA ======
     created_at = models.DateTimeField(auto_now_add=True)

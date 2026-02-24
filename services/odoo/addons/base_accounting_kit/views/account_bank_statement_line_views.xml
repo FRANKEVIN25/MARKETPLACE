@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <odoo>
-    <!--    Account Bank Statement Line Search View-->
+<!--    Account Bank Statement Line Search View-->
     <record id="account_bank_statement_line_view_search" model="ir.ui.view">
         <field name="name">account.bank.statement.line.view.search</field>
         <field name="model">account.bank.statement.line</field>
@@ -39,7 +39,8 @@
         </field>
     </record>
     <!--  Kanban view on statement line injected inside the form (view_bank_reconcile_widget)  -->
-    <record id="account_bank_statement_line_view_kanban" model="ir.ui.view">
+    <record id="account_bank_statement_line_view_kanban"
+            model="ir.ui.view">
         <field name="name">account.bank.statement.line.view.kanban</field>
         <field name="model">account.bank.statement.line</field>
         <field name="arch" type="xml">
@@ -61,13 +62,14 @@
                 <field name="statement_line_id" invisible="1"/>
                 <field name="lines_widget_json" invisible="1"/>
                 <templates>
-                    <t t-name="card">
+                    <t t-name="kanban-box">
                         <div t-attf-class="oe_kanban_card oe_kanban_global_click o_bank_reconcile_st_line_kanban_card"
+                             style="width:138%;margin-top: -13px; margin-left: -15px"
                              t-att-data-oe-id="record.id">
-                            <t t-set="text_amount_class" t-value="record.amount &lt; 0.0 and 'text-danger'"/>
-
-                            <!-- Statement Button -->
-                            <div t-if="!record.statement_complete.raw_value" class="statement_button text-center mb-2">
+                            <t t-set="text_amount_class"
+                               t-value="record.amount &lt; 0.0 and 'text-danger'"/>
+                            <div t-if="!record.statement_complete.raw_value"
+                                 class="statement_button text-center">
                                 <a role="button"
                                    class="btn btn-secondary btn-sm statement"
                                    tabindex="-1" type="action"
@@ -75,47 +77,48 @@
                                     Statement
                                 </a>
                             </div>
-
-                            <!-- Main Content -->
-                            <div class="container-fluid p-0">
-                                <!-- First Row -->
-                                <div class="row g-0 align-items-center mb-1">
-                                    <div class="col-auto pe-2">
-                                        <strong class="bold_date">
-                                            <field name="date" class="d-inline"/>
+                            <div class="flex_column">
+                                <div class="flex_row">
+                                    <div id="kanban_date">
+                                        <strong>
+                                            <span class="bold_date">
+                                                <field name="date"/>
+                                            </span>
                                         </strong>
                                     </div>
-                                    <div class="col text-truncate">
-                                        <em>
-                                            <field name="partner_id" class="d-inline"/>
+                                    <div t-attf-id="partner{{record.statement_id.raw_value and '_statement' or ''}}"
+                                         class="text-truncate ms-1">
+                                        <em class="ps-2"
+                                            style="margin-left: 75px;">
+                                            <field name="partner_id"/>
                                         </em>
                                     </div>
-                                    <div t-if="record.statement_id.raw_value" class="col-auto ms-auto">
-                                        <div t-attf-class="text-truncate {{!(record.statement_complete.raw_value and record.statement_valid.raw_value) and 'text-danger' or ''}}">
-                                            <field name="statement_id" class="d-inline"/>
-                                        </div>
+                                    <div t-if="record.statement_id.raw_value"
+                                         id="row1_statement"
+                                         t-attf-class="text-truncate {{!(record.statement_complete.raw_value and record.statement_valid.raw_value) and 'text-danger' or ''}}">
+                                        <field name="statement_id"/>
                                     </div>
-                                    <div class="col-auto">
-                                        <strong t-att-class="text_amount_class">
-                                            <field name="amount" class="d-inline"/>
+                                    <div id="kanban_amount"
+                                         t-att-class="text_amount_class">
+                                        <strong style="font-weight: bold;margin-left: 352px;">
+                                            <field name="amount"/>
                                         </strong>
                                     </div>
                                 </div>
-
-                                <!-- Second Row -->
-                                <div class="row g-0 align-items-center">
-                                    <div class="col text-truncate pe-2">
-                                        <field name="payment_ref" class="d-inline"/>
+                                <div class="flex_row">
+                                    <div id="payment_ref" class="text-truncate">
+                                        <field name="payment_ref"/>
                                     </div>
-                                    <div class="col-auto">
-                                        <div class="o_field_many2manytags o_field_widget d-flex flex-wrap gap-1">
+                                    <div id="row2_col2">
+                                        <div class="o_field_many2manytags o_field_widget d-flex flex-row flex-nowrap">
                                             <span t-if="record.to_check.raw_value"
                                                   class="badge text-bg-warning fw-normal to_check">
                                                 To Check
                                             </span>
                                             <div t-if="record.is_reconciled.raw_value"
-                                                 class="badge text-bg-success fw-normal">
-                                                <i class="fa fa-check me-1"></i>
+                                                 class="badge text-bg-success fw-normal"
+                                                 style="margin-bottom:10px;">
+                                                <i class="fa fa-check"/>
                                                 Matched
                                             </div>
                                         </div>
@@ -128,20 +131,20 @@
             </kanban>
         </field>
     </record>
-    <!--  Account Bank Statement Line Tree View  -->
+<!--  Account Bank Statement Line Tree View  -->
     <record id="account_bank_statement_line_view_tree" model="ir.ui.view">
         <field name="name">account.bank.statement.line.view.tree</field>
         <field name="model">account.bank.statement.line</field>
         <field name="arch" type="xml">
             <list editable="top">
-                <field name="statement_complete" column_invisible="1"/>
-                <field name="statement_valid" column_invisible="1"/>
-                <field name="state" column_invisible="1"/>
-                <field name="is_reconciled" column_invisible="1"/>
-                <field name="to_check" column_invisible="1"/>
-                <field name="country_code" column_invisible="1"/>
-                <field name="currency_id" column_invisible="1"/>
-                <field name="sequence" widget="handle" column_invisible="1"/>
+                <field name="statement_complete" invisible="1"/>
+                <field name="statement_valid" invisible="1"/>
+                <field name="state" invisible="1"/>
+                <field name="is_reconciled" invisible="1"/>
+                <field name="to_check" invisible="1"/>
+                <field name="country_code" invisible="1"/>
+                <field name="currency_id" invisible="1"/>
+                <field name="sequence" widget="handle" invisible="1"/>
                 <field name="date"
                        readonly="is_reconciled == True and amount != 0"
                        options="{'datepicker':{'warn_future':true}}"/>
@@ -154,7 +157,7 @@
             </list>
         </field>
     </record>
-    <!--  Account Bank Statement Line Form View  -->
+<!--  Account Bank Statement Line Form View  -->
     <record id="account_bank_statement_line_view_form"
             model="ir.ui.view">
         <field name="name">account.bank.statement.line.view.form</field>
@@ -196,7 +199,7 @@
             </form>
         </field>
     </record>
-    <!--  Action Account Statement Line  -->
+<!--  Action Account Statement Line  -->
     <record id="action_bank_statement_line_form_bank_reconcile_widget"
             model="ir.actions.act_window">
         <field name="name">Add a Transaction</field>
@@ -206,7 +209,7 @@
                ref="account_bank_statement_line_view_form"/>
         <field name="target">new</field>
     </record>
-    <!--Account Bank Statement Line Form View-->
+<!--Account Bank Statement Line Form View-->
     <record id="view_bank_reconcile_widget_form" model="ir.ui.view">
         <field name="name">account.bank.statement.line.view.form</field>
         <field name="model">account.bank.statement.line</field>

@@ -3,7 +3,7 @@
 #
 #    Cybrosys Technologies Pvt. Ltd.
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
+#    Copyright (C) 2024-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
 #    Author: Cybrosys Techno Solutions(<https://www.cybrosys.com>)
 #
 #    You can modify it under the terms of the GNU LESSER
@@ -20,7 +20,7 @@
 #
 #############################################################################
 from odoo import api, fields, models
-from odoo.tools.misc import file_path
+from odoo.modules import get_resource_path
 
 try:
     import sass as libsass
@@ -122,7 +122,7 @@ class MultipleInvoiceLayout(models.TransientModel):
 
         precision = 8
         output_style = 'expanded'
-        bootstrap_path = file_path('web', 'static', 'lib', 'bootstrap',
+        bootstrap_path = get_resource_path('web', 'static', 'lib', 'bootstrap',
                                            'scss')
         try:
             return libsass.compile(

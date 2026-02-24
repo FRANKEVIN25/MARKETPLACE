@@ -2,9 +2,9 @@
     :target: http://www.gnu.org/licenses/lgpl-3.0-standalone.html
     :alt: License: LGPL-3
 
-Odoo 19 Full Accounting Kit for Community
+Odoo 18 Full Accounting Kit for Community
 =========================================
-Full accounting kit for Odoo 19 community editions
+Full accounting kit for Odoo 18 community editions
 
 Configuration
 =============
@@ -21,7 +21,7 @@ General Public License, Version 3 (LGPL v3).
 
 Credits
 -------
-Developer: (V19) MohammedIrfan T, Ashik MA, Contact: odoo@cybrosys.com
+Developer: (V17) Risvana A R , Contact: odoo@cybrosys.com
 
 Contacts
 --------

@@ -3,7 +3,7 @@
 #
 #    Cybrosys Technologies Pvt. Ltd.
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
+#    Copyright (C) 2024-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
 #    Author: Cybrosys Techno Solutions(<https://www.cybrosys.com>)
 #
 #    You can modify it under the terms of the GNU LESSER
@@ -31,12 +31,6 @@ class ResConfigSettings(models.TransientModel):
 
     use_anglo_saxon_accounting = fields.Boolean(string="Use Anglo-Saxon accounting", readonly=False,
                                                 related='company_id.anglo_saxon_accounting')
-    fiscalyear_last_day = fields.Integer(
-        related='company_id.fiscalyear_last_day', readonly=False
-    )
-    fiscalyear_last_month = fields.Selection(
-        related='company_id.fiscalyear_last_month', readonly=False
-    )
 
     @api.model
     def get_values(self):

@@ -32,7 +32,8 @@ export class AccountMoveLineListController extends ListController {
             record.clickCount = false;
             rowSelector.style.backgroundColor = "white";
          }
-        const currencySymbol = await this.orm.call('res.currency', 'read',[record.data.currency_id.id])
+
+        const currencySymbol = await this.orm.call('res.currency', 'read',[record.data.currency_id[0]])
         const mainKanbanDiv = this.__owl__.bdom.parentEl.ownerDocument.querySelector('#base_accounting_reconcile')
         const existingRow = this.__owl__.bdom.parentEl.ownerDocument.querySelector(`tr[data-resId="${record.resId}"]`)
         const stateLineRow = this.__owl__.bdom.parentEl.ownerDocument.querySelector('.statement_row')
@@ -58,11 +59,11 @@ export class AccountMoveLineListController extends ListController {
             let moveId = '';
 
             // Check if partner_id exists and is not empty
-            if (record.data.partner_id && record.data.partner_id.display_name) {
-                partnerName = record.data.partner_id.display_name;
+            if (record.data.partner_id && record.data.partner_id[1]) {
+                partnerName = record.data.partner_id[1];
             }
-            if (record.data.move_id && record.data.move_id.display_name) {
-                moveId = `<br/><span id="moveLine" style="font-size: 12px; font-style: italic;font-weight: normal;color: #01666b;cursor: pointer;" data-moveId="${record.data.move_id[0]}">${record.data.move_id.display_name}</span>`;
+            if (record.data.move_id && record.data.move_id[1]) {
+                moveId = `<br/><span id="moveLine" style="font-size: 12px; font-style: italic;font-weight: normal;color: #01666b;cursor: pointer;" data-moveId="${record.data.move_id[0]}">${record.data.move_id[1]}</span>`;
             }
 
 
@@ -74,9 +75,8 @@ export class AccountMoveLineListController extends ListController {
 
             const newRow = document.createElement('tr');
             newRow.setAttribute('data-resId', record.resId); // Set a unique identifier for the row
-            console.log(record, "record")
             if (debitColumn !== '') {
-                newRow.innerHTML = `<td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${record.data.account_id.display_name}
+                newRow.innerHTML = `<td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${record.data.account_id[1]}
                                     ${moveId}<span style="font-size: 12px;font-style: italic;font-weight: normal;"> : ${record.data.name}</span></td>
                                     <td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${partnerName}</td>
                                     <td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${formattedDate}</td>
@@ -87,7 +87,7 @@ export class AccountMoveLineListController extends ListController {
                                     </td>`;
 
             } else if (creditColumn !== '') {
-                newRow.innerHTML = `<td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${record.data.account_id.display_name}
+                newRow.innerHTML = `<td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${record.data.account_id[1]}
                                     ${moveId}<span style="font-size: 12px;font-style: italic;font-weight: normal;"> : ${record.data.name}</span></td>
                                     <td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${partnerName}</td>
                                     <td style="font-weight: bold; display: table-cell; max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; vertical-align: top;">${formattedDate}</td>
@@ -108,7 +108,7 @@ export class AccountMoveLineListController extends ListController {
                     if (manualOpsTab) {
                         manualOpsTab.click();
                         const accountField = this.__owl__.bdom.parentEl.ownerDocument.querySelector('[name="account_id"]');
-                        accountField.value = record.data.account_id.display_name;
+                        accountField.value = record.data.account_id[1];
                     }
                  }
             });

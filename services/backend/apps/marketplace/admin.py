@@ -2,12 +2,7 @@
 Admin de Marketplace
 """
 from django.contrib import admin
-from .models import Provider, Member, ProviderMarca
-
-class ProviderMarcaInline(admin.TabularInline):
-    model = ProviderMarca
-    extra = 1
-    fields = ['marca', 'activo']
+from .models import Provider, Member
 
 
 @admin.register(Provider)
@@ -16,7 +11,6 @@ class ProviderAdmin(admin.ModelAdmin):
     list_filter = ['is_approved', 'is_active', 'created_at']
     search_fields = ['name', 'ruc', 'email']
     readonly_fields = ['slug', 'created_at', 'updated_at']
-    inlines = [ProviderMarcaInline]
     fieldsets = (
         ('Información Básica', {'fields': ('name', 'slug', 'owner')}),
         ('Datos de Negocio', {'fields': ('ruc', 'email', 'phone')}),

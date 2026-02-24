@@ -3,7 +3,7 @@
 #
 #    Cybrosys Technologies Pvt. Ltd.
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
+#    Copyright (C) 2024-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
 #    Author: Cybrosys Techno Solutions(<https://www.cybrosys.com>)
 #
 #    You can modify it under the terms of the GNU LESSER
@@ -20,12 +20,12 @@
 #
 #############################################################################
 {
-    'name': 'Odoo 19 Full Accounting Kit for Community',
-    'version': '19.0.2.1.0',
+    'name': 'Odoo 18 Full Accounting Kit for Community',
+    'version': '18.0.5.0.8',
     'category': 'Accounting',
     'live_test_url': 'https://kit.easyinstance.com/web/login?redirect=/odoo/accounting',
-    'summary': """Odoo 19 Accounting, Odoo 19 Accounting Reports, Odoo18 Accounting, Odoo Accounting, Odoo19 Financial Reports, Odoo19 Asset, Odoo19 Profit and Loss, PDC, Followups, Odoo19, Accounting, Odoo Apps, Reports""",
-    'description': """ Odoo 19 Accounting, The module used to manage the Full
+    'summary': """Odoo 18 Accounting, Odoo 18 Accounting Reports, Odoo18 Accounting, Odoo Accounting, Odoo18 Financial Reports, Odoo18 Asset, Odoo18 Profit and Loss, PDC, Followups, Odoo18, Accounting, Odoo Apps, Reports""",
+    'description': """ Odoo 18 Accounting, The module used to manage the Full
      Account Features that can manage the Account Reports,Journals Asset and 
      Budget Management, Accounting Reports, PDC, Credit Limit, 
      Follow Ups,  Day-Bank-Cash book report, Odoo 18 Accounting, odoo apps""",
@@ -33,7 +33,8 @@
     'company': 'Cybrosys Techno Solutions',
     'maintainer': 'Cybrosys Techno Solutions',
     'website': "https://www.cybrosys.com",
-    'depends': ['account', 'sale', 'account_check_printing', 'analytic', 'contacts'],
+    'depends': ['account', 'sale', 'account_check_printing', 'analytic',
+                'base_account_budget'],
     'data': [
         'security/security.xml',
         'security/ir.model.access.csv',
@@ -52,6 +53,7 @@
         'views/account_followup.xml',
         'views/followup_line_views.xml',
         'views/followup_report.xml',
+        'views/res_partner_views.xml',
         'wizard/asset_depreciation_confirmation_views.xml',
         'wizard/asset_modify_views.xml',
         'views/account_asset_asset_views.xml',
@@ -61,7 +63,6 @@
         'views/multiple_invoice_layout_view.xml',
         'views/multiple_invoice_form.xml',
         'views/account_journal_views.xml',
-        'views/res_partner_views.xml',
         'wizard/financial_report_views.xml',
         'wizard/account_report_general_ledger_views.xml',
         'wizard/account_report_partner_ledger_views.xml',
@@ -115,7 +116,7 @@
         ]
     },
     'license': 'LGPL-3',
-    'images': ['static/description/banner.gif'],
+    'images': ['static/description/banner.jpg'],
     'installable': True,
     'auto_install': False,
     'application': True,

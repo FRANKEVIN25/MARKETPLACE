@@ -118,7 +118,7 @@ class Product(models.Model):
         related_name='products'
     )
 
-    active = models.BooleanField(default=True)
+    is_active = models.BooleanField(default=True)
     es_universal = models.BooleanField(default=False, db_index=True) # si es True no necesita compatibilidad
 
     vehiculos_compatibles = models.ManyToManyField(
@@ -163,7 +163,6 @@ class Product(models.Model):
             models.Index(fields=['provider', 'is_active']),
             models.Index(fields=['reference']),
             models.Index(fields=['odoo_product_id']),
-            models.Index(fields=['sku']),
         ]
     
     def __str__(self):

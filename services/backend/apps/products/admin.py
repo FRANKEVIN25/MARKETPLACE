@@ -41,18 +41,17 @@ class ProductAdmin(admin.ModelAdmin):
         'provider',
         'price_with_tax',
         'total_stock_display',
-        'active',
+        'is_active',
         'es_universal',
         'is_synced',
         'created_at'
     ]
-    list_filter = ['active', 'product_type', 'category', 'provider', 'created_at']
+    list_filter = ['is_active', 'product_type', 'category', 'provider', 'created_at']
     search_fields = ['name', 'reference', 'manufacturer_code', 'provider__name']
     readonly_fields = [
         'slug',
         'odoo_product_id',
         'odoo_template_id',
-        'last_synced_at',
         'last_sync_at',
         'created_at',
         'updated_at',
@@ -67,7 +66,7 @@ class ProductAdmin(admin.ModelAdmin):
             'fields': ('provider',)
         }),
         ('Información Básica', {
-            'fields': ('name', 'reference', 'manufacturer_code', 'product_type', 'price', 'tax_percent', 'active', 'description', 'image', 'slug')
+            'fields': ('name', 'reference', 'manufacturer_code', 'product_type', 'price', 'tax_percent', 'is_active', 'description', 'image', 'slug')
         }),
         ('Clasificación', {
             'fields': ('category', 'es_universal')
@@ -77,7 +76,7 @@ class ProductAdmin(admin.ModelAdmin):
             'description': 'Stock total agregado de todos los almacenes'
         }),
         ('Integración Odoo', {
-            'fields': ('odoo_product_id', 'odoo_template_id', 'last_synced_at', 'last_sync_at'),
+            'fields': ('odoo_product_id', 'odoo_template_id', 'last_sync_at'),
             'classes': ('collapse',)
         }),
         ('Metadata', {

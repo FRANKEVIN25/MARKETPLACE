@@ -3,7 +3,7 @@
 #
 #    Cybrosys Technologies Pvt. Ltd.
 #
-#    Copyright (C) 2025-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
+#    Copyright (C) 2024-TODAY Cybrosys Technologies(<https://www.cybrosys.com>)
 #    Author: Cybrosys Techno Solutions(<https://www.cybrosys.com>)
 #
 #    You can modify it under the terms of the GNU LESSER
@@ -21,14 +21,12 @@
 #############################################################################
 from datetime import date, timedelta
 from odoo import api, fields, models, _
-from odoo.exceptions import UserError
 import base64
 import io
 import json
 import xlsxwriter
 from odoo.exceptions import ValidationError, UserError
 from odoo.tools.json import json_default
-
 
 class ResPartner(models.Model):
     """Inheriting res.partner"""
@@ -69,6 +67,22 @@ class ResPartner(models.Model):
 
     enable_credit_limit = fields.Boolean(string="Credit Limit Enabled",
                                          compute="_compute_enable_credit_limit")
+
+    # customer statement
+
+    customer_report_ids = fields.Many2many(
+        'account.move',
+        compute='_compute_customer_report_ids',
+        help='Partner Invoices related to Customer')
+    vendor_statement_ids = fields.Many2many(
+        'account.move',
+        compute='_compute_vendor_statement_ids',
+        help='Partner Bills related to Vendor')
+    currency_id = fields.Many2one(
+        'res.currency',
+        default=lambda self: self.env.company.currency_id.id,
+        help="currency related to Customer or Vendor")
+
 
     def _compute_for_followup(self):
         """
@@ -167,20 +181,6 @@ class ResPartner(models.Model):
                         "Warning amount should be less than Blocking amount"))
 
     # customer statement
-
-    customer_report_ids = fields.Many2many(
-        'account.move',
-        compute='_compute_customer_report_ids',
-        help='Partner Invoices related to Customer')
-    vendor_statement_ids = fields.Many2many(
-        'account.move',
-        compute='_compute_vendor_statement_ids',
-        help='Partner Bills related to Vendor')
-    currency_id = fields.Many2one(
-        'res.currency',
-        default=lambda self: self.env.company.currency_id.id,
-        help="currency related to Customer or Vendor")
-
     def _compute_customer_report_ids(self):
         """ For computing 'invoices' of partner """
         for rec in self:
@@ -525,4 +525,3 @@ class ResPartner(models.Model):
             }
         else:
             raise ValidationError('There is no statement to send')
-
