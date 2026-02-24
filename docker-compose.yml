@@ -21,14 +21,6 @@ services:
       retries: 5
     restart: unless-stopped
     # ⭐ NUEVO: Límites de recursos para PostgreSQL
-    deploy:
-      resources:
-        limits:
-          cpus: '4.0'       # Máximo 4 CPUs
-          memory: 4G        # Máximo 4GB RAM
-        reservations:
-          cpus: '2.0'       # Mínimo garantizado
-          memory: 2G
 
   # ============================================
   # Redis - Cache y Broker
@@ -49,14 +41,6 @@ services:
       retries: 5
     restart: unless-stopped
     # ⭐ NUEVO: Límites de recursos para Redis
-    deploy:
-      resources:
-        limits:
-          cpus: '1.0'
-          memory: 1G
-        reservations:
-          cpus: '0.5'
-          memory: 512M
 
   # ============================================
 <<<<<<< HEAD
@@ -95,14 +79,6 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
-    deploy:
-      resources:
-        limits:
-          cpus: '6.0'
-          memory: 6G
-        reservations:
-          cpus: '2.0'
-          memory: 2G
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
       interval: 30s
@@ -168,14 +144,6 @@ services:
              python manage.py collectstatic --noinput &&
              gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -"
     # ⭐ NUEVO: Límites de recursos para Django
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '1.0'
-          memory: 1G
 
   # ============================================
   # Celery Worker - Tareas Asíncronas
@@ -216,14 +184,6 @@ services:
       - ecomparts-net
     restart: unless-stopped
     # ⭐ NUEVO: Límites de recursos para Celery
-    deploy:
-      resources:
-        limits:
-          cpus: '2.0'
-          memory: 2G
-        reservations:
-          cpus: '1.0'
-          memory: 1G
 
   # ============================================
   # Celery Beat - Scheduler
@@ -262,14 +222,6 @@ services:
       - ecomparts-net
     restart: unless-stopped
     # ⭐ NUEVO: Límites de recursos para Celery Beat
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   # ============================================
   # Flower - Monitor de Celery
@@ -295,14 +247,6 @@ services:
       - ecomparts-net
     restart: unless-stopped
     # ⭐ NUEVO: Límites de recursos para Flower
-    deploy:
-      resources:
-        limits:
-          cpus: '0.5'
-          memory: 512M
-        reservations:
-          cpus: '0.25'
-          memory: 256M
 
   # ============================================
   # PREMIUM VENDORS - Instancias Dedicadas

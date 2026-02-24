@@ -33,7 +33,7 @@ def main():
     
     provider_data = {
         'name': 'AutoPartes Demo SAC',
-        'ruc': '20123456789',
+        'ruc': '20100070970',  
         'email': 'demo@autopartes.pe',
         'phone': '+51 999 888 777',
         'tier': 'starter',
@@ -96,11 +96,11 @@ def main():
     print("-" * 70)
     
     # Verificar si ya existe
-    existing_companies = odoo.search_read(
-        'res.company',
-        domain=[('vat', '=', provider.ruc)],
-        fields=['id', 'name', 'vat'],
-        limit=1
+    existing_companies = odoo.execute_kw(
+    'res.company',
+    'search_read',
+    [[('vat', '=', provider.ruc)]],
+    {'fields': ['id', 'name', 'vat']}
     )
     
     if existing_companies:
@@ -114,11 +114,11 @@ def main():
             'email': provider.email,
             'phone': provider.phone,
             'currency_id': 149,  # PEN (Soles Peruanos)
-            'country_id': 173,   # Perú
+            'country_id': False,   # Perú
         }
         
         try:
-            odoo_company_id = odoo.create('res.company', company_vals)
+            odoo_company_id = odoo.execute_kw('res.company', 'create', [company_vals])
             print(f"✅ Company creada en Odoo (ID: {odoo_company_id})")
         except Exception as e:
             print(f"❌ ERROR al crear company: {e}")
@@ -130,7 +130,7 @@ def main():
     print(f"✅ Provider actualizado con odoo_company_id: {odoo_company_id}")
     
     # Verificar la company
-    company_info = odoo.search_read(
+    company_info = odoo.execute_kw(
         'res.company',
         domain=[('id', '=', odoo_company_id)],
         fields=['name', 'vat', 'email', 'currency_id'],
@@ -151,7 +151,7 @@ def main():
     print("-" * 70)
     
     # Verificar si ya existe
-    existing_products = odoo.search_read(
+    existing_products = odoo.execute_kw(
         'product.product',
         domain=[
             ('company_id', '=', odoo_company_id),
@@ -180,7 +180,7 @@ def main():
         }
         
         try:
-            product_id = odoo.create('product.product', product_vals)
+            product_id = odoo.execute_kw('product.product', 'create', [product_vals])
             print(f"✅ Producto de prueba creado (ID: {product_id})")
         except Exception as e:
             print(f"❌ ERROR al crear producto: {e}")
@@ -188,7 +188,7 @@ def main():
     
     if product_id:
         # Verificar el producto
-        product_info = odoo.search_read(
+        product_info = odoo.execute_kw(
             'product.product',
             domain=[('id', '=', product_id)],
             fields=['name', 'default_code', 'list_price', 'qty_available', 'barcode'],
