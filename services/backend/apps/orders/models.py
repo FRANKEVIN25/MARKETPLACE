@@ -143,6 +143,50 @@ class Order(models.Model):
             new_num = 1
         
         return f'ORD-{year}-{new_num:05d}'
+
+    def update_status_from_suborders(self):
+        """
+        Actualiza el estado de la Order basándose en el estado de sus SubOrders
+        
+        Lógica:
+        - Si todas las SubOrders están 'pagado_confirmado' → Order = 'pagado'
+        - Si alguna está 'procesando' → Order = 'procesando'
+        - Si todas están 'enviado' → Order = 'enviado'
+        - Si todas están 'entregado' → Order = 'entregado'
+        - Si alguna está 'cancelado' y ninguna activa → Order = 'cancelado'
+        """
+        from .models import SubOrder
+        
+        suborders = SubOrder.objects.filter(order=self)
+        
+        if not suborders.exists():
+            return  # No hay SubOrders, mantener estado actual
+        
+        estados = list(suborders.values_list('status', flat=True))
+        
+        # Si todas están entregadas
+        if all(estado == 'entregado' for estado in estados):
+            nuevo_estado = 'entregado'
+        # Si todas están enviadas (o entregadas)
+        elif all(estado in ['enviado', 'entregado'] for estado in estados):
+            nuevo_estado = 'enviado'
+        # Si alguna está procesando
+        elif any(estado == 'procesando' for estado in estados):
+            nuevo_estado = 'procesando'
+        # Si todas están confirmadas (pagadas)
+        elif all(estado in ['pagado_confirmado', 'procesando', 'enviado', 'entregado'] for estado in estados):
+            nuevo_estado = 'pagado'
+        # Si todas están canceladas
+        elif all(estado == 'cancelado' for estado in estados):
+            nuevo_estado = 'cancelado'
+        else:
+            # Mantener estado actual si no coincide ninguna regla
+            return
+        
+        # Actualizar solo si cambió
+        if self.status != nuevo_estado:
+            self.status = nuevo_estado
+            self.save(update_fields=['status', 'updated_at'])
     
     @property
     def provider_count(self):

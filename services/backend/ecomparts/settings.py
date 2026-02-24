@@ -17,7 +17,7 @@ SECRET_KEY = config('DJANGO_SECRET_KEY', default='django-insecure-change-me')
 DEBUG = os.environ.get('DJANGO_DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.environ.get('DJANGO_ALLOWED_HOSTS',
-'localhost,127.0.0.1').split(',')
+'localhost,127.0.0.1,backend').split(',')
 
 # Application definition
 INSTALLED_APPS = [
@@ -291,3 +291,8 @@ ODOO_URL = ODOO_CONFIG['URL']
 ODOO_DB = ODOO_CONFIG['DB']
 ODOO_USERNAME = ODOO_CONFIG['USERNAME']
 ODOO_PASSWORD = ODOO_CONFIG['PASSWORD']
+
+# ============================================================================
+# ODOO WEBHOOK CONFIGURATION
+# ============================================================================
+ODOO_WEBHOOK_TOKEN = os.getenv('ODOO_WEBHOOK_TOKEN', 'dev-webhook-secret-token-2026')

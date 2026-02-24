@@ -8,6 +8,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.utils import timezone
 from decimal import Decimal
+from django.views.decorators.csrf import csrf_exempt
+from django.utils.decorators import method_decorator
 
 from .models import Order, SubOrder, OrderItem, PaymentProof
 from .serializers import (
@@ -320,3 +322,107 @@ class VendorOrderViewSet(viewsets.ReadOnlyModelViewSet):
         
         return Response(stats)
 
+
+
+# ============================================================================
+# WEBHOOK ENDPOINT - Recibir actualizaciones desde Odoo
+# ============================================================================
+
+class OdooWebhookView(viewsets.ViewSet):
+    """
+    Endpoint para recibir webhooks desde Odoo
+    URL: /api/orders/odoo-webhook/
+    """
+    permission_classes = []  # Sin autenticación estándar, usa token custom
+    authentication_classes = []  # Sin autenticación
+    
+    @action(detail=False, methods=['post'], url_path='sale-order-update')
+    def sale_order_update(self, request):
+        """
+        Webhook cuando cambia el estado de una Sale Order en Odoo
+        
+        Payload esperado:
+        {
+            "token": "SECRET_TOKEN",
+            "sale_order_id": 123,
+            "state": "sale",
+            "invoice_status": "invoiced",
+            "delivery_status": "full"
+        }
+        """
+        from django.conf import settings
+        import logging
+        
+        logger = logging.getLogger(__name__)
+        
+        # 1. Validar token de seguridad
+        token = request.data.get('token')
+        expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
+        
+        if token != expected_token:
+            logger.warning(f"❌ Webhook recibido con token inválido")
+            return Response(
+                {'error': 'Invalid token'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+        
+        # 2. Extraer datos del webhook
+        sale_order_id = request.data.get('sale_order_id')
+        odoo_state = request.data.get('state')
+        invoice_status = request.data.get('invoice_status')
+        
+        logger.info(f"📥 Webhook recibido: Sale Order {sale_order_id}, Estado: {odoo_state}")
+        
+        if not sale_order_id or not odoo_state:
+            return Response(
+                {'error': 'Missing required fields'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # 3. Buscar SubOrder correspondiente
+        try:
+            sub_order = SubOrder.objects.get(odoo_sale_id=sale_order_id)
+        except SubOrder.DoesNotExist:
+            logger.warning(f"⚠️  No se encontró SubOrder con odoo_sale_id={sale_order_id}")
+            return Response(
+                {'error': 'SubOrder not found'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        
+        # 4. Mapear estado de Odoo a Django
+        estado_anterior = sub_order.status
+        
+        status_mapping = {
+            'draft': 'pendiente_pago',
+            'sent': 'pendiente_pago',
+            'sale': 'pagado_confirmado',  # Orden confirmada en Odoo
+            'done': 'entregado',
+            'cancel': 'cancelado',
+        }
+        
+        nuevo_estado = status_mapping.get(odoo_state, sub_order.status)
+        
+        # 5. Actualizar SubOrder
+        sub_order.status = nuevo_estado
+        sub_order.save()
+        
+        
+        # Actualizar estado de la Order principal
+        sub_order.order.update_status_from_suborders()
+        logger.info(
+            f"✅ SubOrder {sub_order.sub_order_number} actualizada: "
+            f"{estado_anterior} → {nuevo_estado}"
+        )
+        
+        # 6. Notificar al cliente (opcional - implementar después)
+        # if nuevo_estado in ['pagado_confirmado', 'enviado', 'entregado']:
+        #     from .tasks import send_order_status_email
+        #     send_order_status_email.delay(sub_order.id)
+        
+        return Response({
+            'success': True,
+            'sub_order_number': sub_order.sub_order_number,
+            'estado_anterior': estado_anterior,
+            'nuevo_estado': nuevo_estado,
+            'message': f'SubOrder actualizada correctamente'
+        })
