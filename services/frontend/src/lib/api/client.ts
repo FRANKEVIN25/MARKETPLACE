@@ -71,6 +71,16 @@ export const api = {
     },
 
     /**
+     * Obtener detalle de un producto por ID
+     */
+    async getById(id: number | string): Promise<Product> {
+      const response = await apiClient.get<Product>(
+        `/api/v1/products/marketplace/${id}/`
+      );
+      return response.data;
+    },
+
+    /**
      * Obtener detalle de un producto por slug
      */
     async getBySlug(slug: string): Promise<Product> {

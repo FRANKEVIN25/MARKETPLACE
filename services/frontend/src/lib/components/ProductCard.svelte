@@ -3,12 +3,15 @@
     id: number;
     nombre?: string;
     name?: string;
+    slug?: string;
     proveedor?: string;
     supplier?: string;
+    provider_name?: string;
     categoria?: string;
     category?: string;
+    category_name?: string;
     precio?: number;
-    price?: number;
+    price?: number | string;
     imagen?: string;
     image?: string;
   };
@@ -17,8 +20,8 @@
 
   // Mapear propiedades según la estructura de la API
   $: nombre = product.nombre || product.name || 'Sin nombre';
-  $: proveedor = product.proveedor || product.supplier || 'Sin proveedor';
-  $: categoria = product.categoria || product.category || 'Sin categoría';
+  $: proveedor = product.proveedor || product.supplier || product.provider_name || 'Sin proveedor';
+  $: categoria = product.categoria || product.category || product.category_name || 'Sin categoría';
   $: precio = product.precio || product.price || 0;
   $: imagen = product.imagen || product.image;
 
@@ -87,10 +90,11 @@
     </div>
 
     <!-- Botón de acción -->
-    <button
-      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200"
+    <a
+      href={`/productos/${product.id}`}
+      class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 text-center block"
     >
       Ver Detalles
-    </button>
+    </a>
   </div>
 </div>

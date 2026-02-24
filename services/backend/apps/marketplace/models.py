@@ -140,12 +140,6 @@ class Provider(models.Model):
         help_text="Aprobado por SuperAdmin para operar en el marketplace"
     )
 
-    # Marcas autorizadas para este proveedor
-    marcas = models.ManyToManyField(
-        'vehicles.Marca',
-        through='ProviderMarca', 
-        related_name='proveedores'
-    )
 
     # ============================================
     # CONFIGURACIÓN TRIBUTARIA (Multi-tenant)
@@ -508,60 +502,3 @@ class Member(models.Model):
         super().save(*args, **kwargs)
 
 
-class ProviderMarca(models.Model):
-    """
-    Relación entre Provider y Marcas autorizadas
-    """
-    provider = models.ForeignKey(
-        Provider,
-        on_delete=models.CASCADE,
-        related_name='marcas_autorizadas'
-    )
-    marca = models.ForeignKey(
-        'vehicles.Marca',
-        on_delete=models.CASCADE,
-        related_name='proveedores_autorizados'
-    )
-
-    activo = models.BooleanField(default=True)
-
-    class Meta:
-        db_table = 'marketplace_provider_marca'
-        verbose_name = 'Marca Autorizada'
-        verbose_name_plural = 'Marcas Autorizadas'
-        unique_together = ('provider', 'marca')
-        indexes = [
-            models.Index(fields=['provider', 'marca']),
-            models.Index(fields=['activo']),
-        ]
-
-    def __str__(self):
-        return f"{self.provider.name} → {self.marca.nombre}"
-
-
-class ProviderVariantRestriccion(models.Model):
-    """
-    Variantes de vehículos restringidas para un provider específico
-    """
-    provider = models.ForeignKey(
-        Provider,
-        on_delete=models.CASCADE,
-        related_name='variantes_restringidas'
-    )
-    variante = models.ForeignKey(
-        'vehicles.VariantVehiculo',
-        on_delete=models.CASCADE,
-        related_name='proveedores_restringidos'
-    )
-
-    class Meta:
-        db_table = 'marketplace_provider_variant_restriccion'
-        verbose_name = 'Restricción de Variante'
-        verbose_name_plural = 'Restricciones de Variantes'
-        unique_together = ('provider', 'variante')
-        indexes = [
-            models.Index(fields=['provider', 'variante']),
-        ]
-
-    def __str__(self):
-        return f"{self.provider.name} - {self.variante}"

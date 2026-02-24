@@ -33,21 +33,27 @@ RUN useradd -m -d ${ODOO_HOME} -U -r ${ODOO_USER}
 
 # Clonar Odoo 18
 WORKDIR ${ODOO_HOME}
+
 RUN git clone --depth 1 --branch ${ODOO_VERSION} \
     https://github.com/odoo/odoo.git ${ODOO_HOME}/odoo-server
 
 # 🔧 PARCHE: cbor2 a versión funcional
 RUN sed -i 's/cbor2==5.4.2/cbor2==5.4.6/g' ${ODOO_HOME}/odoo-server/requirements.txt
 
-# ✅ PASO 1: Instalar setuptools, pip, wheel y gevent + zope.interface
+# ✅ PASO 1: Instalar setuptools, pip, wheel y gevent + zope.interface (SIN --no-build-isolation)
 RUN pip install --no-cache-dir --upgrade pip wheel setuptools==70.0.0 && \
     pip install --no-cache-dir gevent "zope.interface==7.0.3" "zope.event==5.0"
 
-# ✅ PASO 2: Instalar requirements de Odoo
+# ✅ PASO 2: Instalar requirements de Odoo (CON --no-build-isolation)
 RUN pip install --no-cache-dir --no-build-isolation -r ${ODOO_HOME}/odoo-server/requirements.txt
 
-# ✅ PASO 3: Paquetes extra
+# ✅ PASO 3: Paquetes extra (openpyxl, etc.)
 RUN pip install --no-cache-dir openpyxl ofxparse qifparse
+
+# ✅ wkhtmltopdf (para informes PDF)
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    wkhtmltopdf \
+    && rm -rf /var/lib/apt/lists/*
 
 # Crear directorios necesarios
 RUN mkdir -p /mnt/extra-addons \
@@ -56,11 +62,11 @@ RUN mkdir -p /mnt/extra-addons \
     ${ODOO_HOME}/.local/share/Odoo
 
 # Permisos
-RUN chown -R ${ODOO_USER}:${ODOO_USER} \
-    ${ODOO_HOME} \
-    /mnt/extra-addons \
-    /var/lib/odoo \
-    /etc/odoo
+RUN chown -R ${ODOO_USER}:${ODOO_USER} ${ODOO_HOME} /mnt/extra-addons /etc/odoo
+
+# Crear directorios para filestore
+RUN mkdir -p /var/lib/odoo && chown -R ${ODOO_USER}:${ODOO_USER} /var/lib/odoo
+RUN mkdir -p /opt/odoo/.local/share/Odoo && chown -R ${ODOO_USER}:${ODOO_USER} /opt/odoo/.local/share/Odoo
 
 # Cambiar a usuario odoo
 USER ${ODOO_USER}

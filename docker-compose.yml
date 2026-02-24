@@ -10,7 +10,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - postgres-data-v2:/var/lib/postgresql/data
       - ./services/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     networks:
       - ecomparts-net
@@ -28,7 +28,8 @@ services:
   redis:
     image: redis:7-alpine
     container_name: ecomparts-redis
-    command: redis-server --appendonly yes --maxmemory 512mb --maxmemory-policy allkeys-lru
+    # en producion ponerlo en yes
+    command: redis-server --appendonly no --maxmemory 512mb --maxmemory-policy allkeys-lru
     volumes:
       - redis-data:/data
     networks:
@@ -42,7 +43,7 @@ services:
     # ⭐ NUEVO: Límites de recursos para Redis
 
   # ============================================
-  # ODOO 18 - ERP COMPARTIDO (CUSTOM BUILD)
+  # Odoo 18 - ERP (SHARED MULTI-COMPANY)
   # ============================================
   odoo:
     build:
@@ -60,8 +61,8 @@ services:
     volumes:
       - ./services/odoo/addons:/mnt/extra-addons
       - ./services/odoo/config/odoo.conf:/etc/odoo/odoo.conf:ro
-      - odoo-web-data:/var/lib/odoo
-      - odoo-filestore:/var/lib/odoo/filestore
+      - odoo-web-data-v2:/var/lib/odoo
+      - odoo-filestore-v2:/var/lib/odoo/filestore
     environment:
       - HOST=postgres
       - PORT=5432
@@ -128,6 +129,8 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
+    #command es peligroso en desarrollo y en producción.
+    #command mas amigable: gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 4
     command: >
       sh -c "python manage.py migrate &&
              python manage.py collectstatic --noinput &&
@@ -250,11 +253,17 @@ services:
 volumes:
   postgres-data:
     driver: local
+  postgres-data-v2:
+    driver: local
   redis-data:
     driver: local
   odoo-web-data:
     driver: local
+  odoo-web-data-v2:
+    driver: local
   odoo-filestore:
+    driver: local
+  odoo-filestore-v2:
     driver: local
   backend-static:
     driver: local
