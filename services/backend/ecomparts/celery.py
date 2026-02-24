@@ -16,6 +16,9 @@ app.config_from_object('django.conf:settings', namespace='CELERY')
 # Auto-discover tasks in all installed apps
 app.autodiscover_tasks()
 
+# Import tasks explicitly to ensure they're registered
+app.autodiscover_tasks(['apps.orders'])
+
 
 @app.task(bind=True, ignore_result=True)
 def debug_task(self):

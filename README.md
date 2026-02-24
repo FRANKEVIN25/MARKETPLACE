@@ -5,7 +5,7 @@ Marketplace Multi-Tenant de Autopartes
 ## Stack Tecnológico
 
 - **Backend**: Django 4.2 + Django REST Framework
-- **ERP**: Odoo 19 Community (Multi-Compañía)
+- **ERP**: Odoo 18 Community (Multi-Compañía)
 - **Frontend**: SvelteKit (Fase 2)
 - **Database**: PostgreSQL 16
 - **Cache**: Redis 7

@@ -55,29 +55,24 @@ class WarehouseSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(serializers.ModelSerializer):
     """Serializer detallado de producto con stock por almacén"""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
-    category_name = serializers.CharField(source='category.name', read_only=True)
+    category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     is_synced = serializers.BooleanField(read_only=True)
-    total_stock = serializers.IntegerField(read_only=True)
-    
-    # Stock desglosado por almacén
-    stock_items = StockItemSerializer(many=True, read_only=True)
+    provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider', 'provider_name',
+            'provider_group', 'provider_name',
             'product_type', 'manufacturer_code',
             'description', 'image', 
             'price', 'tax_percent',
             'category', 'category_name',
-            'active', 'es_universal',
-            'total_stock', 'stock_items',
-            'is_synced',
+            'is_active', 'is_synced',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'slug', 'is_synced', 'total_stock', 'stock_items',
+            'slug', 'is_synced', 'provider_group', 'provider_name',
             'odoo_product_id', 'odoo_template_id',
             'last_synced_at', 'created_at', 'updated_at'
         ]

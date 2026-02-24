@@ -2,7 +2,12 @@ FROM python:3.11-slim-bullseye
 
 ARG ODOO_VERSION=18.0
 ARG ODOO_HOME=/opt/odoo
-ARG ODOO_USER=odoo  
+ARG ODOO_USER=odoo
+
+# Metadata
+LABEL maintainer="ECOMPARTS PERÚ"
+LABEL version="1.0"
+LABEL description="Odoo 18 Community - ECOMPARTS Marketplace Multi-Tenant"
 
 # Dependencias del sistema
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -20,10 +25,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     postgresql-client \
+    wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/*
 
+# Crear usuario Odoo
 RUN useradd -m -d ${ODOO_HOME} -U -r ${ODOO_USER}
 
+# Clonar Odoo 18
 WORKDIR ${ODOO_HOME}
 
 RUN git clone --depth 1 --branch ${ODOO_VERSION} \
@@ -47,11 +55,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar addons personalizados
-COPY --chown=odoo:odoo addons/ /mnt/extra-addons/
-
-# Copiar configuración
-COPY --chown=odoo:odoo config/odoo.conf /etc/odoo/odoo.conf
+# Crear directorios necesarios
+RUN mkdir -p /mnt/extra-addons \
+    /var/lib/odoo \
+    /etc/odoo \
+    ${ODOO_HOME}/.local/share/Odoo
 
 # Permisos
 RUN chown -R ${ODOO_USER}:${ODOO_USER} ${ODOO_HOME} /mnt/extra-addons /etc/odoo
@@ -60,11 +68,15 @@ RUN chown -R ${ODOO_USER}:${ODOO_USER} ${ODOO_HOME} /mnt/extra-addons /etc/odoo
 RUN mkdir -p /var/lib/odoo && chown -R ${ODOO_USER}:${ODOO_USER} /var/lib/odoo
 RUN mkdir -p /opt/odoo/.local/share/Odoo && chown -R ${ODOO_USER}:${ODOO_USER} /opt/odoo/.local/share/Odoo
 
+# Cambiar a usuario odoo
 USER ${ODOO_USER}
 
+# Agregar odoo-bin al PATH
 ENV PATH="${ODOO_HOME}/odoo-server:${PATH}"
 
-EXPOSE 8069
+# Exponer puertos
+EXPOSE 8069 8072
 
+# Comando por defecto
 ENTRYPOINT ["odoo-bin"]
 CMD ["-c", "/etc/odoo/odoo.conf"]

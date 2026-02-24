@@ -1,14 +1,14 @@
 """
-URLs de Orders
+URLs para Orders API
 """
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
-from .views import OrderViewSet, SupplierOrderViewSet, OrderItemViewSet
+from .views import OrderViewSet, SubOrderViewSet, VendorOrderViewSet
 
 router = DefaultRouter()
 router.register(r'orders', OrderViewSet, basename='order')
-router.register(r'supplier-orders', SupplierOrderViewSet, basename='supplier-order')
-router.register(r'order-items', OrderItemViewSet, basename='order-item')
+router.register(r'suborders', SubOrderViewSet, basename='suborder')
+router.register(r'vendor/orders', VendorOrderViewSet, basename='vendor-order')
 
 urlpatterns = [
     path('', include(router.urls)),

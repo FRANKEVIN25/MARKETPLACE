@@ -1,244 +1,276 @@
 """
-Serializers de Orders - APIs para Svelte
+Serializers para Orders - API REST
 """
 from rest_framework import serializers
-from .models import Order, SupplierOrder, OrderItem
-from apps.products.serializers import ProductListSerializer
+from .models import Order, SubOrder, OrderItem, PaymentProof
+from apps.customer.models import Customer, Address
+from apps.products.models import Product
+from apps.marketplace.models import Provider
 from decimal import Decimal
 
 
-class OrderItemListSerializer(serializers.ModelSerializer):
-    """Serializer para items dentro de una orden"""
-    product_detail = serializers.SerializerMethodField()
+class OrderItemSerializer(serializers.ModelSerializer):
+    """Serializer para items de orden"""
+    product_name = serializers.CharField(read_only=True)
+    product_sku = serializers.CharField(read_only=True)
+    provider_name = serializers.CharField(source='provider.name', read_only=True)
     
     class Meta:
         model = OrderItem
         fields = [
-            'id', 'sku', 'name', 'quantity',
-            'unit_price', 'tax_percent', 'tax_amount',
-            'total_price', 'product', 'product_detail'
+            'id',
+            'product',
+            'product_name',
+            'product_sku',
+            'provider',
+            'provider_name',
+            'quantity',
+            'unit_price',
+            'igv_rate',
+            'igv_amount',
+            'discount',
+            'subtotal',
         ]
-        read_only_fields = ['id', 'tax_amount', 'total_price', 'product_detail']
+        read_only_fields = ['product_name', 'product_sku', 'igv_rate', 'igv_amount', 'subtotal']
+
+
+class PaymentProofSerializer(serializers.ModelSerializer):
+    """Serializer para comprobantes de pago"""
+    uploaded_by_name = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
+    verified_by_name = serializers.CharField(source='verified_by.get_full_name', read_only=True, allow_null=True)
     
-    def get_product_detail(self, obj):
-        """Info mínima del producto"""
-        if obj.product:
-            return {
-                'id': obj.product.id,
-                'name': obj.product.name,
-                'reference': obj.product.reference,
-            }
-        return None
+    class Meta:
+        model = PaymentProof
+        fields = [
+            'id',
+            'sub_order',
+            'payment_method',
+            'file',
+            'operation_number',
+            'amount',
+            'uploaded_by',
+            'uploaded_by_name',
+            'uploaded_at',
+            'verified_by',
+            'verified_by_name',
+            'verified_at',
+            'verification_notes',
+        ]
+        read_only_fields = ['uploaded_by', 'uploaded_at', 'verified_by', 'verified_at']
 
 
-class SupplierOrderListSerializer(serializers.ModelSerializer):
-    """Serializer para SupplierOrder en listados"""
+class SubOrderSerializer(serializers.ModelSerializer):
+    """Serializer para sub-órdenes"""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    item_count = serializers.IntegerField(read_only=True)
+    provider_tax_regime = serializers.CharField(source='provider.tax_regime', read_only=True)
+    items = OrderItemSerializer(many=True, read_only=True)
+    payment_proofs = PaymentProofSerializer(many=True, read_only=True)
+    
+    # Datos de pago del proveedor
+    provider_payment_info = serializers.SerializerMethodField()
     
     class Meta:
-        model = SupplierOrder
+        model = SubOrder
         fields = [
-            'id', 'provider', 'provider_name', 'status',
-            'status_display', 'subtotal', 'tax_amount',
-            'shipping_cost', 'discount_amount', 'total',
-            'item_count', 'created_at'
-        ]
-        read_only_fields = fields
-
-
-class SupplierOrderDetailSerializer(serializers.ModelSerializer):
-    """Serializer detallado para SupplierOrder con items"""
-    provider_name = serializers.CharField(source='provider.name', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    item_count = serializers.IntegerField(read_only=True)
-    items = OrderItemListSerializer(many=True, read_only=True)
-    
-    class Meta:
-        model = SupplierOrder
-        fields = [
-            'id', 'order', 'provider', 'provider_name',
-            'status', 'status_display', 'company_id', 'warehouse_id',
-            'subtotal', 'tax_amount', 'shipping_cost',
-            'discount_amount', 'total', 'item_count',
-            'items', 'confirmed_at', 'shipped_at',
-            'completed_at', 'created_at', 'updated_at'
-        ]
-        read_only_fields = fields
-
-
-class OrderListSerializer(serializers.ModelSerializer):
-    """Serializer para listado de órdenes (optimizado)"""
-    customer_name = serializers.CharField(source='customer.user.get_full_name', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    supplier_count = serializers.IntegerField(read_only=True)
-    item_count = serializers.IntegerField(read_only=True)
-    
-    class Meta:
-        model = Order
-        fields = [
-            'id', 'order_number', 'customer', 'customer_name',
-            'status', 'status_display', 'total', 'currency',
-            'supplier_count', 'item_count', 'created_at', 'paid_at'
-        ]
-        read_only_fields = fields
-
-
-class OrderDetailSerializer(serializers.ModelSerializer):
-    """Serializer detallado de orden con todos los detalles"""
-    customer_name = serializers.CharField(source='customer.user.get_full_name', read_only=True)
-    customer_email = serializers.CharField(source='customer.user.email', read_only=True)
-    status_display = serializers.CharField(source='get_status_display', read_only=True)
-    supplier_count = serializers.IntegerField(read_only=True)
-    item_count = serializers.IntegerField(read_only=True)
-    
-    # SupplierOrders con sus items
-    supplier_orders = SupplierOrderDetailSerializer(many=True, read_only=True)
-    
-    # Dirección de envío
-    shipping_address_detail = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Order
-        fields = [
-            'id', 'order_number', 'customer', 'customer_name',
-            'customer_email', 'status', 'status_display',
-            'subtotal', 'discount_total', 'shipping_total',
-            'tax_total', 'total', 'currency',
-            'supplier_count', 'item_count',
-            'shipping_address', 'shipping_address_detail',
-            'supplier_orders', 'notes',
-            'created_at', 'paid_at', 'updated_at'
+            'id',
+            'sub_order_number',
+            'order',
+            'provider',
+            'provider_name',
+            'provider_tax_regime',
+            'status',
+            'subtotal',
+            'igv_rate',
+            'igv_amount',
+            'total',
+            'odoo_sale_id',
+            'odoo_invoice_id',
+            'rejection_reason',
+            'tracking_number',
+            'created_at',
+            'updated_at',
+            'confirmed_at',
+            'items',
+            'payment_proofs',
+            'provider_payment_info',
         ]
         read_only_fields = [
-            'id', 'order_number', 'status', 'subtotal',
-            'discount_total', 'shipping_total', 'tax_total',
-            'total', 'supplier_count', 'item_count',
-            'supplier_orders', 'created_at', 'paid_at', 'updated_at'
+            'sub_order_number',
+            'subtotal',
+            'igv_rate',
+            'igv_amount',
+            'total',
+            'created_at',
+            'updated_at',
+            'confirmed_at',
+        ]
+    
+    def get_provider_payment_info(self, obj):
+        """Retorna información de pago del proveedor"""
+        provider = obj.provider
+        return {
+            'banco_nombre': provider.banco_nombre,
+            'banco_cuenta': provider.banco_cuenta,
+            'banco_cci': provider.banco_cci,
+            'yape_numero': provider.yape_numero,
+            'plin_numero': provider.plin_numero,
+        }
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    """Serializer para órdenes principales"""
+    customer_name = serializers.CharField(source='customer.get_full_name', read_only=True)
+    customer_email = serializers.EmailField(source='customer.user.email', read_only=True)
+    shipping_address_detail = serializers.SerializerMethodField()
+    sub_orders = SubOrderSerializer(many=True, read_only=True)
+    items = OrderItemSerializer(many=True, read_only=True)
+    provider_count = serializers.IntegerField(read_only=True)
+    
+    class Meta:
+        model = Order
+        fields = [
+            'id',
+            'order_number',
+            'customer',
+            'customer_name',
+            'customer_email',
+            'status',
+            'delivery_method',
+            'shipping_address',
+            'shipping_address_detail',
+            'subtotal',
+            'discount',
+            'tax',
+            'total',
+            'customer_notes',
+            'created_at',
+            'updated_at',
+            'provider_count',
+            'sub_orders',
+            'items',
+        ]
+        read_only_fields = [
+            'order_number',
+            'subtotal',
+            'discount',
+            'tax',
+            'total',
+            'created_at',
+            'updated_at',
+            'provider_count',
         ]
     
     def get_shipping_address_detail(self, obj):
-        """Detalles de dirección de envío"""
+        """Retorna dirección de envío formateada"""
         if obj.shipping_address:
             return {
-                'id': obj.shipping_address.id,
                 'contact_name': obj.shipping_address.contact_name,
                 'contact_phone': obj.shipping_address.contact_phone,
-                'address': obj.shipping_address.address,
-                'city': obj.shipping_address.city,
-                'province': obj.shipping_address.province,
-                'postal_code': obj.shipping_address.postal_code,
-                'address_type': obj.shipping_address.get_address_type_display(),
+                'full_address': obj.shipping_address.get_full_address(),
+                'reference': obj.shipping_address.reference,
             }
         return None
 
 
-class OrderCreateSerializer(serializers.ModelSerializer):
-    """Serializer para crear órdenes"""
+class CreateOrderSerializer(serializers.Serializer):
+    """Serializer para crear una orden nueva"""
+    customer_id = serializers.IntegerField()
+    shipping_address_id = serializers.IntegerField(required=False, allow_null=True)
+    delivery_method = serializers.ChoiceField(choices=Order.DELIVERY_METHOD_CHOICES)
+    customer_notes = serializers.CharField(required=False, allow_blank=True)
     
-    class Meta:
-        model = Order
-        fields = [
-            'customer', 'shipping_address', 'notes', 'currency'
-        ]
-        read_only_fields = ['currency']
+    # Lista de items
+    items = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1
+    )
     
-    def validate_shipping_address(self, value):
-        """Validar que la dirección pertenece al cliente"""
-        request = self.context.get('request')
-        customer = self.initial_data.get('customer')
+    def validate_customer_id(self, value):
+        """Validar que el cliente existe"""
+        try:
+            Customer.objects.get(id=value)
+        except Customer.DoesNotExist:
+            raise serializers.ValidationError("Cliente no encontrado")
+        return value
+    
+    def validate_shipping_address_id(self, value):
+        """Validar que la dirección existe"""
+        if value:
+            try:
+                Address.objects.get(id=value)
+            except Address.DoesNotExist:
+                raise serializers.ValidationError("Dirección no encontrada")
+        return value
+    
+    def validate_items(self, value):
+        """Validar items de la orden"""
+        if not value:
+            raise serializers.ValidationError("La orden debe tener al menos un producto")
         
-        if value and value.customer_id != customer:
-            raise serializers.ValidationError(
-                "La dirección de envío debe pertenecer al cliente"
-            )
+        for item in value:
+            if 'product_id' not in item:
+                raise serializers.ValidationError("Cada item debe tener 'product_id'")
+            if 'quantity' not in item:
+                raise serializers.ValidationError("Cada item debe tener 'quantity'")
+            
+            # Validar que el producto existe
+            try:
+                product = Product.objects.get(id=item['product_id'])
+                if not product.is_active:
+                    raise serializers.ValidationError(f"Producto {product.name} no está disponible")
+                if product.stock < item['quantity']:
+                    raise serializers.ValidationError(f"Stock insuficiente para {product.name}")
+            except Product.DoesNotExist:
+                raise serializers.ValidationError(f"Producto con ID {item['product_id']} no encontrado")
         
         return value
     
-    def create(self, validated_data):
-        """Crear orden con número único"""
-        from datetime import datetime
-        
-        # Generar número de orden único
-        timestamp = datetime.now().strftime('%Y%m%d%H%M%S')
-        order_number = f"ORD-{timestamp}"
-        
-        validated_data['order_number'] = order_number
-        validated_data['status'] = 'borrador'
-        
-        return super().create(validated_data)
-
-
-class OrderUpdateStatusSerializer(serializers.ModelSerializer):
-    """Serializer para actualizar estado de orden"""
-    
-    class Meta:
-        model = Order
-        fields = ['status']
-    
-    def validate_status(self, value):
-        """Validar transiciones de estado válidas"""
-        instance = self.instance
-        current_status = instance.status
-        
-        # Validaciones de transición
-        if current_status == 'completado' and value != 'completado':
-            raise serializers.ValidationError("No puedes cambiar una orden completada")
-        
-        if current_status == 'cancelado' and value != 'cancelado':
-            raise serializers.ValidationError("No puedes cambiar una orden cancelada")
-        
-        if current_status == 'pagado' and value == 'pago_pendiente':
-            raise serializers.ValidationError("No puedes volver de pagado a pago pendiente")
-        
-        return value
-
-
-class SupplierOrderUpdateStatusSerializer(serializers.ModelSerializer):
-    """Serializer para actualizar estado de SupplierOrder"""
-    
-    class Meta:
-        model = SupplierOrder
-        fields = ['status']
-    
-    def validate_status(self, value):
-        """Validar transiciones de estado"""
-        instance = self.instance
-        current_status = instance.status
-        
-        if current_status == 'completed' and value != 'completed':
-            raise serializers.ValidationError("No puedes cambiar una SupplierOrder completada")
-        
-        if current_status == 'cancelled' and value != 'cancelled':
-            raise serializers.ValidationError("No puedes cambiar una SupplierOrder cancelada")
-        
-        return value
-
-
-class OrderSummarySerializer(serializers.ModelSerializer):
-    """Serializer sumario para cart/checkout"""
-    supplier_summaries = serializers.SerializerMethodField()
-    
-    class Meta:
-        model = Order
-        fields = [
-            'id', 'order_number', 'status',
-            'subtotal', 'discount_total', 'shipping_total',
-            'tax_total', 'total', 'currency',
-            'supplier_summaries'
-        ]
-        read_only_fields = fields
-    
-    def get_supplier_summaries(self, obj):
-        """Resumen por proveedor"""
-        summaries = []
-        for sup_order in obj.supplier_orders.all():
-            summaries.append({
-                'provider_id': sup_order.provider.id,
-                'provider_name': sup_order.provider.name,
-                'item_count': sup_order.item_count,
-                'total': str(sup_order.total),
-                'status': sup_order.get_status_display(),
+    def validate(self, data):
+        """Validación global"""
+        # Si es recojo en tienda, no requiere dirección
+        if data['delivery_method'] != 'tienda' and not data.get('shipping_address_id'):
+            raise serializers.ValidationError({
+                'shipping_address_id': 'Dirección de envío requerida para este método de entrega'
             })
-        return summaries
+        
+        return data
+
+
+class UploadPaymentProofSerializer(serializers.Serializer):
+    """Serializer para subir comprobante de pago"""
+    sub_order_id = serializers.IntegerField()
+    payment_method = serializers.ChoiceField(choices=PaymentProof.PAYMENT_METHOD_CHOICES)
+    file = serializers.ImageField()
+    operation_number = serializers.CharField(required=False, allow_blank=True)
+    amount = serializers.DecimalField(max_digits=10, decimal_places=2)
+    
+    def validate_sub_order_id(self, value):
+        """Validar que la sub-orden existe"""
+        try:
+            SubOrder.objects.get(id=value)
+        except SubOrder.DoesNotExist:
+            raise serializers.ValidationError("Sub-orden no encontrada")
+        return value
+
+
+class ConfirmPaymentSerializer(serializers.Serializer):
+    """Serializer para confirmar/rechazar pago"""
+    sub_order_id = serializers.IntegerField()
+    action = serializers.ChoiceField(choices=['confirm', 'reject'])
+    rejection_reason = serializers.CharField(required=False, allow_blank=True)
+    
+    def validate_sub_order_id(self, value):
+        """Validar que la sub-orden existe"""
+        try:
+            SubOrder.objects.get(id=value)
+        except SubOrder.DoesNotExist:
+            raise serializers.ValidationError("Sub-orden no encontrada")
+        return value
+    
+    def validate(self, data):
+        """Validación global"""
+        if data['action'] == 'reject' and not data.get('rejection_reason'):
+            raise serializers.ValidationError({
+                'rejection_reason': 'Debe proporcionar un motivo de rechazo'
+            })
+        return data
