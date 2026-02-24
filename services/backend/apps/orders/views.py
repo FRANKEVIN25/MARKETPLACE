@@ -155,8 +155,11 @@ class OrderViewSet(viewsets.ModelViewSet):
             sub_order.total = sub_order_subtotal + sub_order_igv
             sub_order.save()
             
+            # 🔥 SINCRONIZAR INMEDIATAMENTE CON ODOO
+            from .tasks import create_odoo_sale_order
+            create_odoo_sale_order.delay(sub_order.id)
+            
             order_subtotal += sub_order_subtotal
-            order_tax += sub_order_igv
         
         # 6. Actualizar Order totales
         order.subtotal = order_subtotal
