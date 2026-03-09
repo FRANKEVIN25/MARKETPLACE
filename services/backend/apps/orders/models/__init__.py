@@ -1,6 +1,3 @@
-"""
-Modelos de Orders - Marketplace Multiproveedor
-"""
 from .order import Order
 from .sub_order import SubOrder
 from .order_item import OrderItem

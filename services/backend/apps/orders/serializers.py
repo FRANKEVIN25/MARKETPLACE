@@ -188,7 +188,7 @@ class CreateOrderSerializer(serializers.Serializer):
     """Serializer para crear una orden nueva"""
     customer_id = serializers.IntegerField()
     shipping_address_id = serializers.IntegerField(required=False, allow_null=True)
-    delivery_method = serializers.ChoiceField(choices=Order.DELIVERY_METHOD_CHOICES)
+    delivery_method = serializers.CharField(required=False, allow_blank=True)
     customer_notes = serializers.CharField(required=False, allow_blank=True)
     
     # Lista de items
@@ -251,7 +251,7 @@ class CreateOrderSerializer(serializers.Serializer):
 class UploadPaymentProofSerializer(serializers.Serializer):
     """Serializer para subir comprobante de pago"""
     sub_order_id = serializers.IntegerField()
-    payment_method = serializers.ChoiceField(choices=PaymentProof.PAYMENT_METHOD_CHOICES)
+    payment_method = serializers.CharField(required=False, allow_blank=True)
     file = serializers.ImageField()
     operation_number = serializers.CharField(required=False, allow_blank=True)
     amount = serializers.DecimalField(max_digits=10, decimal_places=2)

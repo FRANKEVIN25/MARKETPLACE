@@ -8,45 +8,24 @@ from .models import Order, SubOrder, OrderItem, PaymentProof
 class OrderItemInline(admin.TabularInline):
     model = OrderItem
     extra = 0
-    readonly_fields = ['product_name', 'product_sku', 'quantity', 'unit_price', 'igv_rate', 'igv_amount', 'subtotal']
+    readonly_fields = ['name', 'sku', 'quantity', 'unit_price', 'tax_percent', 'tax_amount', 'total_price']
     can_delete = False
 
 
-class SubOrderInline(admin.TabularInline):
+class SupplierOrderInline(admin.TabularInline):
     model = SubOrder
     extra = 0
-    readonly_fields = ['sub_order_number', 'provider', 'status', 'subtotal', 'igv_amount', 'total']
-    fields = ['sub_order_number', 'provider', 'status', 'subtotal', 'igv_amount', 'total']
+    readonly_fields = ['provider', 'status', 'subtotal', 'tax_amount', 'total']
     can_delete = False
 
 
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ['order_number', 'customer', 'status', 'total', 'created_at']
-    list_filter = ['status', 'delivery_method', 'created_at']
-    search_fields = ['order_number', 'customer__user__email', 'customer__user__first_name']
+    list_filter = ['status', 'created_at']
+    search_fields = ['order_number', 'customer__user__email']
     readonly_fields = ['order_number', 'created_at', 'updated_at']
-    
-    fieldsets = (
-        ('Información Básica', {
-            'fields': ('order_number', 'customer', 'status')
-        }),
-        ('Entrega', {
-            'fields': ('delivery_method', 'shipping_address')
-        }),
-        ('Montos', {
-            'fields': ('subtotal', 'discount', 'tax', 'total')
-        }),
-        ('Notas', {
-            'fields': ('customer_notes',)
-        }),
-        ('Metadata', {
-            'fields': ('created_at', 'updated_at'),
-            'classes': ('collapse',)
-        }),
-    )
-    
-    inlines = [SubOrderInline, OrderItemInline]
+    inlines = [SupplierOrderInline]
 
 
 class PaymentProofInline(admin.TabularInline):
