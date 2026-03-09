@@ -58,3 +58,25 @@ class VariantVehiculoSerializer(serializers.ModelSerializer):
             'transmision', 'transmision_display', 'traccion', 'traccion_display',
             'anio_desde', 'anio_hasta'
         ]
+
+
+class VariantVehiculoFilterSerializer(serializers.ModelSerializer):
+    """Serializer simplificado para filtros públicos de variantes.
+
+    Devuelve un único campo display_name concatenando motor, transmisión,
+    tracción y rango de años, listo para usar en selects del frontend.
+    """
+
+    display_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = VariantVehiculo
+        fields = ['id', 'display_name', 'modelo', 'anio_desde', 'anio_hasta']
+
+    def get_display_name(self, obj):
+        hasta = obj.anio_hasta or 'Actual'
+        return (
+            f"{obj.motor} | {obj.transmision} | {obj.traccion} "
+            f"({obj.anio_desde}-{hasta})"
+        )
+

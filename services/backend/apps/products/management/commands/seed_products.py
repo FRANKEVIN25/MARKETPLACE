@@ -165,7 +165,8 @@ class Command(BaseCommand):
                         'description': prod_data['description'],
                         'manufacturer_code': f"{prod_data['manufacturer_code']}-{product_idx}",
                         'tax_percent': 18.00,
-                        'active': True,
+                        # El campo correcto en el modelo se llama is_active
+                        'is_active': True,
                         'product_type': 'product',
                     }
                 )

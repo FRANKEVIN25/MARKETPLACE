@@ -35,10 +35,11 @@ class OrderItemSerializer(serializers.ModelSerializer):
 
 
 class PaymentProofSerializer(serializers.ModelSerializer):
-    """Serializer para comprobantes de pago"""
+    """Serializer para comprobantes/intentos de pago (PaymentTransaction implícita)"""
     uploaded_by_name = serializers.CharField(source='uploaded_by.get_full_name', read_only=True)
     verified_by_name = serializers.CharField(source='verified_by.get_full_name', read_only=True, allow_null=True)
-    
+    status_display   = serializers.CharField(source='get_status_display', read_only=True)
+
     class Meta:
         model = PaymentProof
         fields = [
@@ -48,15 +49,18 @@ class PaymentProofSerializer(serializers.ModelSerializer):
             'file',
             'operation_number',
             'amount',
+            'external_transaction_id',
+            'status',
+            'status_display',
+            'rejection_reason',
             'uploaded_by',
             'uploaded_by_name',
             'uploaded_at',
             'verified_by',
             'verified_by_name',
             'verified_at',
-            'verification_notes',
         ]
-        read_only_fields = ['uploaded_by', 'uploaded_at', 'verified_by', 'verified_at']
+        read_only_fields = ['uploaded_by', 'uploaded_at', 'verified_by', 'verified_at', 'status']
 
 
 class SubOrderSerializer(serializers.ModelSerializer):
@@ -64,8 +68,8 @@ class SubOrderSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source='provider.name', read_only=True)
     provider_tax_regime = serializers.CharField(source='provider.tax_regime', read_only=True)
     items = OrderItemSerializer(many=True, read_only=True)
-    payment_proofs = PaymentProofSerializer(many=True, read_only=True)
-    
+    payments = PaymentProofSerializer(many=True, read_only=True)
+
     # Datos de pago del proveedor
     provider_payment_info = serializers.SerializerMethodField()
     
@@ -86,12 +90,18 @@ class SubOrderSerializer(serializers.ModelSerializer):
             'odoo_sale_id',
             'odoo_invoice_id',
             'rejection_reason',
+            'payment_rejected',
+            'expired',
+            'refunded',
+            'odoo_sync_error',
             'tracking_number',
+            'shipped_at',
+            'delivered_at',
             'created_at',
             'updated_at',
             'confirmed_at',
             'items',
-            'payment_proofs',
+            'payments',
             'provider_payment_info',
         ]
         read_only_fields = [
@@ -135,6 +145,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'customer_name',
             'customer_email',
             'status',
+            'payment_deadline',
             'delivery_method',
             'shipping_address',
             'shipping_address_detail',
@@ -157,6 +168,7 @@ class OrderSerializer(serializers.ModelSerializer):
             'total',
             'created_at',
             'updated_at',
+            'payment_deadline',
             'provider_count',
         ]
     
@@ -218,8 +230,8 @@ class CreateOrderSerializer(serializers.Serializer):
                 product = Product.objects.get(id=item['product_id'])
                 if not product.is_active:
                     raise serializers.ValidationError(f"Producto {product.name} no está disponible")
-                if product.stock < item['quantity']:
-                    raise serializers.ValidationError(f"Stock insuficiente para {product.name}")
+                if product.total_stock < item['quantity']:
+                    raise serializers.ValidationError(f"Stock insuficiente para {product.name} (disponible: {product.total_stock})")
             except Product.DoesNotExist:
                 raise serializers.ValidationError(f"Producto con ID {item['product_id']} no encontrado")
         

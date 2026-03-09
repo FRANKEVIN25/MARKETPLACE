@@ -6,106 +6,115 @@ OrderItem - Snapshot de producto en el momento de la compra.
 from django.db import models
 from decimal import Decimal
 
+# Importaciones puntuales en lugar de la carpeta models para evitar
+# referencias circulares y asegurar que cada clase se tome desde el
+# módulo donde realmente se define.
+from .order import Order
+from .sub_order import SubOrder
+
 
 class OrderItem(models.Model):
     """
-    Representa UNA línea de producto en UNA SupplierOrder.
-    
-    Es un snapshot (foto) del estado del producto en el momento de compra:
-    - Precio
-    - Nombre
-    - Cantidad
-    
-    No se modifica después de la creación (auditoría).
+    Item individual de una orden (producto)
     """
-
-    # Relación con SupplierOrder
-    supplier_order = models.ForeignKey(
-        'orders.SupplierOrder',
+    # Relaciones
+    order = models.ForeignKey(
+        Order,
         on_delete=models.CASCADE,
-        related_name='items',
-        verbose_name='Orden del Proveedor'
+        related_name='items'
     )
-
-    # Referencias del producto (snapshot)
+    
+    sub_order = models.ForeignKey(
+        SubOrder,
+        on_delete=models.CASCADE,
+        related_name='items'
+    )
+    
     product = models.ForeignKey(
         'products.Product',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.PROTECT,
+        related_name='order_items'
+    )
+    
+    provider = models.ForeignKey(
+        'marketplace.Provider',
+        on_delete=models.PROTECT,
         related_name='order_items',
-        verbose_name='Producto'
-    )
-
-    # Datos capturados en el momento de la compra
-    product_id_snapshot = models.IntegerField(
-        help_text="ID del producto en Odoo (capturado al momento de compra)"
+        help_text="Denormalizado para queries rápidas"
     )
     
-    sku = models.CharField(
+    # Snapshot de datos del producto
+    product_name = models.CharField(
+        max_length=200,
+        help_text="Snapshot del nombre"
+    )
+    
+    product_sku = models.CharField(
         max_length=100,
-        verbose_name='SKU',
-        help_text='SKU del producto en el momento de compra'
+        blank=True,
+        help_text="Snapshot del SKU"
     )
     
-    name = models.CharField(
-        max_length=255,
-        verbose_name='Nombre de Producto',
-        help_text='Nombre del producto en el momento de compra'
-    )
-
-    # Cantidad y precios
-    quantity = models.PositiveIntegerField(verbose_name='Cantidad')
+    # Cantidad y precio
+    quantity = models.PositiveIntegerField(default=1)
     
     unit_price = models.DecimalField(
-        max_digits=12,
+        max_digits=10,
         decimal_places=2,
-        verbose_name='Precio Unitario',
-        help_text='Precio sin impuesto'
+        help_text="Precio unitario (snapshot)"
     )
     
-    tax_percent = models.DecimalField(
+    # IGV (snapshot)
+    igv_rate = models.DecimalField(
         max_digits=5,
         decimal_places=2,
-        default=Decimal('18.00'),
-        verbose_name='% Impuesto'
+        default=0,
+        help_text="Tasa de IGV aplicada (snapshot)"
     )
     
-    tax_amount = models.DecimalField(
-        max_digits=12,
+    igv_amount = models.DecimalField(
+        max_digits=10,
         decimal_places=2,
-        default=Decimal('0.00'),
-        verbose_name='Monto Impuesto'
+        default=0,
+        help_text="Monto de IGV para este item"
     )
     
-    total_price = models.DecimalField(
-        max_digits=12,
+    # Descuento
+    discount = models.DecimalField(
+        max_digits=10,
         decimal_places=2,
-        verbose_name='Precio Total',
-        help_text='unit_price * quantity (sin impuesto)'
+        default=0
     )
-
+    
+    # Subtotal
+    subtotal = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        help_text="(unit_price * quantity) - discount + igv_amount"
+    )
+    
     # Metadata
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
-
+    created_at = models.DateTimeField(auto_now_add=True)
+    
     class Meta:
         db_table = 'orders_orderitem'
         verbose_name = 'Item de Orden'
-        verbose_name_plural = 'Items de Órdenes'
-        ordering = ['supplier_order', 'id']
+        verbose_name_plural = 'Items de Orden'
+        ordering = ['id']
         indexes = [
-            models.Index(fields=['supplier_order']),
-            models.Index(fields=['product']),
+            models.Index(fields=['order', 'product']),
+            models.Index(fields=['sub_order']),
+            models.Index(fields=['provider']),
         ]
-
+    
     def __str__(self):
-        return f"{self.quantity}x {self.name} - ${self.unit_price}"
-
+        return f"{self.product_name} x{self.quantity}"
+    
     def save(self, *args, **kwargs):
-        """Calcular automaticamente tax_amount y total_price"""
-        # Calcular impuesto
-        self.tax_amount = self.unit_price * self.quantity * (self.tax_percent / 100)
-        # Total es quantity * unit_price (impuesto va aparte)
-        self.total_price = self.unit_price * self.quantity
+        # Calcular subtotal automáticamente
+        base = self.unit_price * self.quantity
+        base_con_descuento = base - self.discount
+        self.subtotal = base_con_descuento + self.igv_amount
         super().save(*args, **kwargs)
+

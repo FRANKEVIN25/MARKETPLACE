@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+
+    <!--
+        orders_odoo/views/sale_order_views.xml
+        Añade la pestaña "Marketplace" al formulario de sale.order
+        y los filtros/columnas correspondientes en la vista lista.
+    -->
+
+    <!-- ════════════════════════════════════════════
+         1. Formulario: pestaña "Marketplace"
+            Se inyecta directamente en el <notebook> para no depender
+            del name exacto de otras pestañas (compatible Odoo 18).
+         ════════════════════════════════════════════ -->
+    <record id="view_order_form_marketplace_tab" model="ir.ui.view">
+        <field name="name">sale.order.form.marketplace</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_order_form"/>
+        <field name="arch" type="xml">
+
+            <!-- ── source_id (Origen) después de Términos de Pago —— -->
+            <xpath expr="//field[@name='payment_term_id']" position="after">
+                <field name="source_id"
+                       string="Origen"
+                       placeholder="p. ej. ECOMPARTS Marketplace"/>
+            </xpath>
+
+            <xpath expr="//notebook" position="inside">
+                <page string="Marketplace" name="marketplace_info">
+
+                    <!-- ── Referencia cruzada ── -->
+                    <group string="Referencia SubOrder" col="2">
+                        <field name="x_marketplace_suborder_id"
+                               placeholder="ORD-2026-00001-A"/>
+                        <!-- x_marketplace_order_id es interno, no se muestra al proveedor -->
+                    </group>
+
+                    <!-- ── Estado del pedido (espejo de SubOrder.status en Django) ── -->
+                    <group string="Estado del Pedido" col="2">
+                        <field name="x_payment_status"
+                               widget="badge"
+                               decoration-success="x_payment_status in ('pagado','confirmado','enviado','entregado')"
+                               decoration-warning="x_payment_status == 'pago_en_revision'"
+                               decoration-danger="x_payment_status == 'cancelado'"
+                               decoration-info="x_payment_status == 'pendiente_pago'"
+                               string="Estado del Pedido"
+                               readonly="1"/>
+                        <field name="x_last_sync_at" readonly="1" string="Última sinc."/>
+                    </group>
+                    <!-- ── Pago ── -->
+                    <group string="Comprobante de Pago" col="2">
+                        <field name="x_payment_method" readonly="1"/>
+                        <field name="x_payment_reference"
+                               placeholder="N° de operación / voucher"
+                               readonly="1"/>
+                        <field name="x_payment_amount_declared" readonly="1"/>
+                        <field name="x_payment_rejection_reason"
+                               colspan="2"
+                               invisible="not x_payment_rejection_reason"
+                               placeholder="Motivo por el que se rechazó el comprobante"
+                               readonly="1"/>
+                    </group>
+
+                    <!-- ── Entrega ── -->
+                    <group string="Datos de Entrega" col="2">
+                        <field name="x_delivery_method"/>
+                        <field name="x_tracking_number"
+                               placeholder="Número de tracking del courier"/>
+                        <field name="x_delivery_address"
+                               colspan="2"
+                               placeholder="Dirección completa de envío"/>
+                        <field name="x_customer_notes"
+                               colspan="2"
+                               placeholder="Instrucciones del cliente"/>
+                    </group>
+
+                </page>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ════════════════════════════════════════════
+         2. Vista lista: columnas de referencia y estado de pago
+         ════════════════════════════════════════════ -->
+    <record id="view_order_tree_marketplace" model="ir.ui.view">
+        <field name="name">sale.order.tree.marketplace</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.view_quotation_tree"/>
+        <field name="arch" type="xml">
+            <!-- Añadir después de la columna de nombre del cliente -->
+            <xpath expr="//field[@name='partner_id']" position="after">
+                <field name="x_marketplace_suborder_id"
+                       string="SubOrder"
+                       optional="show"/>
+                <field name="x_payment_status"
+                       string="Estado"
+                       optional="show"
+                       decoration-success="x_payment_status in ('pagado','confirmado','enviado','entregado')"
+                       decoration-warning="x_payment_status == 'pago_en_revision'"
+                       decoration-danger="x_payment_status == 'cancelado'"
+                       decoration-info="x_payment_status == 'pendiente_pago'"
+                       widget="badge"/>
+                <field name="x_delivery_method"
+                       string="Entrega"
+                       optional="hide"/>
+            </xpath>
+        </field>
+    </record>
+
+    <!-- ════════════════════════════════════════════
+         3. Filtros y agrupaciones en la búsqueda
+         ════════════════════════════════════════════ -->
+    <record id="view_order_search_marketplace" model="ir.ui.view">
+        <field name="name">sale.order.search.marketplace</field>
+        <field name="model">sale.order</field>
+        <field name="inherit_id" ref="sale.sale_order_view_search_inherit_quotation"/>
+        <field name="arch" type="xml">
+            <xpath expr="//search" position="inside">
+
+                <!-- Búsqueda por referencia marketplace -->
+                <field name="x_marketplace_suborder_id"
+                       string="SubOrder Marketplace"/>
+
+                <!-- Filtros predefinidos de estado del pedido -->
+                <separator/>
+                <filter string="Pago en revisión"
+                        name="filter_payment_revision"
+                        domain="[('x_payment_status', '=', 'pago_en_revision')]"/>
+                <filter string="Pagado"
+                        name="filter_pagado"
+                        domain="[('x_payment_status', '=', 'pagado')]"/>
+                <filter string="Confirmado"
+                        name="filter_confirmado"
+                        domain="[('x_payment_status', '=', 'confirmado')]"/>
+                <filter string="Enviado"
+                        name="filter_enviado"
+                        domain="[('x_payment_status', '=', 'enviado')]"/>
+                <filter string="Cancelado"
+                        name="filter_cancelado"
+                        domain="[('x_payment_status', '=', 'cancelado')]"/>
+
+                <!-- Filtros de entrega -->
+                <separator/>
+                <filter string="Envío a domicilio"
+                        name="filter_delivery_domicilio"
+                        domain="[('x_delivery_method', '=', 'domicilio')]"/>
+                <filter string="Recojo en tienda"
+                        name="filter_delivery_tienda"
+                        domain="[('x_delivery_method', '=', 'tienda')]"/>
+
+                <!-- Agrupación -->
+                <group expand="0" string="Agrupar por">
+                    <filter string="Estado del Pedido"
+                            name="group_payment_status"
+                            context="{'group_by': 'x_payment_status'}"/>
+                    <filter string="Método de Entrega"
+                            name="group_delivery_method"
+                            context="{'group_by': 'x_delivery_method'}"/>
+                </group>
+
+            </xpath>
+        </field>
+    </record>
+
+</odoo>

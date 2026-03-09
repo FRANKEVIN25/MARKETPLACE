@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import type { StockItem } from '$lib/api/types';
+  import { cart } from '$lib/store/cart';
 
   export let data: PageData;
 
@@ -31,7 +32,7 @@
   }, {});
 
   const agregarAlCarrito = () => {
-    // TODO: Implementar lógica de carrito
+    cart.addItem(product, cantidad);
     productoEnCarrito = true;
     setTimeout(() => {
       productoEnCarrito = false;
@@ -107,6 +108,7 @@
         </div>
 
         <!-- Información de Stock por Almacén -->
+         
         {#if product.stock_items && product.stock_items.length > 0}
           <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Disponibilidad por Almacén</h3>
@@ -135,10 +137,11 @@
             </div>
           </div>
         {/if}
+        
       </div>
 
       <!-- Información del Producto -->
-      <div class="flex flex-col gap-8">
+      <div class="flex flex-col gap-4">
         <!-- Header -->
         <div>
           <div class="flex items-start justify-between mb-4">
@@ -146,47 +149,28 @@
               <h1 class="text-4xl font-bold text-gray-900 mb-2">{product.name}</h1>
               <p class="text-gray-600 text-lg">Referencia: {product.reference}</p>
             </div>
-            {#if product.manufacturer_code}
-              <span class="inline-block bg-gray-100 text-gray-800 px-3 py-1 rounded-full text-sm">
-                Código: {product.manufacturer_code}
-              </span>
-            {/if}
-          </div>
-
           <!-- Categoría -->
           {#if product.category_name}
-            <div class="flex gap-2 items-center mb-4">
+            <div class="flex gap-2 items-center mb-4 text-sm">
               <span class="text-gray-600">Categoría:</span>
               <span class="bg-blue-100 text-blue-800 px-4 py-2 rounded-full">
                 {product.category_name}
               </span>
             </div>
           {/if}
-
+          </div>
           <!-- Proveedor -->
-          <div class="flex gap-2 items-center mb-6">
+          <div class="flex gap-2 items-center mb-2">
             <span class="text-gray-600">Proveedor:</span>
             <p class="text-gray-900 font-medium">{product.provider_name}</p>
           </div>
         </div>
 
         <!-- Precios -->
-        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-6 border border-blue-200">
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg p-4 border border-blue-200">
           <div class="grid grid-cols-3 gap-4">
             <div>
-              <p class="text-gray-600 text-sm">Precio Base</p>
-              <p class="text-2xl font-bold text-gray-900">
-                S/. {precioBase.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p class="text-gray-600 text-sm">IGV ({impuesto}%)</p>
-              <p class="text-2xl font-bold text-blue-600">
-                S/. {(precioBase * impuesto / 100).toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p class="text-gray-600 text-sm">Precio Total</p>
+              <p class="text-gray-600 text-sm">Precio</p>
               <p class="text-2xl font-bold text-green-600">
                 S/. {precioConImpuesto.toFixed(2)}
               </p>
@@ -210,48 +194,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Selector de Cantidad -->
-        {#if estaDisponible}
-          <div class="bg-white rounded-lg shadow p-6">
-            <label class="block text-sm font-medium text-gray-700 mb-4">Cantidad</label>
-            <div class="flex items-center gap-4">
-              <button
-                on:click={decrementarCantidad}
-                disabled={cantidad <= 1}
-                class="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 font-bold py-2 px-4 rounded-lg transition"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                bind:value={cantidad}
-                min="1"
-                max={totalStock}
-                class="w-20 text-center border border-gray-300 rounded-lg py-2 px-3"
-              />
-              <button
-                on:click={incrementarCantidad}
-                disabled={cantidad >= totalStock}
-                class="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed text-gray-900 font-bold py-2 px-4 rounded-lg transition"
-              >
-                +
-              </button>
-              <span class="text-gray-600">(máx. {totalStock} unidades)</span>
-            </div>
-          </div>
-        {/if}
-
-        <!-- Precio Total Seleccionado -->
-        {#if estaDisponible}
-          <div class="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
-            <p class="text-gray-600 text-sm mb-2">Total a pagar por {cantidad} {cantidad === 1 ? 'unidad' : 'unidades'}:</p>
-            <p class="text-4xl font-bold text-blue-600">
-              S/. {precioTotal.toFixed(2)}
-            </p>
-          </div>
-        {/if}
-
         <!-- Botón Agregar al Carrito -->
         <button
           on:click={agregarAlCarrito}
@@ -300,18 +242,6 @@
         <!-- Columna 1 -->
         <div class="space-y-4">
           <div>
-            <p class="text-gray-600 text-sm">Tipo de Producto</p>
-            <p class="text-gray-900 font-medium">
-              {#if product.product_type === 'consu'}
-                Consumible
-              {:else if product.product_type === 'service'}
-                Servicio
-              {:else}
-                Almacenable
-              {/if}
-            </p>
-          </div>
-          <div>
             <p class="text-gray-600 text-sm">Referencia</p>
             <p class="text-gray-900 font-medium font-mono">{product.reference}</p>
           </div>
@@ -325,10 +255,6 @@
 
         <!-- Columna 2 -->
         <div class="space-y-4">
-          <div>
-            <p class="text-gray-600 text-sm">Impuesto (IGV)</p>
-            <p class="text-gray-900 font-medium">{impuesto}%</p>
-          </div>
           <div>
             <p class="text-gray-600 text-sm">Stock Total</p>
             <p class="text-gray-900 font-medium">

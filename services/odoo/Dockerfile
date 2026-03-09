@@ -25,6 +25,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     curl \
     wget \
     postgresql-client \
+    gettext-base \
     wkhtmltopdf \
     && rm -rf /var/lib/apt/lists/*
 
@@ -50,22 +51,27 @@ RUN pip install --no-cache-dir --no-build-isolation -r ${ODOO_HOME}/odoo-server/
 # ✅ PASO 3: Paquetes extra (openpyxl, etc.)
 RUN pip install --no-cache-dir openpyxl ofxparse qifparse
 
-# ✅ wkhtmltopdf (para informes PDF)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    wkhtmltopdf \
-    && rm -rf /var/lib/apt/lists/*
-
 # Crear directorios necesarios
 RUN mkdir -p /mnt/extra-addons \
-    /var/lib/odoo \
-    /etc/odoo \
-    ${ODOO_HOME}/.local/share/Odoo
+    && mkdir -p /etc/odoo \
+    && mkdir -p /var/lib/odoo
+
+# Copiar addons personalizados y plantilla de configuración
+COPY addons/ /mnt/extra-addons/
+COPY config/odoo.conf.tpl /etc/odoo/odoo.conf.tpl
 
 # Permisos
-RUN chown -R ${ODOO_USER}:${ODOO_USER} ${ODOO_HOME} /mnt/extra-addons /etc/odoo
+RUN chown -R ${ODOO_USER}:${ODOO_USER} \
+    ${ODOO_HOME} \
+    /mnt/extra-addons \
+    /etc/odoo \
+    /var/lib/odoo
+
+# Copiar entrypoint para procesamiento de templates y variables
+COPY entrypoint.sh /opt/odoo/entrypoint.sh
+RUN chmod +x /opt/odoo/entrypoint.sh && chown ${ODOO_USER}:${ODOO_USER} /opt/odoo/entrypoint.sh
 
 # Crear directorios para filestore
-RUN mkdir -p /var/lib/odoo && chown -R ${ODOO_USER}:${ODOO_USER} /var/lib/odoo
 RUN mkdir -p /opt/odoo/.local/share/Odoo && chown -R ${ODOO_USER}:${ODOO_USER} /opt/odoo/.local/share/Odoo
 
 # Cambiar a usuario odoo
@@ -77,6 +83,6 @@ ENV PATH="${ODOO_HOME}/odoo-server:${PATH}"
 # Exponer puertos
 EXPOSE 8069 8072
 
-# Comando por defecto
-ENTRYPOINT ["odoo-bin"]
+# Usar entrypoint para generar/templar /etc/odoo/odoo.conf si es necesario
+ENTRYPOINT ["/opt/odoo/entrypoint.sh"]
 CMD ["-c", "/etc/odoo/odoo.conf"]

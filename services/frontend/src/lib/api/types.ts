@@ -36,6 +36,21 @@ export interface Category {
 }
 
 // ============================================
+// STOCK ITEM
+// ============================================
+// Representa la cantidad de un producto en un almacén específico
+export interface StockItem {
+  id: number;                   // ID único
+  warehouse: number;            // ID del almacén
+  warehouse_name: string;       // Nombre del almacén
+  warehouse_city: string;       // Ciudad del almacén
+  quantity: number;             // Cantidad disponible
+  is_low_stock: boolean;        // ¿Stock bajo (< 5)?
+  is_out_of_stock: boolean;     // ¿Sin stock?
+  updated_at: string;           // Última actualización
+}
+
+// ============================================
 // PRODUCTO
 // ============================================
 // Un producto es lo que se vende en el marketplace
@@ -51,8 +66,12 @@ export interface Product {
   description?: string;     // Descripción del producto
   image?: string;           // URL de la imagen
   price: string;            // Precio (como texto: "150.00")
-  category?: number;        // ID de la categoría
+  tax_percent: string; 
+  category?: number | string; // ID o nombre de la categoría (según endpoint)
   category_name?: string;   // Nombre de la categoría
+  es_universal: boolean;    // ¿Compatible con todos los vehículos?
+  total_stock: number;      // Stock total sumado de todos los almacenes
+  stock_items?: StockItem[]; // Detalle de stock por almacén (opcional en listados)
   active: boolean;          // ¿Está activo?
   is_synced: boolean;       // ¿Está sincronizado con Odoo?
   created_at: string;       // Fecha de creación
@@ -72,15 +91,281 @@ export interface PaginatedResponse<T> {
 }
 
 // ============================================
+// CUSTOMER
+// ============================================
+export interface Customer {
+  id: number;
+  customer_id: string;
+  user: number;
+  username: string;
+  email: string;
+  full_name: string;
+  customer_type: 'individual' | 'company';
+  phone: string;
+  document_type: 'DNI' | 'RUC' | 'CE' | 'PASSPORT';
+  document_number: string;
+  full_document: string;
+  company_name?: string;
+  business_activity?: string;
+  receive_newsletter: boolean;
+  receive_promotions: boolean;
+  is_active: boolean;
+  is_verified: boolean;
+  created_at: string;
+  updated_at: string;
+  last_order_date?: string;
+}
+
+export interface Address {
+  id: number;
+  address_id: string;
+  customer: number;
+  customer_name: string;
+  address_type: 'shipping' | 'agency' | 'business';
+  contact_name: string;
+  contact_phone: string;
+  street: string;
+  street_number?: string;
+  apartment?: string;
+  district: string;
+  city: string;
+  state: string;
+  postal_code?: string;
+  country: string;
+  agency_name?: string;
+  is_default: boolean;
+  reference?: string;
+  full_address: string;
+  is_agency: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CustomerStats {
+  id: number;
+  customer: number;
+  customer_name: string;
+  total_orders: number;
+  total_spent: string;
+  average_order_value: string;
+  preferred_brands?: string;
+  notes?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AuthTokens {
+  access: string;
+  refresh: string;
+}
+
+export interface AuthUser {
+  id: number;
+  username: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+}
+
+// ============================================
+// ÓRDENES
+// ============================================
+
+export type OrderStatus =
+  | 'pendiente_pago'
+  | 'pagado'
+  | 'procesando'
+  | 'enviado'
+  | 'completado'
+  | 'cancelado';
+
+export type DeliveryMethod = 'domicilio' | 'agencia' | 'tienda';
+
+export type SubOrderStatus =
+  | 'pendiente_pago'
+  | 'pago_en_revision'
+  | 'pagado'
+  | 'confirmado'
+  | 'enviado'
+  | 'entregado'
+  | 'cancelado';
+
+export type PaymentMethod =
+  | 'transferencia'
+  | 'yape'
+  | 'plin'
+  | 'efectivo_contraentrega'
+  | 'efectivo_tienda';
+
+/** Item individual dentro de una orden */
+export interface OrderItem {
+  id: number;
+  product: number;
+  product_name: string;
+  product_sku: string;
+  provider: number;
+  provider_name: string;
+  quantity: number;
+  unit_price: string;
+  igv_rate: string;
+  igv_amount: string;
+  discount: string;
+  subtotal: string;
+}
+
+/** Datos de pago del proveedor (cuentas bancarias, Yape, Plin) */
+export interface ProviderPaymentInfo {
+  banco_nombre: string | null;
+  banco_cuenta: string | null;
+  banco_cci: string | null;
+  yape_numero: string | null;
+  plin_numero: string | null;
+}
+
+/** Sub-orden agrupada por proveedor */
+export interface SubOrder {
+  id: number;
+  sub_order_number: string;
+  order: number;
+  provider: number;
+  provider_name: string;
+  provider_tax_regime: string;
+  status: SubOrderStatus;
+  subtotal: string;
+  igv_rate: string;
+  igv_amount: string;
+  total: string;
+  tracking_number: string;
+  created_at: string;
+  updated_at: string;
+  confirmed_at: string | null;
+  shipped_at: string | null;
+  delivered_at: string | null;
+  // Flags (sustituyen estados extra)
+  payment_rejected: boolean;   // proveedor rechazó el último comprobante
+  expired: boolean;            // superó payment_deadline sin pagar
+  refunded: boolean;           // reembolso realizado
+  odoo_sync_error: boolean;    // error al sincronizar con Odoo
+  items: OrderItem[];
+  payments: PaymentProof[];    // historial de intentos de pago
+  provider_payment_info: ProviderPaymentInfo;
+}
+
+/** Orden principal del cliente */
+export interface Order {
+  id: number;
+  order_number: string;
+  customer: number;
+  customer_name: string;
+  customer_email: string;
+  status: OrderStatus;
+  payment_deadline: string | null;   // ISO datetime; null = sin límite
+  delivery_method: DeliveryMethod;
+  shipping_address: number | null;
+  shipping_address_detail: {
+    contact_name: string;
+    contact_phone: string;
+    full_address: string;
+    reference: string;
+  } | null;
+  subtotal: string;
+  discount: string;
+  tax: string;
+  total: string;
+  customer_notes: string;
+  created_at: string;
+  updated_at: string;
+  provider_count: number;
+  sub_orders: SubOrder[];
+  items: OrderItem[];
+}
+
+/** Comprobante de pago subido por el cliente */
+export interface PaymentProof {
+  id: number;
+  sub_order: number;
+  payment_method: PaymentMethod;
+  file: string;                      // URL (puede estar vacío para pagos futuros por API)
+  operation_number: string;
+  amount: string;
+  status: 'uploaded' | 'approved' | 'rejected';
+  status_display: string;
+  rejection_reason: string;          // completado por el proveedor al rechazar
+  external_transaction_id: string;   // para integraciones futuras (Culqi, Niubiz, etc.)
+  uploaded_by: number;
+  uploaded_by_name: string;
+  uploaded_at: string;
+  verified_by: number | null;
+  verified_by_name: string | null;
+  verified_at: string | null;
+}
+
+/** Payload para crear una orden */
+export interface CreateOrderPayload {
+  customer_id: number;
+  shipping_address_id?: number | null;
+  delivery_method: DeliveryMethod;
+  customer_notes?: string;
+  items: { product_id: number; quantity: number }[];
+}
+
+/** Payload para subir un comprobante de pago */
+export interface UploadPaymentProofPayload {
+  sub_order_id: number;
+  payment_method: PaymentMethod;
+  file: File;
+  operation_number?: string;
+  amount: number;
+}
+
+// ============================================
 // FILTROS DE PRODUCTOS
 // ============================================
 // Parámetros que podemos usar para filtrar productos
 export interface ProductFilters {
-  category?: number;        // Filtrar por categoría
-  search?: string;          // Buscar por texto
+  category?: number;        // ID de la categoría seleccionada
+  search?: string;          // Buscar por texto (q)
   ordering?: string;        // Ordenar por campo
   page?: number;            // Número de página
   page_size?: number;       // Cuántos resultados por página
+
+  // Filtros adicionales de marketplace
+  provider_id?: number;     // Filtrar por proveedor (Provider.id)
+  es_universal?: boolean | null; // Filtrar por productos universales
+  category_slug?: string;   // Alternativa textual a category
+
+  // Filtros por vehículo (para tiparlos correctamente)
+  marca_id?: number;
+  modelo_id?: number;
+  variante_id?: number;
+}
+
+// ============================================
+// VEHÍCULOS PARA FILTROS DE PRODUCTO
+// ============================================
+
+export interface VehicleMarca {
+  id: number;
+  nombre: string;
+  slug: string;
+  activo: boolean;
+}
+
+export interface VehicleModelo {
+  id: number;
+  nombre: string;
+  marca: number;
+  marca_nombre: string;
+  slug: string;
+  activo: boolean;
+}
+
+export interface VehicleVariantFilter {
+  id: number;
+  display_name: string;
+  modelo: number;
+  anio_desde: number;
+  anio_hasta: number | null;
 }
 
 // ============================================

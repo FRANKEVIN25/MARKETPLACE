@@ -1,12 +1,13 @@
-"""
-Views de Vehicles
-"""
-from rest_framework import viewsets
-from rest_framework.permissions import IsAuthenticated
+"""Views de Vehicles"""
+from rest_framework import viewsets, generics
+from rest_framework.permissions import IsAuthenticated, AllowAny
+
+from apps.products.models import Product, CompatibilidadProducto
 from .models import Marca, ModeloVehiculo, Transmision, Traccion, Motor, VariantVehiculo
 from .serializers import (
     MarcaSerializer, ModeloVehiculoSerializer, TransmisionSerializer,
-    TraccionSerializer, MotorSerializer, VariantVehiculoSerializer
+    TraccionSerializer, MotorSerializer, VariantVehiculoSerializer,
+    VariantVehiculoFilterSerializer,
 )
 
 
@@ -70,3 +71,75 @@ class VariantVehiculoViewSet(viewsets.ModelViewSet):
     search_fields = ['modelo__nombre', 'modelo__marca__nombre']
     ordering_fields = ['modelo__nombre', 'anio_desde']
     ordering = ['modelo__nombre', 'anio_desde']
+
+
+class PublicMarcaListView(generics.ListAPIView):
+    """Lista de marcas activas con productos compatibles en el marketplace.
+
+    Endpoint público pensado para los filtros de la página de catálogo.
+    """
+
+    serializer_class = MarcaSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        """Marcas activas priorizando las que tienen productos marketplace.
+
+        Si aún no hay compatibilidades cargadas, devuelve todas las marcas activas
+        para no dejar el selector vacío durante etapas tempranas del proyecto.
+        """
+
+        productos_marketplace = Product.objects.for_marketplace().filter(is_active=True)
+
+        qs_con_productos = Marca.objects.filter(
+            activo=True,
+            modelovehiculo__variantvehiculo__compatibilidadproducto__producto__in=productos_marketplace,
+        ).distinct()
+
+        if qs_con_productos.exists():
+            return qs_con_productos.order_by('nombre')
+
+        # Fallback: todas las marcas activas
+        return Marca.objects.filter(activo=True).order_by('nombre')
+
+
+class PublicModeloListView(generics.ListAPIView):
+    """Modelos activos para una marca con productos compatibles en marketplace."""
+
+    serializer_class = ModeloVehiculoSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        productos_marketplace = Product.objects.for_marketplace().filter(is_active=True)
+        marca_id = self.request.query_params.get('marca_id')
+        qs = ModeloVehiculo.objects.filter(
+            activo=True,
+            variantvehiculo__compatibilidadproducto__producto__in=productos_marketplace,
+        )
+        if marca_id:
+            qs = qs.filter(marca_id=marca_id)
+        return qs.distinct().order_by('marca__nombre', 'nombre')
+
+
+class PublicVariantListView(generics.ListAPIView):
+    """Variantes de vehículo para un modelo con productos compatibles.
+
+    Devuelve un display_name ya formateado para mostrar en los selects.
+    """
+
+    serializer_class = VariantVehiculoFilterSerializer
+    permission_classes = [AllowAny]
+
+    def get_queryset(self):
+        productos_marketplace = Product.objects.for_marketplace().filter(is_active=True)
+        modelo_id = self.request.query_params.get('modelo_id')
+
+        qs = VariantVehiculo.objects.filter(
+            compatibilidadproducto__producto__in=productos_marketplace,
+        ).select_related('modelo__marca', 'motor', 'transmision', 'traccion')
+
+        if modelo_id:
+            qs = qs.filter(modelo_id=modelo_id)
+
+        return qs.distinct().order_by('modelo__nombre', 'anio_desde')
+

@@ -22,138 +22,162 @@ from django.contrib.auth import get_user_model
 from django.utils import timezone
 from decimal import Decimal
 from django.core.exceptions import ValidationError
+from django.contrib.auth.models import User
+from shortuuid.django_fields import ShortUUIDField
+
 
 User = get_user_model()
 
-
 class Order(models.Model):
     """
-    Orden de Compra - Agregador de múltiples proveedores.
-    
-    El cliente crea UNA orden que puede contener productos de MÚLTIPLES proveedores.
-    Cada proveedor tendrá su SupplierOrder asociada.
+    Orden principal del cliente (puede contener productos de múltiples proveedores)
     """
-
     STATUS_CHOICES = [
-        ('borrador', 'Borrador'),
-        ('pago_pendiente', 'Pago pendiente'),
-        ('pagado', 'Pagado'),
-        ('procesando', 'Procesando'),
-        ('completado', 'Completado'),
-        ('cancelado', 'Cancelado'),
+        # Order.status NUNCA se escribe manualmente.
+        # Siempre se deriva de los estados de sus SubOrders (ver signals.py → recalculate_order_status)
+        ('pendiente_pago', 'Pendiente de Pago'),   # al menos una SubOrder sin pagar
+        ('pagado',         'Pagado'),               # todas las SubOrders activas pagadas en svelte
+        ('procesando',     'Procesando'),           # al menos una SubOrder confirmada en Odoo
+        ('enviado',        'Enviado'),              # al menos una SubOrder despachada
+        ('completado',     'Completado'),           # todas las SubOrders activas entregadas
+        ('cancelado',      'Cancelado'),            # todas las SubOrders canceladas
     ]
-
-    # Identificación única
+    
+    DELIVERY_METHOD_CHOICES = [
+        ('domicilio', 'Envío a Domicilio'),
+        ('agencia', 'Envío a Agencia'),
+        ('tienda', 'Recojo en Tienda'),
+    ]
+    
+    # Identificación
     order_number = models.CharField(
-        max_length=20,
+        max_length=50,
         unique=True,
-        verbose_name='Número de Orden',
-        help_text='Identificador único de la orden'
+        db_index=True,
+        help_text="ORD-2026-00001"
     )
-
-    # Relaciones
+    
+    # Cliente
     customer = models.ForeignKey(
-        "customer.Customer",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        'customer.Customer',
+        on_delete=models.PROTECT,
         related_name='orders',
-        verbose_name='Cliente'
+        verbose_name="Cliente"
     )
-
+    
     # Estado
     status = models.CharField(
         max_length=20,
         choices=STATUS_CHOICES,
-        default='borrador',
-        verbose_name='Estado',
+        default='pendiente_pago',
         db_index=True
     )
-
-    # Fechas
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name='Creado')
-    paid_at = models.DateTimeField(null=True, blank=True, verbose_name='Pagado el')
-    updated_at = models.DateTimeField(auto_now=True, verbose_name='Actualizado')
-
-    # Totales (calculados, no autoritativos)
-    subtotal = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        verbose_name='Subtotal'
+    
+    # Método de entrega
+    delivery_method = models.CharField(
+        max_length=20,
+        choices=DELIVERY_METHOD_CHOICES,
+        default='domicilio'
     )
-    discount_total = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        verbose_name='Descuentos'
-    )
-    shipping_total = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        verbose_name='Envío'
-    )
-    tax_total = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        verbose_name='Impuestos'
-    )
-    total = models.DecimalField(
-        max_digits=12,
-        decimal_places=2,
-        default=Decimal('0.00'),
-        verbose_name='Total'
-    )
-
-    currency = models.CharField(
-        max_length=10,
-        default='PEN',
-        verbose_name='Moneda'
-    )
-
-    # Dirección de entrega
+    
+    # Dirección de envío
     shipping_address = models.ForeignKey(
         'customer.Address',
-        on_delete=models.SET_NULL,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
-        related_name='orders_shipped_to',
-        verbose_name='Dirección de Envío'
+        related_name='orders',
+        help_text="Dirección de envío (null si es recojo en tienda)"
+    )
+    
+    # Montos
+    subtotal = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Subtotal"
+    )
+    
+    discount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Descuento"
+    )
+    
+    tax = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Impuestos (IGV)"
+    )
+    
+    total = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total"
+    )
+    
+    # Notas
+    customer_notes = models.TextField(
+        blank=True,
+        verbose_name="Notas del Cliente"
+    )
+    
+    # Deadline de pago (TTL 3 horas desde la creación)
+    # Pasado este plazo, las SubOrders en 'pendiente_pago' expiran automáticamente
+    # via la tarea Celery expire_pending_suborders
+    payment_deadline = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="Plazo máximo de pago (created_at + 3h). Las SubOrders pendientes expiran al vencer."
     )
 
-    # Notas
-    notes = models.TextField(blank=True, verbose_name='Notas')
-
+    # Metadata
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
     class Meta:
         db_table = 'orders_order'
         verbose_name = 'Orden'
         verbose_name_plural = 'Órdenes'
         ordering = ['-created_at']
         indexes = [
-            models.Index(fields=['customer', '-created_at']),
-            models.Index(fields=['status', '-created_at']),
+            models.Index(fields=['customer', 'status']),
+            models.Index(fields=['created_at']),
             models.Index(fields=['order_number']),
         ]
-
+    
     def __str__(self):
-        return f"Order {self.order_number} ({self.status})"
-
+        return f"{self.order_number} - {self.customer}"
+    
+    def save(self, *args, **kwargs):
+        if not self.order_number:
+            self.order_number = self.generate_order_number()
+        super().save(*args, **kwargs)
+    
+    @staticmethod
+    def generate_order_number():
+        """Genera número de orden: ORD-2026-00001"""
+        from django.utils import timezone
+        year = timezone.now().year
+        
+        # Obtener el último número del año
+        last_order = Order.objects.filter(
+            order_number__startswith=f'ORD-{year}-'
+        ).order_by('-order_number').first()
+        
+        if last_order:
+            last_num = int(last_order.order_number.split('-')[-1])
+            new_num = last_num + 1
+        else:
+            new_num = 1
+        
+        return f'ORD-{year}-{new_num:05d}'
+    
     @property
-    def supplier_count(self):
+    def provider_count(self):
         """Cantidad de proveedores en esta orden"""
-        return self.supplier_orders.count()
+        return self.sub_orders.count()
 
-    @property
-    def item_count(self):
-        """Total de items en la orden"""
-        from django.db.models import Sum
-        count = self.supplier_orders.aggregate(
-            total=Sum('items__quantity')
-        )['total'] or 0
-        return count
-
-    def can_be_paid(self):
-        """Validar si la orden puede pagarse"""
-        return self.status == 'pago_pendiente' and self.total > 0

@@ -5,7 +5,7 @@ from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import (
     CategoryViewSet, ProductViewSet, MarketplaceProductViewSet,
-    WarehouseViewSet, StockItemViewSet
+    WarehouseViewSet, StockItemViewSet, PublicCategoryListView
 )
 
 router = DefaultRouter()
@@ -17,4 +17,6 @@ router.register(r'stock', StockItemViewSet, basename='stock-item')
 
 urlpatterns = [
     path('', include(router.urls)),
+    # Categorías públicas para filtros del marketplace
+    path('public/categories/', PublicCategoryListView.as_view(), name='public-category-list'),
 ]

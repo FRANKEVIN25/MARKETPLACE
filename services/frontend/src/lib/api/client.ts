@@ -2,7 +2,22 @@
  * Cliente HTTP para la API de Django
  */
 import axios, { type AxiosInstance } from 'axios';
-import type { Product, Category, PaginatedResponse, ProductFilters } from './types';
+import type {
+  Product,
+  Category,
+  PaginatedResponse,
+  ProductFilters,
+  Customer,
+  Address,
+  AuthTokens,
+  AuthUser,
+  Order,
+  CreateOrderPayload,
+  UploadPaymentProofPayload,
+  VehicleMarca,
+  VehicleModelo,
+  VehicleVariantFilter,
+} from './types';
 
 // Configuración base
 const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
@@ -16,6 +31,11 @@ const apiClient: AxiosInstance = axios.create({
     'Content-Type': 'application/json',
   },
 });
+
+// Helper para headers con JWT
+function authHeaders(token: string) {
+  return { Authorization: `Bearer ${token}` };
+}
 
 // Interceptor para logging (solo desarrollo)
 if (import.meta.env.DEV) {
@@ -47,6 +67,7 @@ export const api = {
     const response = await apiClient.get('/api/v1/health/');
     return response.data;
   },
+  
 /**
    * PRODUCTOS
    */
@@ -55,13 +76,37 @@ export const api = {
      * Obtener lista de productos del marketplace (público)
      */
     async list(filters?: ProductFilters): Promise<PaginatedResponse<Product>> {
-      const params = new URLSearchParams();
-      
-      if (filters?.category) params.append('category', filters.category.toString());
-      if (filters?.search) params.append('search', filters.search);
-      if (filters?.ordering) params.append('ordering', filters.ordering);
-      if (filters?.page) params.append('page', filters.page.toString());
-      if (filters?.page_size) params.append('page_size', filters.page_size.toString());
+      const params: Record<string, string> = {};
+
+      // Categoría (ID o slug)
+      if (filters?.category) {
+        // Usamos category_id como parámetro principal, pero el backend también
+        // acepta "category"; mantenerlo simple y explícito.
+        params['category_id'] = filters.category.toString();
+      }
+      if (filters?.category_slug) {
+        params['category_slug'] = filters.category_slug;
+      }
+
+      if (filters?.search) params['q'] = filters.search; // alias amigable de search
+      if (filters?.ordering) params['ordering'] = filters.ordering;
+      if (filters?.page) params['page'] = filters.page.toString();
+      if (filters?.page_size) params['page_size'] = filters.page_size.toString();
+
+      // Filtros por vehículo
+      if (filters?.marca_id) params['marca_id'] = String(filters.marca_id);
+      if (filters?.modelo_id) params['modelo_id'] = String(filters.modelo_id);
+      if (filters?.variante_id) params['variante_id'] = String(filters.variante_id);
+
+      // Filtro por proveedor
+      if (filters?.provider_id) {
+        params['provider_id'] = String(filters.provider_id);
+      }
+
+      // Filtro por productos universales
+      if (filters?.es_universal !== undefined && filters.es_universal !== null) {
+        params['es_universal'] = filters.es_universal ? 'true' : 'false';
+      }
 
       const response = await apiClient.get<PaginatedResponse<Product>>(
         '/api/v1/products/marketplace/',
@@ -111,6 +156,46 @@ export const api = {
   },
 
   /**
+   * VEHÍCULOS PÚBLICOS (para filtros de catálogo)
+   */
+  publicVehicles: {
+    /**
+     * Marcas con productos compatibles en el marketplace
+     */
+    async marcas(): Promise<VehicleMarca[]> {
+      const response = await apiClient.get<VehicleMarca[] | { results: VehicleMarca[] }>(
+        '/api/v1/vehicles/public/marcas/'
+      );
+      const data = response.data as any;
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+
+    /**
+     * Modelos para una marca con productos compatibles
+     */
+    async modelos(marca_id: number): Promise<VehicleModelo[]> {
+      const response = await apiClient.get<VehicleModelo[] | { results: VehicleModelo[] }>(
+        '/api/v1/vehicles/public/modelos/',
+        { params: { marca_id } }
+      );
+      const data = response.data as any;
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+
+    /**
+     * Variantes para un modelo con productos compatibles
+     */
+    async variantes(modelo_id: number): Promise<VehicleVariantFilter[]> {
+      const response = await apiClient.get<VehicleVariantFilter[] | { results: VehicleVariantFilter[] }>(
+        '/api/v1/vehicles/public/variantes/',
+        { params: { modelo_id } }
+      );
+      const data = response.data as any;
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+  },
+
+  /**
    * CATEGORÍAS
    */
   categories: {
@@ -118,10 +203,11 @@ export const api = {
      * Obtener lista de categorías
      */
     async list(): Promise<Category[]> {
-      const response = await apiClient.get<Category[]>(
-        '/api/v1/products/categories/'
+      const response = await apiClient.get<Category[] | { results: Category[] }>(
+        '/api/v1/products/public/categories/'
       );
-      return response.data;
+      const data = response.data as any;
+      return Array.isArray(data) ? data : (data.results ?? []);
     },
 
     /**
@@ -140,6 +226,135 @@ export const api = {
       }
       
       return category;
+    },
+  },
+
+  /**
+   * AUTH
+   */
+  auth: {
+    async login(username: string, password: string): Promise<AuthTokens> {
+      const response = await apiClient.post<AuthTokens>('/api/v1/auth/token/', { username, password });
+      return response.data;
+    },
+    async refreshToken(refresh: string): Promise<{ access: string }> {
+      const response = await apiClient.post<{ access: string }>('/api/v1/auth/token/refresh/', { refresh });
+      return response.data;
+    },
+    async getMe(token: string): Promise<AuthUser> {
+      const response = await apiClient.get<AuthUser>('/api/v1/auth/me/', { headers: authHeaders(token) });
+      return response.data;
+    },
+  },
+
+  /**
+   * CUSTOMER
+   */
+  customer: {
+    async getProfile(token: string): Promise<Customer> {
+      const response = await apiClient.get<Customer>('/api/v1/customer/customers/me/', { headers: authHeaders(token) });
+      return response.data;
+    },
+    async updateProfile(token: string, data: Partial<Customer>): Promise<Customer> {
+      const response = await apiClient.patch<Customer>('/api/v1/customer/customers/me/', data, { headers: authHeaders(token) });
+      return response.data;
+    },
+    async getAddresses(token: string): Promise<Address[]> {
+      const response = await apiClient.get<{ results: Address[] } | Address[]>('/api/v1/customer/addresses/', { headers: authHeaders(token) });
+      // El endpoint puede devolver respuesta paginada {results:[]} o array directo
+      const data = response.data as any;
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+    async createAddress(token: string, data: Partial<Address>): Promise<Address> {
+      const response = await apiClient.post<Address>('/api/v1/customer/addresses/', data, { headers: authHeaders(token) });
+      return response.data;
+    },
+    async updateAddress(token: string, id: number, data: Partial<Address>): Promise<Address> {
+      const response = await apiClient.patch<Address>(`/api/v1/customer/addresses/${id}/`, data, { headers: authHeaders(token) });
+      return response.data;
+    },
+    async deleteAddress(token: string, id: number): Promise<void> {
+      await apiClient.delete(`/api/v1/customer/addresses/${id}/`, { headers: authHeaders(token) });
+    },
+    async register(data: {
+      customer_type: 'individual' | 'company';
+      document_type: 'DNI' | 'RUC';
+      document_number: string;
+      email: string;
+      password: string;
+    }): Promise<{ customer: Customer; tokens: AuthTokens }> {
+      const response = await apiClient.post<{ customer: Customer; tokens: AuthTokens }>(
+        '/api/v1/customer/customers/register/', data
+      );
+      return response.data;
+    },
+  },
+
+  /**
+   * ÓRDENES
+   */
+  orders: {
+    /** Crear una nueva orden */
+    async createOrder(token: string, payload: CreateOrderPayload): Promise<Order> {
+      const response = await apiClient.post<Order>(
+        '/api/v1/orders/orders/create_order/',
+        payload,
+        { headers: authHeaders(token) }
+      );
+      return response.data;
+    },
+
+    /** Listar órdenes del cliente autenticado */
+    async getOrders(token: string): Promise<Order[]> {
+      const response = await apiClient.get<{ results: Order[] } | Order[]>(
+        '/api/v1/orders/orders/',
+        { headers: authHeaders(token) }
+      );
+      const data = response.data as any;
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+
+    /** Obtener detalle de una orden por ID */
+    async getOrder(token: string, orderId: number): Promise<Order> {
+      const response = await apiClient.get<Order>(
+        `/api/v1/orders/orders/${orderId}/`,
+        { headers: authHeaders(token) }
+      );
+      return response.data;
+    },
+
+    /** Obtener detalle de una orden por número (ORD-2026-00001) */
+    async getOrderByNumber(token: string, orderNumber: string): Promise<Order> {
+      const response = await apiClient.get<{ results: Order[] }>(
+        `/api/v1/orders/orders/?order_number=${orderNumber}`,
+        { headers: authHeaders(token) }
+      );
+      const data = response.data as any;
+      const results: Order[] = Array.isArray(data) ? data : (data.results ?? []);
+      if (!results.length) throw new Error('Orden no encontrada');
+      return results[0];
+    },
+
+    /** Subir comprobante de pago para una sub-orden */
+    async uploadPaymentProof(token: string, payload: UploadPaymentProofPayload): Promise<void> {
+      const formData = new FormData();
+      formData.append('sub_order_id', String(payload.sub_order_id));
+      formData.append('payment_method', payload.payment_method);
+      formData.append('file', payload.file);
+      formData.append('amount', String(payload.amount));
+      if (payload.operation_number) {
+        formData.append('operation_number', payload.operation_number);
+      }
+      await apiClient.post(
+        '/api/v1/orders/orders/upload_payment_proof/',
+        formData,
+        {
+          headers: {
+            ...authHeaders(token),
+            'Content-Type': 'multipart/form-data',
+          },
+        }
+      );
     },
   },
 };

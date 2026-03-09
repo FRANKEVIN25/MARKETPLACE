@@ -1,13 +1,17 @@
 """
 Views para Orders - API REST y Lógica de Negocio
 """
+import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
 from django.utils import timezone
+from datetime import timedelta
 from decimal import Decimal
+
+logger = logging.getLogger(__name__)
 
 from .models import Order, SubOrder, OrderItem, PaymentProof
 from .serializers import (
@@ -72,7 +76,8 @@ class OrderViewSet(viewsets.ModelViewSet):
             delivery_method=data['delivery_method'],
             shipping_address_id=data.get('shipping_address_id'),
             customer_notes=data.get('customer_notes', ''),
-            status='pendiente_pago'
+            status='pendiente_pago',
+            payment_deadline=timezone.now() + timedelta(hours=3),  # TTL 3h para expiración
         )
         
         # 3. Agrupar items por proveedor
@@ -137,7 +142,7 @@ class OrderViewSet(viewsets.ModelViewSet):
                     product=product,
                     provider=provider,
                     product_name=product.name,
-                    product_sku=product.sku,
+                    product_sku=product.reference,
                     quantity=quantity,
                     unit_price=unit_price,
                     igv_rate=igv_rate,
@@ -154,11 +159,11 @@ class OrderViewSet(viewsets.ModelViewSet):
             sub_order.igv_amount = sub_order_igv
             sub_order.total = sub_order_subtotal + sub_order_igv
             sub_order.save()
-            
-            # 🔥 SINCRONIZAR INMEDIATAMENTE CON ODOO
-            from .tasks import create_odoo_sale_order
-            create_odoo_sale_order.delay(sub_order.id)
-            
+
+            # ✅ NO se encola ninguna tarea Celery hacia Odoo aquí (create_order).
+            # El draft a Odoo se encola en upload_payment_proof cuando el cliente sube
+            # su comprobante (SubOrder.status → 'pago_en_revision').
+
             order_subtotal += sub_order_subtotal
         
         # 6. Actualizar Order totales
@@ -170,19 +175,21 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Retornar orden creada
         serializer = OrderSerializer(order)
         return Response(serializer.data, status=status.HTTP_201_CREATED)
-    
+
     @action(detail=False, methods=['post'])
     def upload_payment_proof(self, request):
         """
-        Cliente sube comprobante de pago
+        Cliente sube comprobante de pago por una SubOrder.
+        Crea un PaymentProof y transiciona la SubOrder a 'pago_en_revision'.
+        Si había un rechazo previo (payment_rejected=True), limpia el flag.
         """
         serializer = UploadPaymentProofSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        
+
         data = serializer.validated_data
         sub_order = SubOrder.objects.get(id=data['sub_order_id'])
-        
-        # Crear PaymentProof
+
+        # Crear PaymentProof (en Paso 3 esto será reemplazado por PaymentTransaction)
         payment_proof = PaymentProof.objects.create(
             sub_order=sub_order,
             payment_method=data['payment_method'],
@@ -191,15 +198,39 @@ class OrderViewSet(viewsets.ModelViewSet):
             amount=data['amount'],
             uploaded_by=request.user
         )
-        
-        # Cambiar estado de SubOrder
-        sub_order.status = 'pago_pendiente_confirmacion'
-        sub_order.save()
-        
+
+        # Transición de estado + limpiar flag de rechazo
+        sub_order.status = 'pago_en_revision'
+        sub_order.payment_rejected = False
+        sub_order.save(update_fields=['status', 'payment_rejected', 'updated_at'])
+
+        # Encolar creación de draft en Odoo ahora que el cliente subió su comprobante.
+        # on_commit garantiza que la SubOrder ya está guardada antes de que la tarea corra.
+        # La tarea es idempotente: si ya tiene odoo_sale_id, la omite silenciosamente.
+        sub_order_id_for_celery = sub_order.id
+        transaction.on_commit(
+            lambda sid=sub_order_id_for_celery: _enqueue_create_odoo(sid)
+        )
+
         return Response({
             'message': 'Comprobante subido correctamente',
             'payment_proof': PaymentProofSerializer(payment_proof).data
         }, status=status.HTTP_201_CREATED)
+
+
+def _enqueue_create_odoo(sub_order_id):
+    """
+    Encola la tarea Celery create_odoo_sale_order después del commit de la transacción.
+    Se llama desde upload_payment_proof (pago_en_revision) y opcionalmente desde
+    confirm_payment para sincronizar el estado de pago actualizado.
+    La tarea es idempotente: omite silenciosamente si odoo_sale_id ya existe.
+    """
+    try:
+        from .tasks import create_odoo_sale_order
+        create_odoo_sale_order.delay(sub_order_id)
+        logger.info(f"📬 Tarea Celery encolada → Odoo para SubOrder {sub_order_id}")
+    except Exception as e:
+        logger.warning(f"⚠️  No se pudo encolar tarea Odoo para SubOrder {sub_order_id}: {e}")
 
 
 class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -254,23 +285,52 @@ class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
         
         data = serializer.validated_data
         
+        # Obtener el comprobante más reciente en estado 'uploaded' para actualizarlo.
+        latest_proof = (
+            sub_order.payments.filter(status='uploaded').order_by('-uploaded_at').first()
+        )
+
         if data['action'] == 'confirm':
-            sub_order.status = 'pagado_confirmado'
+            # Aprobar el comprobante
+            if latest_proof:
+                latest_proof.status = 'approved'
+                latest_proof.verified_by = request.user
+                latest_proof.verified_at = timezone.now()
+                latest_proof.save(update_fields=['status', 'verified_by', 'verified_at'])
+
+            sub_order.status = 'pagado'
             sub_order.confirmed_at = timezone.now()
-            sub_order.rejection_reason = ''
-            
-            # Lanzar tarea Celery para crear Sale Order en Odoo
-            from apps.orders.tasks import create_odoo_sale_order
-            create_odoo_sale_order.delay(sub_order.id)
-            
+            sub_order.payment_rejected = False
+
+            # Nota: el draft en Odoo ya fue encolado en upload_payment_proof cuando el
+            # cliente subió el comprobante (pago_en_revision). La tarea es idempotente,
+            # pero podemos volver a encolarla aquí para sincronizar el estado de pago
+            # actualizado (x_payment_status) una vez el proveedor confirma.
+            sub_order_id = sub_order.id
+            transaction.on_commit(
+                lambda sid=sub_order_id: _enqueue_create_odoo(sid)
+            )
+
             message = 'Pago confirmado correctamente'
         else:
-            sub_order.status = 'pago_rechazado'
-            sub_order.rejection_reason = data.get('rejection_reason', '')
+            # Rechazar el comprobante + volver a pendiente_pago
+            # El cliente verá el aviso y podrá subir un nuevo comprobante.
+            rejection_reason = data.get('rejection_reason', '')
+            if latest_proof:
+                latest_proof.status = 'rejected'
+                latest_proof.rejection_reason = rejection_reason
+                latest_proof.verified_by = request.user
+                latest_proof.verified_at = timezone.now()
+                latest_proof.save(update_fields=[
+                    'status', 'rejection_reason', 'verified_by', 'verified_at'
+                ])
+
+            sub_order.status = 'pendiente_pago'
+            sub_order.payment_rejected = True
             message = 'Pago rechazado'
-        
+
         sub_order.save()
-        
+
         return Response({
             'message': message,
             'sub_order': SubOrderSerializer(sub_order).data
@@ -292,14 +352,14 @@ class VendorOrderViewSet(viewsets.ReadOnlyModelViewSet):
             provider_ids = user.owned_providers.values_list('id', flat=True)
             return SubOrder.objects.filter(
                 provider_id__in=provider_ids
-            ).select_related('order', 'provider').prefetch_related('items', 'payment_proofs')
+            ).select_related('order', 'provider').prefetch_related('items', 'payments')
         
         return SubOrder.objects.none()
     
     @action(detail=False, methods=['get'])
     def pending_confirmation(self, request):
-        """Sub-órdenes pendientes de confirmación de pago"""
-        queryset = self.get_queryset().filter(status='pago_pendiente_confirmacion')
+        """Sub-órdenes con comprobante subido pendiente de revisión del proveedor"""
+        queryset = self.get_queryset().filter(status='pago_en_revision')
         serializer = self.get_serializer(queryset, many=True)
         return Response(serializer.data)
     
@@ -309,13 +369,17 @@ class VendorOrderViewSet(viewsets.ReadOnlyModelViewSet):
         queryset = self.get_queryset()
         
         stats = {
-            'total_orders': queryset.count(),
-            'pending_payment': queryset.filter(status='pendiente_pago').count(),
-            'pending_confirmation': queryset.filter(status='pago_pendiente_confirmacion').count(),
-            'confirmed': queryset.filter(status='pagado_confirmado').count(),
-            'processing': queryset.filter(status='procesando').count(),
-            'shipped': queryset.filter(status='enviado').count(),
-            'delivered': queryset.filter(status='entregado').count(),
+            'total_orders':          queryset.count(),
+            'pendiente_pago':        queryset.filter(status='pendiente_pago').count(),
+            'pago_en_revision':      queryset.filter(status='pago_en_revision').count(),
+            'pagado':                queryset.filter(status='pagado').count(),
+            'confirmado':            queryset.filter(status='confirmado').count(),
+            'enviado':               queryset.filter(status='enviado').count(),
+            'entregado':             queryset.filter(status='entregado').count(),
+            'cancelado':             queryset.filter(status='cancelado').count(),
+            # Flags
+            'con_rechazo_previo':    queryset.filter(payment_rejected=True).count(),
+            'error_odoo':            queryset.filter(odoo_sync_error=True).count(),
         }
         
         return Response(stats)

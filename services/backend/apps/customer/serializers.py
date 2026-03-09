@@ -84,6 +84,10 @@ class AddressSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = [
             'address_id',
+            'customer',
+            'customer_name',
+            'full_address',
+            'is_agency',
             'created_at',
             'updated_at'
         ]
@@ -117,3 +121,47 @@ class CustomerStatsSerializer(serializers.ModelSerializer):
             'created_at',
             'updated_at'
         ]
+
+
+class CustomerRegisterSerializer(serializers.Serializer):
+    """
+    Registro simplificado: tipo, documento, email y contraseña.
+    """
+    customer_type = serializers.ChoiceField(choices=['individual', 'company'])
+    document_type = serializers.ChoiceField(choices=['DNI', 'RUC'])
+    document_number = serializers.CharField(max_length=20)
+    email = serializers.EmailField()
+    password = serializers.CharField(write_only=True, min_length=8)
+
+    def validate(self, data):
+        from django.contrib.auth.models import User
+        if User.objects.filter(email=data['email']).exists():
+            raise serializers.ValidationError({'email': 'Ya existe una cuenta con este email.'})
+        if data['customer_type'] == 'individual' and data['document_type'] != 'DNI':
+            raise serializers.ValidationError({'document_type': 'Persona natural debe usar DNI.'})
+        if data['customer_type'] == 'company' and data['document_type'] != 'RUC':
+            raise serializers.ValidationError({'document_type': 'Empresa debe usar RUC.'})
+        return data
+
+    def create(self, validated_data):
+        from django.contrib.auth.models import User
+        email = validated_data['email']
+        username = email.split('@')[0]
+        # Asegurar username único
+        base = username
+        i = 1
+        while User.objects.filter(username=username).exists():
+            username = f'{base}{i}'
+            i += 1
+        user = User.objects.create_user(
+            username=username,
+            email=email,
+            password=validated_data['password'],
+        )
+        customer = Customer.objects.create(
+            user=user,
+            customer_type=validated_data['customer_type'],
+            document_type=validated_data['document_type'],
+            document_number=validated_data['document_number'],
+        )
+        return customer

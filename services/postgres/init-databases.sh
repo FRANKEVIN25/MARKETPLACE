@@ -21,6 +21,7 @@ create_db_if_missing() {
 
 # Crear las bases esperadas por la configuración/.env
 create_db_if_missing "ecomparts_odoo"
+create_db_if_missing "ecomparts_django"
 create_db_if_missing "ecomparts_marketplace"
 
 echo '✅ Bases de datos verificadas/creadas correctamente'

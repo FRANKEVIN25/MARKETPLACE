@@ -16,7 +16,17 @@ class ProviderAdmin(admin.ModelAdmin):
         ('Datos de Negocio', {'fields': ('ruc', 'email', 'phone')}),
         ('Integración Odoo', {'fields': ('odoo_company_id',)}),
         ('Estado', {'fields': ('is_active', 'is_approved')}),
-        ('Metadata', {'fields': ('created_at', 'updated_at'),'classes': ('collapse',)}),
+        ('💳 Datos de Pago', {
+            'description': 'Información bancaria y billeteras digitales que se mostrará al cliente en el checkout.',
+            'fields': (
+                'banco_nombre',
+                'banco_cuenta',
+                'banco_cci',
+                'yape_numero',
+                'plin_numero',
+            ),
+        }),
+        ('Metadata', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
 
 @admin.register(Member)

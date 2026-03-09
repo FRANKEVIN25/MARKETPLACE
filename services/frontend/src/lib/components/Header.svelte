@@ -1,6 +1,27 @@
 <script lang="ts">
   import { page } from '$app/stores';
-  
+  import { cart } from '$lib/store/cart';
+  import { auth } from '$lib/store/auth';
+  import { derived } from 'svelte/store';
+
+  // Contador reactivo del carrito
+  const cartCount = derived(cart, $cart => $cart.reduce((acc, item) => acc + item.cantidad, 0));
+
+  // Extraer isAuthenticated como store independiente para usar con $
+  const isAuthenticated = auth.isAuthenticated;
+
+  let userMenuOpen = false;
+
+  function toggleUserMenu() {
+    userMenuOpen = !userMenuOpen;
+  }
+
+  function logout() {
+    auth.clearTokens();
+    userMenuOpen = false;
+    window.location.href = '/';
+  }
+
   const navigation = [
     { name: 'Inicio', href: '/' },
     { name: 'Productos', href: '/productos' },
@@ -39,6 +60,58 @@
           </a>
         {/each}
         
+        <!-- Icono carrito -->
+        <a href="/carrito" class="relative flex items-center" aria-label="Carrito de compras">
+          <svg class="w-7 h-7 text-gray-700 hover:text-primary-600 transition-colors duration-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13l-1.4 5h11.8M7 13H5.4M9 21a1 1 0 100-2 1 1 0 000 2zm10 0a1 1 0 100-2 1 1 0 000 2z" />
+          </svg>
+          {#if $cartCount > 0}
+            <span class="absolute -top-2 -right-2 bg-primary-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              {$cartCount > 99 ? '99+' : $cartCount}
+            </span>
+          {/if}
+        </a>
+
+        <!-- Icono usuario -->
+        <div class="relative">
+          {#if $isAuthenticated}
+            <button on:click={toggleUserMenu} class="flex items-center gap-1.5 text-gray-700 hover:text-primary-600 transition-colors duration-200" aria-label="Mi cuenta">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+            {#if userMenuOpen}
+              <div class="absolute right-0 mt-2 w-52 bg-white rounded-lg shadow-lg py-2 border border-gray-200 z-50">
+                <a href="/cliente/perfil" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                  on:click={() => userMenuOpen = false}>
+                  👤 Mi Perfil
+                </a>
+                <a href="/cliente/direcciones" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                  on:click={() => userMenuOpen = false}>
+                  📍 Mis Direcciones
+                </a>
+                <a href="cliente/historial-compras" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                  on:click={() => userMenuOpen = false}>
+                  📦 Mis Compras
+                </a>
+                <div class="border-t border-gray-200 my-1"></div>
+                <button on:click={logout} class="w-full text-left block px-4 py-2 text-red-600 hover:bg-red-50 text-sm">
+                  🚪 Cerrar Sesión
+                </button>
+              </div>
+            {/if}
+          {:else}
+            <a href="/login" class="flex items-center gap-1 text-gray-700 hover:text-primary-600 transition-colors duration-200" aria-label="Iniciar sesión">
+              <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5.121 17.804A8 8 0 1118.88 17.804M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+            </a>
+          {/if}
+        </div>
+
         <div class="relative">
           <button
             on:click={toggleVendorMenu}

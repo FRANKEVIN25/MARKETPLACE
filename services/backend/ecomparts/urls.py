@@ -12,7 +12,8 @@ from drf_spectacular.views import (
 )
 from rest_framework.response import Response
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
 
 @api_view(['GET'])
@@ -25,12 +26,30 @@ def health_check(request):
     })
 
 
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def auth_me(request):
+    """Devuelve datos básicos del usuario autenticado"""
+    return Response({
+        'id': request.user.id,
+        'username': request.user.username,
+        'email': request.user.email,
+        'first_name': request.user.first_name,
+        'last_name': request.user.last_name,
+    })
+
+
 urlpatterns = [
     # Admin
     path('admin/', admin.site.urls),
     
     # Health check
     path('api/v1/health/', health_check, name='health-check'),
+
+    # Auth (JWT)
+    path('api/v1/auth/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/v1/auth/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    path('api/v1/auth/me/', auth_me, name='auth_me'),
     
     # API Documentation
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),

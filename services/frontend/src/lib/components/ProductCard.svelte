@@ -8,7 +8,7 @@
     supplier?: string;
     provider_name?: string;
     categoria?: string;
-    category?: string;
+    category?: string | number;
     category_name?: string;
     precio?: number;
     price?: number | string;

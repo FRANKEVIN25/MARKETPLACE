@@ -59,6 +59,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     is_synced = serializers.BooleanField(read_only=True)
     provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     
+    total_stock = serializers.IntegerField(read_only=True)
+    stock_por_almacen = serializers.SerializerMethodField()
+
     class Meta:
         model = Product
         fields = [
@@ -69,12 +72,27 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'price', 'tax_percent',
             'category', 'category_name',
             'is_active', 'is_synced',
+            'total_stock', 'stock_por_almacen',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
             'slug', 'is_synced', 'provider_group', 'provider_name',
             'odoo_product_id', 'odoo_template_id',
-            'last_synced_at', 'created_at', 'updated_at'
+            'last_synced_at', 'created_at', 'updated_at',
+            'total_stock', 'stock_por_almacen'
+        ]
+
+    def get_stock_por_almacen(self, obj):
+        # Devuelve lista de almacenes con stock para este producto
+        stock_items = obj.stock_items.select_related('warehouse')
+        return [
+            {
+                'warehouse_id': item.warehouse.id,
+                'warehouse_name': item.warehouse.name,
+                'warehouse_city': item.warehouse.city,
+                'quantity': item.quantity
+            }
+            for item in stock_items
         ]
     
     def validate(self, data):
@@ -88,6 +106,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 class ProductListSerializer(serializers.ModelSerializer):
     """Serializer simplificado para listados (mejor rendimiento)"""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
+    provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     total_stock = serializers.IntegerField(read_only=True)
     is_synced = serializers.BooleanField(read_only=True)
@@ -99,10 +118,10 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider_name', 'product_type',
+            'provider_group', 'provider_name', 'product_type',
             'price', 'price_with_tax', 'tax_percent',
             'category_name', 'image',
-            'active', 'total_stock',
+            'is_active', 'total_stock',
             'is_synced', 'created_at'
         ]
         read_only_fields = fields
@@ -122,7 +141,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'name', 'reference', 'product_type',
             'manufacturer_code', 'description',
             'price', 'tax_percent',
-            'category', 'active', 'es_universal',
+            'category', 'is_active', 'es_universal',
             'image'
         ]
     

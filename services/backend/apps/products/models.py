@@ -6,6 +6,7 @@ from django.utils.text import slugify
 from mptt.models import MPTTModel, TreeForeignKey
 from django.core.exceptions import ValidationError
 from django.db.models import Sum
+from .managers import ProductManager
 
 class Category(MPTTModel):
     """
@@ -151,7 +152,9 @@ class Product(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
-    
+
+    objects = ProductManager()
+
     class Meta:
         db_table = 'products_product'
         verbose_name = 'Producto'
@@ -192,7 +195,7 @@ class Product(models.Model):
     @property
     def disponible(self):
         """Producto tiene stock disponible"""
-        return self.is_active and self.stock > 0
+        return self.is_active and self.total_stock > 0
 
 
 class CompatibilidadProducto(models.Model):

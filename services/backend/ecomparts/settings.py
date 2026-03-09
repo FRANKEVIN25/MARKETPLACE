@@ -46,6 +46,7 @@ INSTALLED_APPS = [
     'apps.orders',
     'apps.vehicles',
     'apps.customer',
+    'apps.cart',
     'apps.sync',
 ]
 
@@ -105,6 +106,17 @@ CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'America/Lima'
+
+# Celery Beat — tareas periódicas
+from celery.schedules import crontab  # noqa: E402
+CELERY_BEAT_SCHEDULE = {
+    # Expirar SubOrders que superaron su payment_deadline sin completar el pago.
+    # Se ejecuta cada 15 minutos; el máximo retraso posible es 15 min + margen de ejecución.
+    'expire-pending-suborders': {
+        'task': 'apps.orders.tasks.expire_pending_suborders',
+        'schedule': crontab(minute='*/15'),
+    },
+}
 
 # Redis Cache
 CACHES = {
