@@ -133,12 +133,6 @@ services:
     networks:
       - ecomparts-net
     restart: unless-stopped
-    #command es peligroso en desarrollo y en producción.
-    #command mas amigable: gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 4
-    command: >
-      sh -c "python manage.py migrate &&
-             python manage.py collectstatic --noinput &&
-             gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 4 --timeout 120 --access-logfile - --error-logfile -"
     # ⭐ NUEVO: Límites de recursos para Django
 
   # ============================================

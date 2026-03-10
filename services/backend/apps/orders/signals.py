@@ -88,6 +88,14 @@ def _get_utm_source_id(odoo: OdooConnector, name: str = 'ECOMPARTS Marketplace')
         logger.warning(f"⚠️  No se pudo obtener utm.source '{name}': {e}")
         return None
 
+def _get_provider_user_id(odoo, provider):
+    """Retorna el user_id de Odoo del proveedor"""
+    try:
+        if provider.odoo_user_id:
+            return provider.odoo_user_id
+        return False
+    except Exception:
+        return False
 
 def _get_or_create_partner(odoo: OdooConnector, customer):
     """Busca o crea un partner en Odoo para el customer dado.
@@ -150,6 +158,18 @@ def _get_or_create_partner(odoo: OdooConnector, customer):
 # ─────────────────────────────────────────────────────────────
 # Funciones públicas
 # ─────────────────────────────────────────────────────────────
+
+def _get_warehouse_id(odoo, company_id):
+    """Obtiene el warehouse_id de Odoo para una company"""
+    try:
+        wh = odoo.execute_kw(
+            'stock.warehouse', 'search_read',
+            [[['company_id', '=', company_id]]],
+            {'fields': ['id'], 'limit': 1, 'context': {'allowed_company_ids': [company_id]}}
+        )
+        return wh[0]['id'] if wh else False
+    except Exception:
+        return False
 
 def sync_suborder_to_odoo(suborder):
     """Crea la Sale Order en Odoo para una SubOrder de Django (estado draft).
@@ -239,6 +259,7 @@ def sync_suborder_to_odoo(suborder):
             'order_line': order_lines,
             'client_order_ref': suborder.sub_order_number,
             'origin': order.order_number,
+            'user_id': _get_provider_user_id(odoo, provider),
 
             # Referencia cruzada Django ↔ Odoo
             'x_marketplace_order_id': order.order_number,
@@ -264,11 +285,12 @@ def sync_suborder_to_odoo(suborder):
             'x_last_sync_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
 
-        sale_order_id = odoo.execute_kw(
+        result = odoo.execute_kw(
             'sale.order',
             'create',
             [[sale_order_data]],
         )
+        sale_order_id = result[0] if isinstance(result, list) else result
 
         # 4. Guardar ID en Django
         suborder.odoo_sale_id = sale_order_id
@@ -384,7 +406,7 @@ def update_odoo_payment_status(suborder):
 
         update_data = {
             'x_payment_status': _PAYMENT_STATUS_MAP.get(suborder.status, 'pagado'),
-            'x_last_sync_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+            'warehouse_id': _get_warehouse_id(odoo, provider.odoo_company_id),
         }
 
         if latest_proof:
