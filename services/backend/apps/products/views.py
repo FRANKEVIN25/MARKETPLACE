@@ -48,7 +48,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [CanManageProducts, BelongsToGroup]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['active', 'product_type', 'category']
+    filterset_fields = ['is_active', 'product_type', 'category']
     search_fields = ['name', 'reference', 'manufacturer_code', 'description']
     ordering_fields = ['name', 'price', 'created_at']
     ordering = ['-created_at']

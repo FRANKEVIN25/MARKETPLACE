@@ -6,8 +6,7 @@ from django.db import migrations
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('marketplace', '0005_add_tax_and_payment_fields'),
-        ('marketplace', '0005_alter_providervariantrestriccion_unique_together_and_more'),
+        ('marketplace', '0001_initial'),
     ]
 
     operations = [

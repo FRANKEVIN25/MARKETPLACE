@@ -424,9 +424,19 @@ export interface VendorRegistrationResponse {
  * Podemos consultar el estado de esa tarea
  */
 export interface RegistrationStatusResponse {
-  state: 'PENDING' | 'SUCCESS' | 'FAILURE'; // Estado actual
-  result?: any;               // Resultado si terminó exitosamente
-  error?: string;             // Mensaje de error si falló
+  task_id: string;
+  status: 'PENDING' | 'STARTED' | 'SUCCESS' | 'FAILURE' | 'RETRY';
+  ready: boolean;
+  result?: {
+    success: boolean;
+    provider_id: number;
+    provider_name: string;
+    odoo_company_id: number;
+    odoo_user_id: number;
+    odoo_username: string;
+    message: string;
+  };
+  error?: string;
 }
 
 /**
@@ -442,3 +452,5 @@ export interface TierInfo {
   commission: number;         // Comisión que cobra el marketplace (0.08 = 8%)
   recommended?: boolean;      // ¿Es el plan recomendado?
 }
+// ====== VENDOR REGISTRATION ======
+

@@ -15,7 +15,7 @@ class OrderItemInline(admin.TabularInline):
 class SupplierOrderInline(admin.TabularInline):
     model = SubOrder
     extra = 0
-    readonly_fields = ['provider', 'status', 'subtotal', 'tax_amount', 'total']
+    readonly_fields = ['provider', 'status', 'subtotal', 'total']
     can_delete = False
 
 

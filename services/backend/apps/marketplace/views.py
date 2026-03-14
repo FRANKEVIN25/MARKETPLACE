@@ -77,34 +77,33 @@ def register_vendor(request):
             
             logger.info(f"✅ Usuario Django creado: {user.username} (ID: {user.id})")
             
-            # 2. Preparar datos del provider
-            provider_data = {
-                'name': validated_data['business_name'],
-                'email': validated_data['business_email'],
-                'phone': validated_data.get('phone', ''),
-                'ruc': validated_data.get('ruc', ''),
-                'tier': validated_data.get('tier', 'starter')
-            }
-            
-            # 3. Lanzar tarea asíncrona para crear Provider + Odoo setup
-            task = create_provider_with_odoo_setup.delay(
-                user_id=user.id,
-                provider_data=provider_data,
-                odoo_password=validated_data['odoo_password']
+            # 2. Crear Provider en Django (pendiente de aprobación)
+            provider = Provider(
+                name=validated_data['business_name'],
+                email=validated_data['business_email'],
+                phone=validated_data.get('phone', ''),
+                ruc=validated_data.get('ruc', ''),
+                tier=validated_data.get('tier', 'starter'),
+                owner=user,
+                is_active=True,
+                is_approved=False,
             )
-            
-            logger.info(f"✅ Tarea de setup lanzada: {task.id}")
-            
+            # Guardar contraseña Odoo de forma reversible hasta que admin apruebe
+            provider.set_odoo_password_temp(validated_data['odoo_password'])
+            provider.save()
+
+            logger.info(f"✅ Provider creado: {provider.name} (ID: {provider.id}), pendiente de aprobación")
+
             return Response({
                 'success': True,
                 'message': (
                     f'Registro exitoso para {validated_data["business_name"]}. '
-                    'Tu cuenta está siendo configurada y será revisada por nuestro equipo. '
+                    'Tu cuenta será revisada por nuestro equipo. '
                     'Recibirás un email cuando esté aprobada.'
                 ),
                 'user_id': user.id,
                 'username': user.username,
-                'task_id': task.id,
+                'task_id': None,
                 'business_name': validated_data['business_name']
             }, status=status.HTTP_201_CREATED)
             
@@ -118,7 +117,7 @@ def register_vendor(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsAuthenticated])
+@permission_classes([AllowAny])
 def check_registration_status(request, task_id):
     """
     Verifica el estado de la tarea de registro

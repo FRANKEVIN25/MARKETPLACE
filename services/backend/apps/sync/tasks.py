@@ -52,23 +52,24 @@ def create_provider_with_odoo_setup(user_id, provider_data, odoo_password):
             if not provider_name:
                 return {'success': False, 'error': 'Nombre del proveedor es requerido'}
             
-            # Verificar que no exista un provider con ese nombre
-            if Provider.objects.filter(name=provider_name).exists():
-                return {'success': False, 'error': f'Ya existe un proveedor con el nombre "{provider_name}"'}
-            
-            provider = Provider(
-                name=provider_name,
-                email=provider_email,
-                phone=provider_data.get('phone', ''),
-                ruc=provider_data.get('ruc', ''),
-                tier=provider_data.get('tier', 'starter'),
-                owner=user,
-                is_active=True,
-                is_approved=False,  # Requiere aprobación de admin
-            )
-            provider.save()
-            
-            logger.info(f"✅ Provider creado en Django: {provider.name} (ID: {provider.id})")
+            # Buscar Provider existente o crear uno nuevo
+            existing = Provider.objects.filter(name=provider_name).first()
+            if existing:
+                provider = existing
+                logger.info(f"✅ Provider existente encontrado: {provider.name} (ID: {provider.id})")
+            else:
+                provider = Provider(
+                    name=provider_name,
+                    email=provider_email,
+                    phone=provider_data.get('phone', ''),
+                    ruc=provider_data.get('ruc', ''),
+                    tier=provider_data.get('tier', 'starter'),
+                    owner=user,
+                    is_active=True,
+                    is_approved=False,
+                )
+                provider.save()
+                logger.info(f"✅ Provider creado en Django: {provider.name} (ID: {provider.id})")
             
             # 3. Crear Company en Odoo
             odoo = OdooConnector()  # Usa credenciales de admin
@@ -182,10 +183,10 @@ def sync_provider_products(provider_id):
                         'reference': odoo_product.get('default_code', ''),
                         'description': odoo_product.get('description_sale', ''),
                         'price': odoo_product.get('list_price', 0),
-                        'cost': odoo_product.get('standard_price', 0),
-                        'stock': int(odoo_product.get('qty_available', 0)),
-                        'barcode': odoo_product.get('barcode', ''),
-                        'weight': odoo_product.get('weight', 0),
+                        
+                        
+                        
+                        
                         'is_active': odoo_product.get('active', True),
                         'last_sync_at': timezone.now()
                     }

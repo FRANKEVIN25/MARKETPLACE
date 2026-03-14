@@ -160,6 +160,20 @@ class OdooConnector:
             })
 
         except Exception as e:
+            if "Session Expired" in str(e) or "session" in str(e).lower():
+                logger.warning("Sesión Odoo expirada, re-autenticando...")
+                cache_key = f"odoo_uid_{self.username}_{self.db_name}"
+                cache.delete(cache_key)
+                self._uid = None
+                self._session = __import__("requests").Session()
+                self._session.headers.update({"Content-Type": "application/json"})
+                if self.uid:
+                    return self._call("/web/dataset/call_kw", {
+                        "model": model,
+                        "method": method,
+                        "args": args,
+                        "kwargs": {**kwargs, "context": {"lang": "es_PE", "tz": "America/Lima"}},
+                    })
             logger.exception(f"Error ejecutando {method} en {model}: {e}")
             raise
 
@@ -185,7 +199,17 @@ class OdooConnector:
             if email:
                 vals['email'] = email
 
+            # Verificar si ya existe una company con ese nombre
+            existing = self.execute_kw('res.company', 'search', [[('name', '=', name)]])
+            if existing:
+                company_id = existing[0] if isinstance(existing, list) else existing
+                logger.info(f"✅ Company ya existía en Odoo: {name} (ID: {company_id})")
+                return company_id
+
             company_id = self.execute_kw('res.company', 'create', [[vals]])
+            # execute_kw puede retornar [id] o id — normalizar a int
+            if isinstance(company_id, list):
+                company_id = company_id[0]
             logger.info(f"✅ Company creada en Odoo: {name} (ID: {company_id})")
             return company_id
 
@@ -245,7 +269,17 @@ class OdooConnector:
             if groups and isinstance(groups, list) and len(groups) > 0:
                 vals['groups_id'] = [(6, 0, groups)]
 
+            # Verificar si ya existe un usuario con ese login
+            existing = self.execute_kw('res.users', 'search', [[('login', '=', login)]])
+            if existing:
+                user_id = existing[0] if isinstance(existing, list) else existing
+                logger.info(f"✅ Usuario ya existía en Odoo: {login} (ID: {user_id})")
+                return user_id
+
             user_id = self.execute_kw('res.users', 'create', [[vals]])
+            # execute_kw puede retornar [id] o id — normalizar a int
+            if isinstance(user_id, list):
+                user_id = user_id[0]
             logger.info(
                 f"✅ Usuario creado en Odoo: {login} (ID: {user_id}) "
                 f"para Company {company_id}"

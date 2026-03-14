@@ -65,6 +65,12 @@ class Provider(models.Model):
         help_text="Email/username para login en Odoo"
     )
 
+    odoo_password_temp = models.CharField(
+        max_length=500,
+        blank=True,
+        default='',
+        help_text="Contraseña temporal encriptada hasta que se configure Odoo. Se borra después."
+    )
     odoo_password_hash = models.CharField(
         max_length=255,
         blank=True,
@@ -262,6 +268,45 @@ class Provider(models.Model):
 
     # ====== MÉTODOS DE GESTIÓN DE CREDENCIALES ODOO ======
     
+    def set_odoo_password_temp(self, raw_password):
+        """Guarda la contraseña Odoo encriptada reversiblemente hasta que se apruebe"""
+        from cryptography.fernet import Fernet
+        from django.conf import settings
+        import base64, hashlib
+        key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
+        f = Fernet(key)
+        self.odoo_password_temp = f.encrypt(raw_password.encode()).decode()
+
+    def get_odoo_password_temp(self):
+        """Recupera la contraseña Odoo encriptada temporalmente"""
+        if not self.odoo_password_temp:
+            return None
+        from cryptography.fernet import Fernet
+        from django.conf import settings
+        import base64, hashlib
+        key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
+        f = Fernet(key)
+        return f.decrypt(self.odoo_password_temp.encode()).decode()
+
+    def set_odoo_password_temp(self, raw_password):
+        """Guarda la contraseña Odoo de forma reversible hasta que se configure Odoo (usa Django signing)"""
+        from django.core import signing
+        self.odoo_password_temp = signing.dumps(raw_password, salt='odoo_temp_password')
+
+    def get_odoo_password_temp(self):
+        """Recupera la contraseña Odoo temporal (válida 7 días)"""
+        if not self.odoo_password_temp:
+            return None
+        from django.core import signing
+        try:
+            return signing.loads(self.odoo_password_temp, salt='odoo_temp_password', max_age=604800)
+        except Exception:
+            return None
+
+    def clear_odoo_password_temp(self):
+        """Elimina la contraseña temporal después de configurar Odoo"""
+        self.odoo_password_temp = ''
+
     def set_odoo_password(self, raw_password):
         """
         Guarda el password de Odoo encriptado usando Django's password hasher
