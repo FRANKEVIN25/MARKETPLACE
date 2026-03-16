@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Acciones para vehículos -->
+    <record id="action_vehiculo_marca" model="ir.actions.act_window">
+        <field name="name">Marcas de vehículo</field>
+        <field name="res_model">vehiculo.marca</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_vehiculo_modelo" model="ir.actions.act_window">
+        <field name="name">Modelos de vehículo</field>
+        <field name="res_model">vehiculo.modelo</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_vehiculo_motor" model="ir.actions.act_window">
+        <field name="name">Motores de vehículo</field>
+        <field name="res_model">vehiculo.motor</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_vehiculo_transmision" model="ir.actions.act_window">
+        <field name="name">Transmisiones de vehículo</field>
+        <field name="res_model">vehiculo.transmision</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_vehiculo_traccion" model="ir.actions.act_window">
+        <field name="name">Tracciones de vehículo</field>
+        <field name="res_model">vehiculo.traccion</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <record id="action_vehiculo_variante" model="ir.actions.act_window">
+        <field name="name">Variantes de vehículo</field>
+        <field name="res_model">vehiculo.variante</field>
+        <field name="view_mode">list,form</field>
+    </record>
+
+    <!-- Acción para compatibilidades -->
+    <record id="action_autopart_compatibility" model="ir.actions.act_window">
+        <field name="name">Compatibilidades de autopartes</field>
+        <field name="res_model">autopart.compatibility</field>
+        <field name="view_mode">list,form</field>
+    </record>
+</odoo>

@@ -1,0 +1,8 @@
+id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
+access_vehiculo_marca_user,access_vehiculo_marca_user,model_vehiculo_marca,base.group_user,1,1,1,1
+access_vehiculo_modelo_user,access_vehiculo_modelo_user,model_vehiculo_modelo,base.group_user,1,1,1,1
+access_vehiculo_transmision_user,access_vehiculo_transmision_user,model_vehiculo_transmision,base.group_user,1,1,1,1
+access_vehiculo_traccion_user,access_vehiculo_traccion_user,model_vehiculo_traccion,base.group_user,1,1,1,1
+access_vehiculo_motor_user,access_vehiculo_motor_user,model_vehiculo_motor,base.group_user,1,1,1,1
+access_vehiculo_variante_user,access_vehiculo_variante_user,model_vehiculo_variante,base.group_user,1,1,1,1
+access_autopart_compatibility_user,access_autopart_compatibility_user,model_autopart_compatibility,base.group_user,1,1,1,1

@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<odoo>
+    <!-- Marcas de vehículo -->
+    <record id="view_vehiculo_marca_tree" model="ir.ui.view">
+        <field name="name">vehiculo.marca.tree</field>
+        <field name="model">vehiculo.marca</field>
+        <field name="arch" type="xml">
+            <list string="Marcas de vehículo">
+                <field name="nombre"/>
+                <field name="slug"/>
+                <field name="activo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_marca_form" model="ir.ui.view">
+        <field name="name">vehiculo.marca.form</field>
+        <field name="model">vehiculo.marca</field>
+        <field name="arch" type="xml">
+            <form string="Marca de vehículo">
+                <sheet>
+                    <group>
+                        <field name="nombre"/>
+                        <field name="slug"/>
+                        <field name="activo"/>
+                    </group>
+                    <notebook>
+                        <page string="Modelos">
+                            <field name="modelo_ids">
+                                <list editable="bottom">
+                                    <field name="nombre"/>
+                                    <field name="slug"/>
+                                    <field name="activo"/>
+                                </list>
+                            </field>
+                        </page>
+                    </notebook>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Modelos de vehículo -->
+    <record id="view_vehiculo_modelo_tree" model="ir.ui.view">
+        <field name="name">vehiculo.modelo.tree</field>
+        <field name="model">vehiculo.modelo</field>
+        <field name="arch" type="xml">
+            <list string="Modelos de vehículo">
+                <field name="marca_id"/>
+                <field name="nombre"/>
+                <field name="slug"/>
+                <field name="activo"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_modelo_form" model="ir.ui.view">
+        <field name="name">vehiculo.modelo.form</field>
+        <field name="model">vehiculo.modelo</field>
+        <field name="arch" type="xml">
+            <form string="Modelo de vehículo">
+                <sheet>
+                    <group>
+                        <field name="marca_id"/>
+                        <field name="nombre"/>
+                        <field name="slug"/>
+                        <field name="activo"/>
+                    </group>
+                    <group>
+                        <field name="nombre_mostrar" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Motores -->
+    <record id="view_vehiculo_motor_tree" model="ir.ui.view">
+        <field name="name">vehiculo.motor.tree</field>
+        <field name="model">vehiculo.motor</field>
+        <field name="arch" type="xml">
+            <list string="Motores de vehículo">
+                <field name="nombre"/>
+                <field name="combustible"/>
+                <field name="cilindrada_cc"/>
+                <field name="codigo_motor"/>
+                <field name="tecnologia"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_motor_form" model="ir.ui.view">
+        <field name="name">vehiculo.motor.form</field>
+        <field name="model">vehiculo.motor</field>
+        <field name="arch" type="xml">
+            <form string="Motor de vehículo">
+                <sheet>
+                    <group>
+                        <field name="combustible"/>
+                        <field name="cilindrada_cc"/>
+                    </group>
+                    <group>
+                        <field name="codigo_motor"/>
+                        <field name="tecnologia"/>
+                    </group>
+                    <group>
+                        <field name="nombre" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Transmisiones -->
+    <record id="view_vehiculo_transmision_tree" model="ir.ui.view">
+        <field name="name">vehiculo.transmision.tree</field>
+        <field name="model">vehiculo.transmision</field>
+        <field name="arch" type="xml">
+            <list string="Transmisiones de vehículo">
+                <field name="tipo"/>
+                <field name="velocidades"/>
+                <field name="display_name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_transmision_form" model="ir.ui.view">
+        <field name="name">vehiculo.transmision.form</field>
+        <field name="model">vehiculo.transmision</field>
+        <field name="arch" type="xml">
+            <form string="Transmisión de vehículo">
+                <sheet>
+                    <group>
+                        <field name="tipo"/>
+                        <field name="velocidades"/>
+                    </group>
+                    <group>
+                        <field name="display_name" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Tracciones -->
+    <record id="view_vehiculo_traccion_tree" model="ir.ui.view">
+        <field name="name">vehiculo.traccion.tree</field>
+        <field name="model">vehiculo.traccion</field>
+        <field name="arch" type="xml">
+            <list string="Tracciones de vehículo">
+                <field name="tipo"/>
+                <field name="display_name"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_traccion_form" model="ir.ui.view">
+        <field name="name">vehiculo.traccion.form</field>
+        <field name="model">vehiculo.traccion</field>
+        <field name="arch" type="xml">
+            <form string="Tracción de vehículo">
+                <sheet>
+                    <group>
+                        <field name="tipo"/>
+                        <field name="display_name" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Variantes de vehículo -->
+    <record id="view_vehiculo_variante_tree" model="ir.ui.view">
+        <field name="name">vehiculo.variante.tree</field>
+        <field name="model">vehiculo.variante</field>
+        <field name="arch" type="xml">
+            <list string="Variantes de vehículo">
+                <field name="modelo_id"/>
+                <field name="motor_id"/>
+                <field name="transmision_id"/>
+                <field name="traccion_id"/>
+                <field name="anio_desde"/>
+                <field name="anio_hasta"/>
+                <field name="nombre"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_vehiculo_variante_form" model="ir.ui.view">
+        <field name="name">vehiculo.variante.form</field>
+        <field name="model">vehiculo.variante</field>
+        <field name="arch" type="xml">
+            <form string="Variante de vehículo">
+                <sheet>
+                    <group>
+                        <field name="modelo_id"/>
+                    </group>
+                    <group>
+                        <field name="motor_id"/>
+                        <field name="transmision_id"/>
+                        <field name="traccion_id"/>
+                    </group>
+                    <group>
+                        <field name="anio_desde"/>
+                        <field name="anio_hasta"/>
+                    </group>
+                    <group>
+                        <field name="nombre" readonly="1"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+
+    <!-- Compatibilidades (vista independiente opcional) -->
+    <record id="view_autopart_compatibility_tree" model="ir.ui.view">
+        <field name="name">autopart.compatibility.tree</field>
+        <field name="model">autopart.compatibility</field>
+        <field name="arch" type="xml">
+            <list string="Compatibilidades de autopartes">
+                <field name="product_tmpl_id"/>
+                <field name="marca_id"/>
+                <field name="modelo_id"/>
+                <field name="motor_id"/>
+                <field name="variant_id"/>
+                <field name="active"/>
+            </list>
+        </field>
+    </record>
+
+    <record id="view_autopart_compatibility_form" model="ir.ui.view">
+        <field name="name">autopart.compatibility.form</field>
+        <field name="model">autopart.compatibility</field>
+        <field name="arch" type="xml">
+            <form string="Compatibilidad de autoparte">
+                <sheet>
+                    <group>
+                        <field name="product_tmpl_id"/>
+                        <field name="variant_id"/>
+                    </group>
+                    <group>
+                        <field name="fitment_notes" colspan="4"/>
+                    </group>
+                    <group>
+                        <field name="active"/>
+                    </group>
+                </sheet>
+            </form>
+        </field>
+    </record>
+</odoo>

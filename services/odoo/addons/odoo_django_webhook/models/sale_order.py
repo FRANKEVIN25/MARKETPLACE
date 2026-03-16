@@ -2,21 +2,27 @@
 import requests
 import logging
 import threading
-from odoo import models, api
+from odoo import models
 
 _logger = logging.getLogger(__name__)
 
 
 class SaleOrder(models.Model):
     _inherit = 'sale.order'
+
+    def _get_webhook_config(self):
+        icp = self.env['ir.config_parameter'].sudo()
+        base_url = icp.get_param('ecomparts.django_api_url', default='http://backend:8000')
+        token = icp.get_param(
+            'ecomparts.django_webhook_token',
+            default='dev-webhook-secret-token-2026',
+        )
+        return base_url.rstrip('/'), token
     
-    def _send_webhook_async(self, sale_order_id, state, invoice_status):
+    def _send_webhook_async(self, webhook_url, webhook_token, sale_order_id, state, invoice_status):
         """
         Enviar webhook en un thread separado para no bloquear Odoo
         """
-        webhook_url = 'http://backend:8000/api/v1/orders/odoo-webhook/sale-order-update/'
-        webhook_token = 'dev-webhook-secret-token-2026'
-        
         payload = {
             'token': webhook_token,
             'sale_order_id': sale_order_id,
@@ -47,10 +53,13 @@ class SaleOrder(models.Model):
         """
         Lanzar webhook en thread separado
         """
+        webhook_base_url, webhook_token = self._get_webhook_config()
+        webhook_url = f'{webhook_base_url}/api/v1/orders/odoo-webhook/sale-order-update/'
+
         # Ejecutar en thread separado para no bloquear
         thread = threading.Thread(
             target=self._send_webhook_async,
-            args=(self.id, self.state, self.invoice_status)
+            args=(webhook_url, webhook_token, self.id, self.state, self.invoice_status)
         )
         thread.daemon = True
         thread.start()

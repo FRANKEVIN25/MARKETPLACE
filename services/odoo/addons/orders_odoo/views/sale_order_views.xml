@@ -3,14 +3,17 @@
 
     <!--
         orders_odoo/views/sale_order_views.xml
-        Añade la pestaña "Marketplace" al formulario de sale.order
-        y los filtros/columnas correspondientes en la vista lista.
+        Añade la pestaña "Marketplace" al formulario de sale.order,
+        el botón "Rechazar pago" y los filtros/columnas en la vista lista.
+
+        Diseño v4:
+          - x_payment_status tiene 3 valores: pendiente_revision, aprobado, rechazado
+          - Botón "Rechazar pago": solo en draft + orden del marketplace
+          - Botón "Confirmar" estándar: al confirmarse notifica a Django vía override
     -->
 
     <!-- ════════════════════════════════════════════
-         1. Formulario: pestaña "Marketplace"
-            Se inyecta directamente en el <notebook> para no depender
-            del name exacto de otras pestañas (compatible Odoo 18).
+         1. Formulario: botón "Rechazar pago" + pestaña "Marketplace"
          ════════════════════════════════════════════ -->
     <record id="view_order_form_marketplace_tab" model="ir.ui.view">
         <field name="name">sale.order.form.marketplace</field>
@@ -18,51 +21,84 @@
         <field name="inherit_id" ref="sale.view_order_form"/>
         <field name="arch" type="xml">
 
-            <!-- ── source_id (Origen) después de Términos de Pago —— -->
+            <!-- ── Origen del pedido después de Términos de Pago ── -->
             <xpath expr="//field[@name='payment_term_id']" position="after">
                 <field name="source_id"
                        string="Origen"
                        placeholder="p. ej. ECOMPARTS Marketplace"/>
             </xpath>
 
+            <!-- ── Botón "Rechazar pago" en la cabecera del formulario ──────────
+                 Visible solo cuando:
+                   - La cotización está en draft (state = 'draft')
+                   - El pedido pertenece al marketplace (x_marketplace_suborder_id presente)
+                 Al confirmar la cotización (botón estándar "Confirmar"), el override
+                 action_confirm del módulo notifica a Django automáticamente.
+            ─────────────────────────────────────────────────────────────────── -->
+            <xpath expr="//div[@name='button_box']" position="inside">
+                <button name="action_reject_payment"
+                        type="object"
+                        string="Rechazar pago"
+                        class="oe_stat_button"
+                        icon="fa-times-circle"
+                        invisible="state != 'draft' or not x_marketplace_suborder_id"
+                        help="Rechaza el comprobante de pago del cliente y notifica a Django para que pueda corregirlo."/>
+                    <button name="action_mark_received"
+                        type="object"
+                        string="Marcar recibido"
+                        class="oe_stat_button"
+                        icon="fa-check-circle"
+                        invisible="not x_marketplace_suborder_id or x_delivery_status != 'enviado'"
+                        help="Marca la SubOrder como recibida en Django cuando el cliente lo confirma fuera del portal."/>
+            </xpath>
+
+            <!-- ── Pestaña Marketplace ── -->
             <xpath expr="//notebook" position="inside">
                 <page string="Marketplace" name="marketplace_info">
 
-                    <!-- ── Referencia cruzada ── -->
+                    <!-- Referencia cruzada -->
                     <group string="Referencia SubOrder" col="2">
                         <field name="x_marketplace_suborder_id"
-                               placeholder="ORD-2026-00001-A"/>
-                        <!-- x_marketplace_order_id es interno, no se muestra al proveedor -->
+                               placeholder="ORD-2026-00001-A"
+                               readonly="1"/>
                     </group>
 
-                    <!-- ── Estado del pedido (espejo de SubOrder.status en Django) ── -->
-                    <group string="Estado del Pedido" col="2">
+                    <!-- Estado de pago (v4 reducido) -->
+                    <group string="Estado de Pago Marketplace" col="2">
                         <field name="x_payment_status"
                                widget="badge"
-                               decoration-success="x_payment_status in ('pagado','confirmado','enviado','entregado')"
-                               decoration-warning="x_payment_status == 'pago_en_revision'"
-                               decoration-danger="x_payment_status == 'cancelado'"
-                               decoration-info="x_payment_status == 'pendiente_pago'"
-                               string="Estado del Pedido"
+                               decoration-success="x_payment_status == 'aprobado'"
+                               decoration-warning="x_payment_status == 'pendiente_revision'"
+                               decoration-danger="x_payment_status == 'rechazado'"
+                               string="Estado de Pago"
                                readonly="1"/>
                         <field name="x_last_sync_at" readonly="1" string="Última sinc."/>
+                        <field name="x_payment_rejection_reason"
+                               colspan="2"
+                               invisible="not x_payment_rejection_reason"
+                               string="Motivo de Rechazo"
+                               readonly="1"/>
                     </group>
-                    <!-- ── Pago ── -->
+
+                    <!-- Comprobante de pago (datos del cliente) -->
                     <group string="Comprobante de Pago" col="2">
                         <field name="x_payment_method" readonly="1"/>
                         <field name="x_payment_reference"
                                placeholder="N° de operación / voucher"
                                readonly="1"/>
                         <field name="x_payment_amount_declared" readonly="1"/>
-                        <field name="x_payment_rejection_reason"
-                               colspan="2"
-                               invisible="not x_payment_rejection_reason"
-                               placeholder="Motivo por el que se rechazó el comprobante"
-                               readonly="1"/>
                     </group>
 
-                    <!-- ── Entrega ── -->
+                    <!-- Datos de entrega -->
                     <group string="Datos de Entrega" col="2">
+                           <field name="x_delivery_status"
+                               widget="badge"
+                               decoration-warning="x_delivery_status == 'pendiente'"
+                               decoration-info="x_delivery_status == 'enviado'"
+                               decoration-success="x_delivery_status == 'recibido'"
+                               decoration-muted="x_delivery_status == 'cancelado'"
+                               readonly="1"/>
+                           <field name="x_received_at" readonly="1"/>
                         <field name="x_delivery_method"/>
                         <field name="x_tracking_number"
                                placeholder="Número de tracking del courier"/>
@@ -80,26 +116,28 @@
     </record>
 
     <!-- ════════════════════════════════════════════
-         2. Vista lista: columnas de referencia y estado de pago
+         2. Vista lista: columnas SubOrder y estado de pago
          ════════════════════════════════════════════ -->
     <record id="view_order_tree_marketplace" model="ir.ui.view">
         <field name="name">sale.order.tree.marketplace</field>
         <field name="model">sale.order</field>
         <field name="inherit_id" ref="sale.view_quotation_tree"/>
         <field name="arch" type="xml">
-            <!-- Añadir después de la columna de nombre del cliente -->
             <xpath expr="//field[@name='partner_id']" position="after">
                 <field name="x_marketplace_suborder_id"
                        string="SubOrder"
                        optional="show"/>
                 <field name="x_payment_status"
-                       string="Estado"
+                       string="Pago"
                        optional="show"
-                       decoration-success="x_payment_status in ('pagado','confirmado','enviado','entregado')"
-                       decoration-warning="x_payment_status == 'pago_en_revision'"
-                       decoration-danger="x_payment_status == 'cancelado'"
-                       decoration-info="x_payment_status == 'pendiente_pago'"
+                       decoration-success="x_payment_status == 'aprobado'"
+                       decoration-warning="x_payment_status == 'pendiente_revision'"
+                       decoration-danger="x_payment_status == 'rechazado'"
                        widget="badge"/>
+                  <field name="x_delivery_status"
+                      string="Entrega"
+                      optional="show"
+                      widget="badge"/>
                 <field name="x_delivery_method"
                        string="Entrega"
                        optional="hide"/>
@@ -121,23 +159,17 @@
                 <field name="x_marketplace_suborder_id"
                        string="SubOrder Marketplace"/>
 
-                <!-- Filtros predefinidos de estado del pedido -->
+                <!-- Filtros de estado de pago -->
                 <separator/>
-                <filter string="Pago en revisión"
-                        name="filter_payment_revision"
-                        domain="[('x_payment_status', '=', 'pago_en_revision')]"/>
-                <filter string="Pagado"
-                        name="filter_pagado"
-                        domain="[('x_payment_status', '=', 'pagado')]"/>
-                <filter string="Confirmado"
-                        name="filter_confirmado"
-                        domain="[('x_payment_status', '=', 'confirmado')]"/>
-                <filter string="Enviado"
-                        name="filter_enviado"
-                        domain="[('x_payment_status', '=', 'enviado')]"/>
-                <filter string="Cancelado"
-                        name="filter_cancelado"
-                        domain="[('x_payment_status', '=', 'cancelado')]"/>
+                <filter string="Pendiente de revisión"
+                        name="filter_pendiente_revision"
+                        domain="[('x_payment_status', '=', 'pendiente_revision')]"/>
+                <filter string="Pago aprobado"
+                        name="filter_aprobado"
+                        domain="[('x_payment_status', '=', 'aprobado')]"/>
+                <filter string="Pago rechazado"
+                        name="filter_rechazado"
+                        domain="[('x_payment_status', '=', 'rechazado')]"/>
 
                 <!-- Filtros de entrega -->
                 <separator/>
@@ -148,9 +180,9 @@
                         name="filter_delivery_tienda"
                         domain="[('x_delivery_method', '=', 'tienda')]"/>
 
-                <!-- Agrupación -->
+                <!-- Agrupaciones -->
                 <group expand="0" string="Agrupar por">
-                    <filter string="Estado del Pedido"
+                    <filter string="Estado de Pago Marketplace"
                             name="group_payment_status"
                             context="{'group_by': 'x_payment_status'}"/>
                     <filter string="Método de Entrega"
