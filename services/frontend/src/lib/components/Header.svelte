@@ -93,7 +93,7 @@
                   on:click={() => userMenuOpen = false}>
                   📍 Mis Direcciones
                 </a>
-                <a href="cliente/historial-compras" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                <a href="/cliente/historial-compras" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
                   on:click={() => userMenuOpen = false}>
                   📦 Mis Compras
                 </a>

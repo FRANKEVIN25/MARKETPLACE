@@ -13,16 +13,24 @@ class SubOrder(models.Model):
     Sub-orden por proveedor (División de la orden principal)
     """
     STATUS_CHOICES = [
-        # Máquina de estados lineal: 7 estados operativos
-        # Las condiciones excepcionales (rechazo, expiración, reembolso)
+        # Máquina de estados lineal: 7 estados operativos (v5)
+        # Las condiciones excepcionales (expiración, reembolso)
         # se representan como flags booleanos, NO como estados extra.
-        ('pendiente_pago',   'Pendiente de Pago'), # svelte
-        ('pago_en_revision', 'Pago en Revisión'), # svelte
-        ('pagado',           'Pagado'),      # pagado confirmado en odoo
-        ('confirmado',       'Confirmado'),  # draft a sale.order
-        ('enviado',          'Enviado'),
-        ('entregado',        'Entregado'),
-        ('cancelado',        'Cancelado'),   # manual o por expiración del TTL
+        #
+        # Flujo normal:
+        #   pendiente_pago → pago_en_revision → confirmado → enviado → entregado
+        #
+        # Flujo con rechazo:
+        #   pago_en_revision → pago_rechazado → pago_en_revision → confirmado ...
+        #
+        # cancelado (desde cualquier etapa hasta 'confirmado')
+        ('pendiente_pago',   'Pendiente de Pago'),  # solo Django/Svelte; timer activo
+        ('pago_en_revision', 'Pago en Revisión'),   # comprobante subido; sale.order draft en Odoo
+        ('pago_rechazado',   'Pago Rechazado'),     # proveedor rechazó el comprobante en Odoo
+        ('confirmado',       'Confirmado'),         # proveedor confirmó cotización en Odoo (pago aprobado)
+        ('enviado',          'Enviado'),            # luego de marcar Stock.picking como "hecho" o "done"
+        ('entregado',        'Recibido'),           # cliente marca en historial-compra/[id] que ha recibido
+        ('cancelado',        'Cancelado'),          # manual o por expiración del TTL
     ]
 
     # Relaciones
@@ -103,7 +111,7 @@ class SubOrder(models.Model):
     # FLAGS DE AUDITORÍA (reemplazan a los estados 'pago_rechazado', 'expirada', 'reembolsada')
     payment_rejected = models.BooleanField(
         default=False,
-        help_text="True si el último comprobante fue rechazado. status vuelve a pendiente_pago."
+        help_text="True si el último comprobante fue rechazado por el proveedor (status=pago_rechazado)."
     )
     expired = models.BooleanField(
         default=False,

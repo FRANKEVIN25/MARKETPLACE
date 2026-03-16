@@ -14,6 +14,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     gcc \
     g++ \
+    gosu \
     libxml2-dev \
     libxslt1-dev \
     libldap2-dev \
@@ -73,9 +74,6 @@ RUN chmod +x /opt/odoo/entrypoint.sh && chown ${ODOO_USER}:${ODOO_USER} /opt/odo
 
 # Crear directorios para filestore
 RUN mkdir -p /opt/odoo/.local/share/Odoo && chown -R ${ODOO_USER}:${ODOO_USER} /opt/odoo/.local/share/Odoo
-
-# Cambiar a usuario odoo
-USER ${ODOO_USER}
 
 # Agregar odoo-bin al PATH
 ENV PATH="${ODOO_HOME}/odoo-server:${PATH}"

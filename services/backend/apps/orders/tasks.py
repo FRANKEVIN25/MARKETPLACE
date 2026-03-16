@@ -1,8 +1,6 @@
 """
 Tareas Celery para Orders - Integración con Odoo
 """
-import xmlrpc.client
-
 from celery import shared_task
 from django.db import transaction as db_transaction
 from django.utils import timezone
@@ -19,14 +17,13 @@ def create_odoo_sale_order(self, sub_order_id):
     """
     Crear Sale Order en Odoo.
     Se encola cuando SubOrder.status = 'pago_en_revision' (cliente sube comprobante).
-    Opcionalmente se vuelve a encolar en 'pagado' (proveedor confirma) para sincronizar
-    el estado de pago; la tarea es idempotente via odoo_sale_id.
+    La tarea es idempotente via odoo_sale_id: si ya existe, se omite silenciosamente.
 
     Idempotencia de doble capa:
       1. select_for_update(): serializa tareas concurrentes para la misma SubOrder en Django.
          Si otra tarea ya guardó odoo_sale_id, esta sale temprano sin llamar a Odoo.
       2. UNIQUE(x_marketplace_suborder_id) en Odoo: última línea de defensa en la BD de Odoo.
-         Si se viola el constraint (xmlrpc.Fault), se trata como éxito idempotente.
+            Si se viola el constraint en JSON-RPC, se trata como éxito idempotente.
     """
     logger.info(f"🚀 Iniciando creación de Sale Order en Odoo para SubOrder {sub_order_id}")
 
@@ -55,7 +52,7 @@ def create_odoo_sale_order(self, sub_order_id):
                     'skipped': True,
                 }
 
-            # Llamada XML-RPC + guarda odoo_sale_id en Django (dentro del lock)
+            # Llamada JSON-RPC + guarda odoo_sale_id en Django (dentro del lock)
             sale_order_id = sync_suborder_to_odoo(sub_order)
 
         # Fuera del atomic: limpiar error previo si hubo
@@ -71,22 +68,9 @@ def create_odoo_sale_order(self, sub_order_id):
                 'sub_order_number': sub_order.sub_order_number,
             }
 
-        logger.error("❌ No se pudo crear Sale Order en Odoo (sync retornó None)")
-        return {'success': False, 'error': 'Error al sincronizar con Odoo'}
-
-    except xmlrpc.client.Fault as fault:
-        msg = fault.faultString
-        # Idempotencia nivel Odoo: constraint UNIQUE(x_marketplace_suborder_id) disparado.
-        if 'unique' in msg.lower() or 'duplicate' in msg.lower():
-            logger.warning(
-                f"⚠️  SubOrder {sub_order_id} ya existe en Odoo (constraint). "
-                f"Se trata como éxito idempotente."
-            )
-            return {'success': True, 'skipped': True, 'reason': 'duplicate_in_odoo'}
-        # Otro Fault de Odoo (datos inválidos, permisos, etc.) → marcar error, no reintentar.
-        logger.error(f"❌ Odoo Fault SubOrder {sub_order_id}: {msg}")
-        _mark_odoo_sync_error(sub_order_id, msg[:2000])
-        return {'success': False, 'error': msg}
+        raise ConnectionError(
+            'sync_suborder_to_odoo retornó None; Odoo no disponible o error de sincronización'
+        )
 
     except ValueError as e:
         # Error de datos Django (ej: ningún producto tiene odoo_product_id) — no reintentar.
@@ -95,6 +79,15 @@ def create_odoo_sale_order(self, sub_order_id):
         return {'success': False, 'error': str(e)}
 
     except Exception as e:
+        msg = str(e).lower()
+        # Idempotencia: constraint UNIQUE disparado en Odoo (JSON-RPC devuelve Exception).
+        if 'unique' in msg or 'duplicate' in msg:
+            logger.warning(
+                f"⚠️  SubOrder {sub_order_id} ya existe en Odoo (constraint). "
+                f"Se trata como éxito idempotente."
+            )
+            return {'success': True, 'skipped': True, 'reason': 'duplicate_in_odoo'}
+
         logger.error(f"❌ Error creando Sale Order en Odoo: {str(e)}")
         if self.request.retries >= self.max_retries - 1:
             # Último intento agotado → marcar error definitivo
@@ -119,7 +112,7 @@ def update_suborder_payment_status(self, sub_order_id):
     """
     Sincroniza los campos de pago (x_payment_status, flags booleanos) de la sale.order
     en Odoo cuando el estado de la SubOrder cambia en Django.
-    Solo aplica a SubOrders que ya tienen odoo_sale_id (status >= 'pagado').
+    Solo aplica a SubOrders que ya tienen odoo_sale_id (status = 'pago_en_revision' en adelante).
     """
     try:
         sub_order = SubOrder.objects.select_related(
@@ -132,9 +125,10 @@ def update_suborder_payment_status(self, sub_order_id):
         if success:
             logger.info(f"✅ Estado de pago sincronizado en Odoo para SubOrder {sub_order_id}")
             return {'success': True, 'sub_order_id': sub_order_id}
-        else:
-            logger.warning(f"⚠️  No se pudo sincronizar estado de pago para SubOrder {sub_order_id}")
-            return {'success': False, 'error': 'update_odoo_payment_status retornó False'}
+
+        raise ConnectionError(
+            f'update_odoo_payment_status retornó False para SubOrder {sub_order_id}'
+        )
 
     except SubOrder.DoesNotExist:
         logger.error(f"❌ SubOrder {sub_order_id} no encontrada")
@@ -169,8 +163,11 @@ def expire_pending_suborders():
     """
     now = timezone.now()
 
+    # Solo expira SubOrders que NUNCA enviaron un comprobante (pendiente_pago).
+    # 'pago_en_revision' y estados posteriores significan que el cliente ya actuó
+    # → NO se cancelan por TTL, independientemente del deadline.
     expired_qs = SubOrder.objects.filter(
-        status__in=['pendiente_pago', 'pago_en_revision'],
+        status='pendiente_pago',
         order__payment_deadline__lt=now,
         expired=False,
     ).select_related('order')
@@ -196,6 +193,38 @@ def expire_pending_suborders():
 
     logger.info(f'✅ expire_pending_suborders: {count} SubOrder(s) expiradas: {expired_ids}')
     return {'expired': count, 'sub_order_ids': expired_ids}
+
+
+@shared_task
+def reconcile_suborders_pending_odoo():
+    """Reencola SubOrders que deberían existir en Odoo pero aún no tienen `odoo_sale_id`.
+
+    Sirve como red de seguridad ante reinicios, caídas temporales de Odoo o ventanas
+    en las que la tarea original se ejecutó antes de que Odoo estuviera disponible.
+    La tarea `create_odoo_sale_order` ya es idempotente, por lo que reencolar es seguro.
+    """
+    pending_ids = list(
+        SubOrder.objects.filter(
+            status__in=['pago_en_revision', 'confirmado', 'enviado', 'entregado'],
+            odoo_sale_id__isnull=True,
+        )
+        .order_by('id')
+        .values_list('id', flat=True)[:200]
+    )
+
+    if not pending_ids:
+        logger.info('🔎 reconcile_suborders_pending_odoo: ninguna SubOrder pendiente.')
+        return {'requeued': 0, 'sub_order_ids': []}
+
+    for sub_order_id in pending_ids:
+        create_odoo_sale_order.delay(sub_order_id)
+
+    logger.warning(
+        '🔁 reconcile_suborders_pending_odoo: %s SubOrder(s) reencoladas: %s',
+        len(pending_ids),
+        pending_ids,
+    )
+    return {'requeued': len(pending_ids), 'sub_order_ids': pending_ids}
 
 
 @shared_task

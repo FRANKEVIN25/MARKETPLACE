@@ -25,6 +25,11 @@ http_interface = 0.0.0.0
 admin_passwd = ${ODOO_ADMIN_PASSWORD}
 list_db = True
 
+# Usar el volumen persistente montado por Docker para filestore, sesiones y adjuntos.
+# Sin esto, Odoo cae al valor por defecto dentro del HOME del usuario
+# (/opt/odoo/.local/share/Odoo), que hoy NO está persistido.
+data_dir = /var/lib/odoo
+
 # Asegura que no se carguen datos demo
 without_demo = all
 

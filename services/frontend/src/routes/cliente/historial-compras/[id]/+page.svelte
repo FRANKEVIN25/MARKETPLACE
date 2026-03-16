@@ -16,6 +16,8 @@
   let order: Order | null = null;
   let loading = true;
   let error = '';
+  let receivingSubOrders: Record<number, boolean> = {};
+  let receiveErrors: Record<number, string> = {};
 
   // -------------------------------------------------------------------
   // Helpers de UI
@@ -41,17 +43,17 @@
   const subOrderStatusLabel: Record<SubOrderStatus, string> = {
     pendiente_pago:   'Pendiente de pago',
     pago_en_revision: 'Pago en revisión',
-    pagado:           'Pago confirmado',
+    pago_rechazado:   'Pago Rechazado',     // v5
     confirmado:       'Confirmado',
     enviado:          'Enviado',
-    entregado:        'Entregado',
+    entregado:        'Recibido',
     cancelado:        'Cancelado',
   };
 
   const subOrderStatusColor: Record<SubOrderStatus, string> = {
     pendiente_pago:   'bg-yellow-50 text-yellow-700 border border-yellow-200',
     pago_en_revision: 'bg-orange-50 text-orange-700 border border-orange-200',
-    pagado:           'bg-blue-50 text-blue-700 border border-blue-200',
+    pago_rechazado:   'bg-red-50 text-red-700 border border-red-200',      // v5
     confirmado:       'bg-indigo-50 text-indigo-700 border border-indigo-200',
     enviado:          'bg-purple-50 text-purple-700 border border-purple-200',
     entregado:        'bg-green-50 text-green-700 border border-green-200',
@@ -65,7 +67,7 @@
   };
 
   const proofStatusLabel: Record<'uploaded' | 'approved' | 'rejected', string> = {
-    uploaded: 'En revisión',
+    uploaded: 'Comprobante subido',
     approved: 'Aprobado ✓',
     rejected: 'Rechazado ×',
   };
@@ -121,6 +123,7 @@
   }
 
   // True si alguna SubOrder está genuinamente en pendiente_pago (no expirada, no cancelada)
+  // pago_rechazado NO activa el timer: el cliente ya pagó una vez, está en corrección
   $: hasTrulyPending = (order?.sub_orders ?? []).some(
     s => s.status === 'pendiente_pago' && !s.expired
   );
@@ -194,7 +197,7 @@
   $: if (order) {
     for (const sub of order.sub_orders) {
       if (
-        (sub.status === 'pendiente_pago' || sub.payment_rejected) &&
+        (sub.status === 'pendiente_pago' || sub.status === 'pago_rechazado') &&
         !proofForms[sub.id]
       ) {
         proofForms[sub.id] = {
@@ -245,6 +248,24 @@
     } catch (e: any) {
       const msg = e?.response?.data?.detail || 'Error al subir el comprobante.';
       proofForms[sub.id] = { ...proofForms[sub.id], uploading: false, error: msg };
+    }
+  }
+
+  async function marcarComoRecibido(sub: SubOrder) {
+    const token = auth.getAccessToken();
+    if (!token || !order) return;
+
+    receivingSubOrders = { ...receivingSubOrders, [sub.id]: true };
+    receiveErrors = { ...receiveErrors, [sub.id]: '' };
+
+    try {
+      await api.orders.markSubOrderReceived(token, sub.id);
+      order = await api.orders.getOrder(token, order.id);
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || 'No se pudo marcar la suborden como recibida.';
+      receiveErrors = { ...receiveErrors, [sub.id]: msg };
+    } finally {
+      receivingSubOrders = { ...receivingSubOrders, [sub.id]: false };
     }
   }
 
@@ -445,12 +466,51 @@
                     Tracking: <span class="font-mono">{sub.tracking_number}</span>
                   </p>
                 {/if}
+                {#if sub.shipped_at}
+                  <p class="text-xs text-gray-500 mt-0.5">
+                    Despachado: {formatDate(sub.shipped_at)}
+                  </p>
+                {/if}
+                {#if sub.delivered_at}
+                  <p class="text-xs text-green-700 mt-0.5 font-medium">
+                    Recibido: {formatDate(sub.delivered_at)}
+                  </p>
+                {/if}
               </div>
               <div class="text-right">
                 <p class="text-sm font-bold text-gray-900">{formatCurrency(sub.total)}</p>
                 <p class="text-xs text-gray-400">IGV incl.</p>
               </div>
             </div>
+
+            {#if sub.status === 'enviado'}
+              <div class="px-6 py-4 border-t border-emerald-100 bg-emerald-50">
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div>
+                    <p class="text-sm font-semibold text-emerald-900">
+                      ¿Ya recibiste este envío?
+                    </p>
+                    <p class="text-sm text-emerald-700 mt-0.5">
+                      Confírmalo para cerrar correctamente el seguimiento de esta suborden.
+                    </p>
+                  </div>
+                  <button
+                    class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    on:click={() => marcarComoRecibido(sub)}
+                    disabled={receivingSubOrders[sub.id]}
+                  >
+                    {#if receivingSubOrders[sub.id]}
+                      Confirmando...
+                    {:else}
+                      Marcar como recibido
+                    {/if}
+                  </button>
+                </div>
+                {#if receiveErrors[sub.id]}
+                  <p class="text-sm text-red-600 mt-3">{receiveErrors[sub.id]}</p>
+                {/if}
+              </div>
+            {/if}
 
             <!-- Items de la sub-orden -->
             <div class="divide-y divide-gray-50">
@@ -488,21 +548,34 @@
               <span class="font-semibold text-gray-700">Total: {formatCurrency(sub.total)}</span>
             </div>
 
-            <!-- Pago pendiente: datos bancarios + formulario de comprobante -->
-            {#if sub.status === 'pendiente_pago' && !sub.expired}
+            <!-- Pago pendiente / rechazado: datos bancarios + formulario de comprobante -->
+            {#if (sub.status === 'pendiente_pago' && !sub.expired) || sub.status === 'pago_rechazado'}
               {@const pay = sub.provider_payment_info}
               {@const form = proofForms[sub.id]}
 
-              <!-- Alerta pago rechazado -->
-              {#if sub.payment_rejected}
-                {@const reason = getLastRejectionReason(sub)}
-                <div class="px-6 py-3 bg-red-50 border-t border-red-100">
-                  <p class="text-sm font-semibold text-red-700">
-                    ⚠️ Tu pago fue rechazado. Por favor sube un nuevo comprobante.
-                  </p>
-                  {#if reason}
-                    <p class="text-sm text-red-600 mt-0.5">Motivo: {reason}</p>
-                  {/if}
+              <!-- Banner: pago rechazado (estado pago_rechazado) -->
+              {#if sub.status === 'pago_rechazado'}
+                <div class="px-6 py-4 bg-red-50 border-t border-red-200">
+                  <div class="flex items-start gap-3">
+                    <span class="text-xl mt-0.5">🚫</span>
+                    <div>
+                      <p class="text-sm font-semibold text-red-700">
+                        Tu comprobante fue rechazado. Corrígelo y vuelve a enviarlo.
+                      </p>
+                      {#if sub.rejection_reason}
+                        <p class="text-sm text-red-600 mt-1">
+                          <span class="font-medium">Motivo:</span> {sub.rejection_reason}
+                        </p>
+                      {:else}
+                        {@const reason = getLastRejectionReason(sub)}
+                        {#if reason}
+                          <p class="text-sm text-red-600 mt-1">
+                            <span class="font-medium">Motivo:</span> {reason}
+                          </p>
+                        {/if}
+                      {/if}
+                    </div>
+                  </div>
                 </div>
               {/if}
 
@@ -644,7 +717,8 @@
                     <button
                       class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40
                              disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg
-                             transition-colors text-sm flex items-center justify-center gap-2"
+                             transition-colors text-sm flex items-center justify-center gap-2
+                             {sub.status === 'pago_rechazado' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}"
                       disabled={form.uploading || !form.file || !form.amount}
                       on:click={() => subirComprobante(sub)}
                     >
@@ -654,6 +728,8 @@
                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>
                         Subiendo comprobante…
+                      {:else if sub.status === 'pago_rechazado'}
+                        🔄 Corregir y reenviar comprobante
                       {:else}
                         ↑ Enviar comprobante a {sub.provider_name}
                       {/if}
@@ -664,7 +740,11 @@
                   <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
                     <span class="text-2xl">✅</span>
                     <div>
-                      <p class="text-sm font-semibold text-green-800">Comprobante enviado correctamente</p>
+                      <p class="text-sm font-semibold text-green-800">
+                        {sub.status === 'pago_rechazado'
+                          ? 'Comprobante corregido y enviado'
+                          : 'Comprobante enviado correctamente'}
+                      </p>
                       <p class="text-xs text-green-600">
                         {PAYMENT_METHOD_LABELS[form.payment_method]} · S/ {parseFloat(form.amount).toFixed(2)}
                         {form.operation_number ? ` · Op. ${form.operation_number}` : ''}

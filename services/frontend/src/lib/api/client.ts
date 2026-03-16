@@ -12,6 +12,7 @@ import type {
   AuthTokens,
   AuthUser,
   Order,
+  SubOrder,
   CreateOrderPayload,
   UploadPaymentProofPayload,
   VehicleMarca,
@@ -355,6 +356,16 @@ export const api = {
           },
         }
       );
+    },
+
+    /** Marcar una sub-orden como recibida por el cliente */
+    async markSubOrderReceived(token: string, subOrderId: number): Promise<SubOrder> {
+      const response = await apiClient.post<{ sub_order: SubOrder }>(
+        `/api/v1/orders/suborders/${subOrderId}/mark-received/`,
+        {},
+        { headers: authHeaders(token) }
+      );
+      return response.data.sub_order;
     },
   },
 };

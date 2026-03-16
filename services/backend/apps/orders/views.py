@@ -191,6 +191,19 @@ class OrderViewSet(viewsets.ModelViewSet):
         data = serializer.validated_data
         sub_order = SubOrder.objects.get(id=data['sub_order_id'])
 
+        # Guard: solo se permite subir comprobante desde estados válidos.
+        # 'pendiente_pago'  → primera subida (timer activo).
+        # 'pago_rechazado'  → el proveedor rechazó y el cliente corrige.
+        ESTADOS_PERMITIDOS = ('pendiente_pago', 'pago_rechazado')
+        if sub_order.status not in ESTADOS_PERMITIDOS:
+            return Response(
+                {'error': f'No se puede subir un comprobante en estado "{sub_order.status}".'
+                          f' Estados permitidos: {ESTADOS_PERMITIDOS}.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        es_resubida = sub_order.status == 'pago_rechazado'
+
         # Crear PaymentProof (en Paso 3 esto será reemplazado por PaymentTransaction)
         payment_proof = PaymentProof.objects.create(
             sub_order=sub_order,
@@ -204,18 +217,34 @@ class OrderViewSet(viewsets.ModelViewSet):
         # Transición de estado + limpiar flag de rechazo
         sub_order.status = 'pago_en_revision'
         sub_order.payment_rejected = False
-        sub_order.save(update_fields=['status', 'payment_rejected', 'updated_at'])
+        sub_order.rejection_reason = ''
+        sub_order.save(update_fields=['status', 'payment_rejected', 'rejection_reason', 'updated_at'])
 
-        # Encolar creación de draft en Odoo ahora que el cliente subió su comprobante.
-        # on_commit garantiza que la SubOrder ya está guardada antes de que la tarea corra.
-        # La tarea es idempotente: si ya tiene odoo_sale_id, la omite silenciosamente.
-        sub_order_id_for_celery = sub_order.id
-        transaction.on_commit(
-            lambda sid=sub_order_id_for_celery: _enqueue_create_odoo(sid)
-        )
+        # Si es una resubida (pago_rechazado → pago_en_revision), la sale.order ya
+        # existe en Odoo (odoo_sale_id presente). La tarea _enqueue_create_odoo es
+        # idempotente y la omitirá, pero el signal post_save sincronizará
+        # x_payment_status → 'pendiente_revision' automáticamente.
+        if not es_resubida:
+            sub_order_id_for_celery = sub_order.id
+            transaction.on_commit(
+                lambda sid=sub_order_id_for_celery: _enqueue_create_odoo(sid)
+            )
+        else:
+            # Re-subida (pago_rechazado → pago_en_revision):
+            # La sale.order ya existe en Odoo. Solo actualizamos x_payment_status
+            # → 'pendiente_revision' para que el proveedor sepa que hay un nuevo comprobante.
+            sub_order_id_for_celery = sub_order.id
+            transaction.on_commit(
+                lambda sid=sub_order_id_for_celery: _enqueue_update_payment_status(sid)
+            )
+            logger.info(
+                "🔄 upload_payment_proof: resubida de comprobante para SubOrder %s "
+                "(pago_rechazado → pago_en_revision). Actualizando x_payment_status en Odoo.",
+                sub_order.sub_order_number,
+            )
 
         return Response({
-            'message': 'Comprobante subido correctamente',
+            'message': 'Comprobante subido correctamente' if not es_resubida else 'Comprobante corregido correctamente',
             'payment_proof': PaymentProofSerializer(payment_proof).data
         }, status=status.HTTP_201_CREATED)
 
@@ -223,16 +252,29 @@ class OrderViewSet(viewsets.ModelViewSet):
 def _enqueue_create_odoo(sub_order_id):
     """
     Encola la tarea Celery create_odoo_sale_order después del commit de la transacción.
-    Se llama desde upload_payment_proof (pago_en_revision) y opcionalmente desde
-    confirm_payment para sincronizar el estado de pago actualizado.
+    Se llama desde upload_payment_proof (primera subida, pago_en_revision).
     La tarea es idempotente: omite silenciosamente si odoo_sale_id ya existe.
     """
     try:
         from .tasks import create_odoo_sale_order
         create_odoo_sale_order.delay(sub_order_id)
-        logger.info(f"📬 Tarea Celery encolada → Odoo para SubOrder {sub_order_id}")
+        logger.info(f"📬 Tarea Celery encolada → create_odoo_sale_order para SubOrder {sub_order_id}")
     except Exception as e:
         logger.warning(f"⚠️  No se pudo encolar tarea Odoo para SubOrder {sub_order_id}: {e}")
+
+
+def _enqueue_update_payment_status(sub_order_id):
+    """
+    Encola la tarea Celery update_suborder_payment_status después del commit.
+    Se llama desde upload_payment_proof en resubidas (pago_rechazado → pago_en_revision)
+    para actualizar x_payment_status → 'pendiente_revision' en la sale.order existente.
+    """
+    try:
+        from .tasks import update_suborder_payment_status
+        update_suborder_payment_status.delay(sub_order_id)
+        logger.info(f"📬 Tarea Celery encolada → update_suborder_payment_status para SubOrder {sub_order_id}")
+    except Exception as e:
+        logger.warning(f"⚠️  No se pudo encolar tarea update_payment_status para SubOrder {sub_order_id}: {e}")
 
 
 class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
@@ -300,20 +342,14 @@ class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
                 latest_proof.verified_at = timezone.now()
                 latest_proof.save(update_fields=['status', 'verified_by', 'verified_at'])
 
-            sub_order.status = 'pagado'
+            # En v4 el proveedor confirma desde Odoo → SubOrder pasa directamente a 'confirmado'.
+            # La sale.order ya existe en Odoo (draft) desde que el cliente subió el comprobante.
+            # No se encola Celery de nuevo: la tarea es idempotente y el draft ya existe.
+            sub_order.status = 'confirmado'
             sub_order.confirmed_at = timezone.now()
             sub_order.payment_rejected = False
 
-            # Nota: el draft en Odoo ya fue encolado en upload_payment_proof cuando el
-            # cliente subió el comprobante (pago_en_revision). La tarea es idempotente,
-            # pero podemos volver a encolarla aquí para sincronizar el estado de pago
-            # actualizado (x_payment_status) una vez el proveedor confirma.
-            sub_order_id = sub_order.id
-            transaction.on_commit(
-                lambda sid=sub_order_id: _enqueue_create_odoo(sid)
-            )
-
-            message = 'Pago confirmado correctamente'
+            message = 'Pago aprobado y pedido confirmado'
         else:
             # Rechazar el comprobante + volver a pendiente_pago
             # El cliente verá el aviso y podrá subir un nuevo comprobante.
@@ -327,7 +363,7 @@ class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
                     'status', 'rejection_reason', 'verified_by', 'verified_at'
                 ])
 
-            sub_order.status = 'pendiente_pago'
+            sub_order.status = 'pago_rechazado'
             sub_order.payment_rejected = True
             message = 'Pago rechazado'
 
@@ -336,6 +372,57 @@ class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
         return Response({
             'message': message,
             'sub_order': SubOrderSerializer(sub_order).data
+        })
+
+    @action(detail=True, methods=['post'], url_path='mark-received')
+    def mark_received(self, request, pk=None):
+        """Cliente confirma que ya recibió la suborden."""
+        sub_order = self.get_object()
+
+        is_customer_owner = (
+            hasattr(request.user, 'customer_profile')
+            and sub_order.order.customer_id == request.user.customer_profile.id
+        )
+
+        if not (request.user.is_staff or is_customer_owner):
+            return Response(
+                {'error': 'No tienes permisos para marcar esta suborden como recibida'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if sub_order.status == 'cancelado':
+            return Response(
+                {'error': 'No se puede marcar como recibida una suborden cancelada'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if sub_order.status not in ['enviado', 'entregado']:
+            return Response(
+                {'error': 'Solo se puede confirmar recepción para subórdenes enviadas'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if sub_order.status != 'entregado':
+            sub_order.status = 'entregado'
+
+        if not sub_order.delivered_at:
+            sub_order.delivered_at = timezone.now()
+
+        sub_order.save(update_fields=['status', 'delivered_at', 'updated_at'])
+
+        try:
+            from .signals import update_odoo_delivery_status
+            update_odoo_delivery_status(sub_order)
+        except Exception as e:
+            logger.warning(
+                "⚠️ No se pudo sincronizar estado recibido con Odoo para %s: %s",
+                sub_order.sub_order_number,
+                e,
+            )
+
+        return Response({
+            'message': 'Suborden marcada como recibida',
+            'sub_order': SubOrderSerializer(sub_order).data,
         })
 
 
@@ -374,12 +461,12 @@ class VendorOrderViewSet(viewsets.ReadOnlyModelViewSet):
             'total_orders':          queryset.count(),
             'pendiente_pago':        queryset.filter(status='pendiente_pago').count(),
             'pago_en_revision':      queryset.filter(status='pago_en_revision').count(),
-            'pagado':                queryset.filter(status='pagado').count(),
+            'pago_rechazado':        queryset.filter(status='pago_rechazado').count(),  # v5
             'confirmado':            queryset.filter(status='confirmado').count(),
             'enviado':               queryset.filter(status='enviado').count(),
             'entregado':             queryset.filter(status='entregado').count(),
             'cancelado':             queryset.filter(status='cancelado').count(),
-            # Flags
+            # Flags de auditoría
             'con_rechazo_previo':    queryset.filter(payment_rejected=True).count(),
             'error_odoo':            queryset.filter(odoo_sync_error=True).count(),
         }
@@ -410,8 +497,7 @@ class OdooWebhookView(viewsets.ViewSet):
             "token": "SECRET_TOKEN",
             "sale_order_id": 123,
             "state": "sale",
-            "invoice_status": "invoiced",
-            "delivery_status": "full"
+            "invoice_status": "invoiced"
         }
         """
         from django.conf import settings
@@ -453,40 +539,428 @@ class OdooWebhookView(viewsets.ViewSet):
                 status=status.HTTP_404_NOT_FOUND
             )
         
-        # 4. Mapear estado de Odoo a Django
+        # 4. Mapear estado de Odoo a Django (v4)
+        # Odoo notifica: 'sale' → SubOrder en 'confirmado'
+        # Odoo notifica: 'cancel' → SubOrder en 'cancelado'
+        # El despacho se sincroniza por separado desde stock.picking.
         estado_anterior = sub_order.status
-        
+
         status_mapping = {
-            'draft': 'pendiente_pago',
-            'sent': 'pendiente_pago',
-            'sale': 'pagado_confirmado',  # Orden confirmada en Odoo
-            'done': 'entregado',
+            'draft': 'pago_en_revision',   # cotización en draft = pago en revisión
+            'sale':  'confirmado',          # cotización confirmada = pago aprobado
             'cancel': 'cancelado',
         }
         
         nuevo_estado = status_mapping.get(odoo_state, sub_order.status)
-        
-        # 5. Actualizar SubOrder
-        sub_order.status = nuevo_estado
-        sub_order.save()
-        
-        
-        # Actualizar estado de la Order principal
-        sub_order.order.update_status_from_suborders()
+
+        # 5. Guardar si hay cambio real (idempotencia).
+        if nuevo_estado == estado_anterior:
+            logger.info(
+                "ℹ️ sale_order_update: SubOrder %s ya está en %s, sin cambios.",
+                sub_order.sub_order_number, estado_anterior,
+            )
+            return Response({
+                'success': True,
+                'sub_order_number': sub_order.sub_order_number,
+                'estado_anterior': estado_anterior,
+                'nuevo_estado': nuevo_estado,
+                'message': 'Sin cambios (estado ya actualizado)',
+            })
+
+        # 6. Actualizar PaymentProof cuando el estado del pago cambia.
+        # Cubre el caso en que review_payment falló o no llegó todavía.
+        # Es idempotente: solo toca proofs en 'uploaded'.
+        if nuevo_estado == 'confirmado':
+            latest_proof = (
+                sub_order.payments.filter(status='uploaded').order_by('-uploaded_at').first()
+            )
+            if latest_proof:
+                latest_proof.status = 'approved'
+                latest_proof.verified_at = timezone.now()
+                latest_proof.save(update_fields=['status', 'verified_at'])
+                logger.info(
+                    "✅ sale_order_update: PaymentProof #%s → approved (SubOrder %s)",
+                    latest_proof.pk, sub_order.sub_order_number,
+                )
+            else:
+                # Normal cuando review_payment ya lo aprobó antes; solo es problema si
+                # tampoco existe ningún proof approved.
+                has_approved = sub_order.payments.filter(status='approved').exists()
+                if not has_approved:
+                    logger.warning(
+                        "⚠️ sale_order_update: SubOrder %s confirmada sin PaymentProof "
+                        "'uploaded' ni 'approved'. Revisar manualmente.",
+                        sub_order.sub_order_number,
+                    )
+                else:
+                    logger.info(
+                        "ℹ️ sale_order_update: PaymentProof ya estaba approved (SubOrder %s). OK.",
+                        sub_order.sub_order_number,
+                    )
+
+            sub_order.status = nuevo_estado
+            sub_order.confirmed_at = sub_order.confirmed_at or timezone.now()
+            sub_order.payment_rejected = False
+            sub_order.save()
+
+        else:
+            sub_order.status = nuevo_estado
+            sub_order.save()
+
+        # El signal recalculate_order_status actualiza Order.status automáticamente.
         logger.info(
-            f"✅ SubOrder {sub_order.sub_order_number} actualizada: "
-            f"{estado_anterior} → {nuevo_estado}"
+            "✅ sale_order_update: SubOrder %s actualizada: %s → %s",
+            sub_order.sub_order_number, estado_anterior, nuevo_estado,
         )
-        
-        # 6. Notificar al cliente (opcional - implementar después)
-        # if nuevo_estado in ['pagado_confirmado', 'enviado', 'entregado']:
-        #     from .tasks import send_order_status_email
-        #     send_order_status_email.delay(sub_order.id)
-        
+
         return Response({
             'success': True,
             'sub_order_number': sub_order.sub_order_number,
             'estado_anterior': estado_anterior,
             'nuevo_estado': nuevo_estado,
-            'message': f'SubOrder actualizada correctamente'
+            'message': 'SubOrder actualizada correctamente',
         })
+
+    @action(detail=False, methods=['post'], url_path='delivery-update')
+    def delivery_update(self, request):
+        """
+        Webhook cuando se valida un stock.picking de salida en Odoo.
+
+        Payload esperado:
+        {
+            "token": "SECRET_TOKEN",
+            "sale_order_id": 123,
+            "picking_id": 456,
+            "picking_name": "AGU/OUT/00009",
+            "state": "done",
+            "picking_type_code": "outgoing"
+        }
+        """
+        from django.conf import settings
+
+        token = request.data.get('token')
+        expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
+
+        if token != expected_token:
+            logger.warning("❌ delivery_update: token inválido desde Odoo")
+            return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        sale_order_id = request.data.get('sale_order_id')
+        picking_id = request.data.get('picking_id')
+        picking_name = request.data.get('picking_name') or ''
+        odoo_state = request.data.get('state')
+        picking_type_code = request.data.get('picking_type_code')
+
+        logger.info(
+            "📦 delivery_update recibido: sale_order_id=%s, picking_id=%s, "
+            "picking_name=%s, state=%s, picking_type_code=%s",
+            sale_order_id,
+            picking_id,
+            picking_name,
+            odoo_state,
+            picking_type_code,
+        )
+
+        if not sale_order_id or not odoo_state:
+            return Response(
+                {'error': 'Missing required fields'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if picking_type_code and picking_type_code != 'outgoing':
+            logger.info(
+                "ℹ️ delivery_update ignorado: picking %s no es de salida (%s)",
+                picking_name or picking_id,
+                picking_type_code,
+            )
+            return Response({
+                'success': True,
+                'ignored': True,
+                'reason': 'Picking is not outgoing',
+            })
+
+        if odoo_state != 'done':
+            logger.info(
+                "ℹ️ delivery_update ignorado: picking %s aún no está done (%s)",
+                picking_name or picking_id,
+                odoo_state,
+            )
+            return Response({
+                'success': True,
+                'ignored': True,
+                'reason': 'Picking state is not done',
+            })
+
+        try:
+            sub_order = SubOrder.objects.get(odoo_sale_id=sale_order_id)
+        except SubOrder.DoesNotExist:
+            logger.warning(
+                "⚠️ delivery_update: No se encontró SubOrder con odoo_sale_id=%s",
+                sale_order_id,
+            )
+            return Response({'error': 'SubOrder not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        estado_anterior = sub_order.status
+
+        if sub_order.status == 'cancelado':
+            logger.info(
+                "ℹ️ delivery_update ignorado: SubOrder %s está cancelada",
+                sub_order.sub_order_number,
+            )
+            return Response({
+                'success': True,
+                'ignored': True,
+                'sub_order_number': sub_order.sub_order_number,
+                'estado_actual': sub_order.status,
+                'reason': 'SubOrder is cancelled',
+            })
+
+        update_fields = []
+
+        if sub_order.status != 'entregado' and sub_order.status != 'enviado':
+            sub_order.status = 'enviado'
+            update_fields.append('status')
+
+        if not sub_order.shipped_at:
+            sub_order.shipped_at = timezone.now()
+            update_fields.append('shipped_at')
+
+        if update_fields:
+            sub_order.save(update_fields=update_fields)
+
+        try:
+            from .signals import update_odoo_delivery_status
+            update_odoo_delivery_status(sub_order)
+        except Exception as e:
+            logger.warning(
+                "⚠️ delivery_update: no se pudo sincronizar estado logístico con Odoo para %s: %s",
+                sub_order.sub_order_number,
+                e,
+            )
+
+        logger.info(
+            "✅ delivery_update: SubOrder %s actualizada %s → %s",
+            sub_order.sub_order_number,
+            estado_anterior,
+            sub_order.status,
+        )
+
+        return Response({
+            'success': True,
+            'sub_order_number': sub_order.sub_order_number,
+            'estado_anterior': estado_anterior,
+            'nuevo_estado': sub_order.status,
+            'shipped_at': sub_order.shipped_at.isoformat() if sub_order.shipped_at else None,
+        })
+
+    @action(detail=False, methods=['post'], url_path='mark-received')
+    def mark_received(self, request):
+        """
+        Webhook interno para que Odoo/backoffice marque una SubOrder como recibida.
+
+        Payload esperado:
+        {
+            "token": "SECRET_TOKEN",
+            "suborder_number": "ORD-2026-00001-A"
+        }
+        """
+        from django.conf import settings
+
+        token = request.data.get('token')
+        expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
+
+        if token != expected_token:
+            logger.warning("❌ mark_received: token inválido desde Odoo")
+            return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        suborder_number = request.data.get('suborder_number')
+        if not suborder_number:
+            return Response({'error': 'Missing required fields'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            sub_order = SubOrder.objects.get(sub_order_number=suborder_number)
+        except SubOrder.DoesNotExist:
+            logger.warning("⚠️ mark_received: No se encontró SubOrder %s", suborder_number)
+            return Response({'error': 'SubOrder not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if sub_order.status == 'cancelado':
+            return Response(
+                {'error': 'SubOrder is cancelled'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        if sub_order.status not in ['enviado', 'entregado']:
+            return Response(
+                {'error': 'SubOrder is not ready to be marked as received'},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        estado_anterior = sub_order.status
+
+        update_fields = []
+        if sub_order.status != 'entregado':
+            sub_order.status = 'entregado'
+            update_fields.append('status')
+
+        if not sub_order.delivered_at:
+            sub_order.delivered_at = timezone.now()
+            update_fields.append('delivered_at')
+
+        if update_fields:
+            sub_order.save(update_fields=update_fields)
+
+        logger.info(
+            "✅ mark_received: SubOrder %s actualizada %s → %s",
+            sub_order.sub_order_number,
+            estado_anterior,
+            sub_order.status,
+        )
+
+        return Response({
+            'success': True,
+            'sub_order_number': sub_order.sub_order_number,
+            'estado_anterior': estado_anterior,
+            'nuevo_estado': sub_order.status,
+            'delivered_at': sub_order.delivered_at.isoformat() if sub_order.delivered_at else None,
+        })
+
+    @action(detail=False, methods=['post'], url_path='review-payment')
+    def review_payment(self, request):
+        """
+        Odoo llama este endpoint cuando el proveedor aprueba o rechaza el pago.
+
+        Casos de uso:
+          - Botón "Rechazar pago" en Odoo  → action='reject'
+          - action_confirm override en Odoo → action='approve'
+
+        Payload esperado:
+        {
+            "token": "SECRET_TOKEN",
+            "suborder_number": "ORD-2026-00001-A",
+            "action": "approve" | "reject",
+            "rejection_reason": "Monto incorrecto"   ← solo para reject
+        }
+
+        Respuesta:
+        {
+            "success": true,
+            "sub_order_number": "ORD-2026-00001-A",
+            "new_status": "confirmado" | "pendiente_pago"
+        }
+        """
+        from django.conf import settings
+
+        # 1. Validar token
+        token = request.data.get('token')
+        expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
+        if token != expected_token:
+            logger.warning("❌ review_payment: token inválido desde Odoo")
+            return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # 2. Validar campos requeridos
+        suborder_number = request.data.get('suborder_number')
+        action_type = request.data.get('action')
+        rejection_reason = request.data.get('rejection_reason', '')
+
+        if not suborder_number or action_type not in ('approve', 'reject'):
+            return Response(
+                {'error': 'suborder_number y action (approve|reject) son requeridos'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # 3. Buscar SubOrder
+        try:
+            sub_order = SubOrder.objects.get(sub_order_number=suborder_number)
+        except SubOrder.DoesNotExist:
+            return Response(
+                {'error': f'SubOrder {suborder_number} no encontrada'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # 4. Obtener el último PaymentProof en estado 'uploaded'
+        latest_proof = (
+            sub_order.payments.filter(status='uploaded').order_by('-uploaded_at').first()
+        )
+
+        if action_type == 'approve':
+            # Proveedor confirmó la cotización en Odoo → pago aprobado
+            if latest_proof:
+                latest_proof.status = 'approved'
+                latest_proof.verified_at = timezone.now()
+                latest_proof.save(update_fields=['status', 'verified_at'])
+                logger.info(
+                    "✅ review_payment [approve]: PaymentProof #%s → approved (SubOrder %s)",
+                    latest_proof.pk, suborder_number,
+                )
+            else:
+                has_approved = sub_order.payments.filter(status='approved').exists()
+                if not has_approved:
+                    logger.warning(
+                        "⚠️ review_payment [approve]: SubOrder %s sin PaymentProof "
+                        "'uploaded' ni 'approved'. Puede que sale_order_update ya lo procesó "
+                        "o el comprobante no existe. Revisar manualmente.",
+                        suborder_number,
+                    )
+                else:
+                    logger.info(
+                        "ℹ️ review_payment [approve]: PaymentProof ya estaba approved "
+                        "(SubOrder %s). OK — sale_order_update puede haberlo adelantado.",
+                        suborder_number,
+                    )
+
+            # Idempotente: solo actualiza si aún no está confirmado.
+            if sub_order.status != 'confirmado':
+                sub_order.status = 'confirmado'
+                sub_order.confirmed_at = sub_order.confirmed_at or timezone.now()
+                sub_order.payment_rejected = False
+                sub_order.save()
+            else:
+                logger.info(
+                    "ℹ️ review_payment [approve]: SubOrder %s ya estaba confirmada. Sin cambios.",
+                    suborder_number,
+                )
+
+            logger.info(
+                "✅ review_payment [approve]: SubOrder %s → confirmado", suborder_number,
+            )
+            return Response({
+                'success': True,
+                'sub_order_number': suborder_number,
+                'new_status': 'confirmado',
+            })
+
+        else:  # reject
+            # Proveedor rechazó el pago desde Odoo
+            if latest_proof:
+                latest_proof.status = 'rejected'
+                latest_proof.rejection_reason = rejection_reason
+                latest_proof.verified_at = timezone.now()
+                latest_proof.save(
+                    update_fields=['status', 'rejection_reason', 'verified_at']
+                )
+                logger.info(
+                    "🚫 review_payment [reject]: PaymentProof #%s → rejected (SubOrder %s)",
+                    latest_proof.pk, suborder_number,
+                )
+            else:
+                logger.warning(
+                    "⚠️ review_payment [reject]: SubOrder %s sin PaymentProof 'uploaded'. "
+                    "No hay comprobante que rechazar formalmente.",
+                    suborder_number,
+                )
+
+            sub_order.status = 'pago_rechazado'
+            sub_order.payment_rejected = True
+            sub_order.rejection_reason = rejection_reason
+            sub_order.save()
+
+            logger.info(
+                "🚫 review_payment [reject]: SubOrder %s → pago_rechazado (motivo: %s)",
+                suborder_number, rejection_reason[:80],
+            )
+            return Response({
+                'success': True,
+                'sub_order_number': suborder_number,
+                'new_status': 'pago_rechazado',
+                'rejection_reason': rejection_reason,
+            })

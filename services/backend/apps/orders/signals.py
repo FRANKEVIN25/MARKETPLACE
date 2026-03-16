@@ -8,14 +8,28 @@ from apps.sync.odoo_connector import OdooConnector
 
 logger = logging.getLogger(__name__)
 
-# Mapa SubOrder.status → x_payment_status (espejo exacto de SubOrder.STATUS_CHOICES).
-# Solo los estados que efectivamente llegan a Odoo (pagado en adelante).
+# Mapa SubOrder.status → x_payment_status reducido (v5).
+# Solo los estados que tienen una sale.order en Odoo.
+# x_payment_status en Odoo acepta exactamente 3 valores: pendiente_revision, aprobado, rechazado.
+# 'cancelado' mapea a False para limpiar el campo en Odoo (no es un estado de pago válido).
 _PAYMENT_STATUS_MAP = {
-    'pagado': 'pagado',
-    'confirmado': 'confirmado',
-    'enviado': 'enviado',
-    'entregado': 'entregado',
-    'cancelado': 'cancelado',
+    'pago_en_revision': 'pendiente_revision',
+    'pago_rechazado':   'rechazado',        # v5: estado explícito de rechazo
+    'confirmado':       'aprobado',
+    'enviado':          'aprobado',
+    'entregado':        'aprobado',
+    'cancelado':        False,              # limpia el campo en Odoo (sin estado de pago)
+}
+
+# Mapa SubOrder.status → x_delivery_status en Odoo.
+_DELIVERY_STATUS_MAP = {
+    'pendiente_pago':   'pendiente',
+    'pago_en_revision': 'pendiente',
+    'pago_rechazado':   'pendiente',        # v5: comprobante rechazado, aún sin despacho
+    'confirmado':       'pendiente',
+    'enviado':          'enviado',
+    'entregado':        'recibido',
+    'cancelado':        'cancelado',
 }
 
 def get_odoo_connection():
@@ -269,14 +283,16 @@ def sync_suborder_to_odoo(suborder):
             'x_delivery_method': order.delivery_method,
             'x_delivery_address': _format_delivery_address(order),
             'x_customer_notes': order.customer_notes or '',
+            'x_delivery_status': _DELIVERY_STATUS_MAP.get(suborder.status, 'pendiente'),
 
-            # Información de pago del comprobante aprobado
+            # Información de pago del comprobante (el más reciente 'uploaded' o 'approved')
             'x_payment_method': latest_proof.payment_method if latest_proof else False,
             'x_payment_reference': latest_proof.operation_number if latest_proof else '',
             'x_payment_amount_declared': float(latest_proof.amount) if latest_proof else 0.0,
 
-            # Estado del pedido (espejo de SubOrder.status — Django es la verdad)
-            'x_payment_status': _PAYMENT_STATUS_MAP.get(suborder.status, 'pagado'),
+            # Estado de pago reducido (v4): al crear siempre es 'pendiente_revision'
+            # (el proveedor aún no ha revisado el comprobante)
+            'x_payment_status': _PAYMENT_STATUS_MAP.get(suborder.status, 'pendiente_revision'),
 
             # Origen: marketplace ECOMPARTS
             **({'source_id': source_id} if source_id else {}),
@@ -285,12 +301,31 @@ def sync_suborder_to_odoo(suborder):
             'x_last_sync_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
 
-        result = odoo.execute_kw(
+        # Idempotencia en Odoo: si ya existe una sale.order para esta SubOrder
+        # (ej: tarea reintentada tras fallo de red justo después del create),
+        # usar esa en lugar de crear una nueva.
+        existing_ids = odoo.execute_kw(
             'sale.order',
-            'create',
-            [[sale_order_data]],
+            'search',
+            [[['x_marketplace_suborder_id', '=', suborder.sub_order_number]]],
         )
-        sale_order_id = result[0] if isinstance(result, list) else result
+        if existing_ids:
+            sale_order_id = existing_ids[0]
+            logger.warning(
+                f"⚠️  SubOrder {suborder.sub_order_number} ya existe en Odoo "
+                f"(ID {sale_order_id}). Usando existente."
+            )
+        else:
+            result = odoo.execute_kw(
+                'sale.order',
+                'create',
+                [[sale_order_data]],
+            )
+            # En JSON-RPC, create multi devuelve [id]; create simple devuelve id.
+            if isinstance(result, (list, tuple)):
+                sale_order_id = result[0]
+            else:
+                sale_order_id = result
 
         # 4. Guardar ID en Django
         suborder.odoo_sale_id = sale_order_id
@@ -306,6 +341,29 @@ def sync_suborder_to_odoo(suborder):
         # Error de negocio explícito: no reintentar en Celery
         raise
     except Exception as e:
+        err = str(e).lower()
+        # Idempotencia JSON-RPC: constraint UNIQUE(x_marketplace_suborder_id) disparado.
+        if 'unique' in err or 'duplicate' in err:
+            logger.warning(
+                f"⚠️  SubOrder {suborder.sub_order_number} ya existe en Odoo "
+                f"(constraint). Buscando ID existente..."
+            )
+            try:
+                existing = odoo.execute_kw(
+                    'sale.order',
+                    'search',
+                    [[['x_marketplace_suborder_id', '=', suborder.sub_order_number]]],
+                )
+                if existing:
+                    suborder.odoo_sale_id = existing[0]
+                    suborder.save(update_fields=['odoo_sale_id'])
+                    logger.info(
+                        f"✅ ID recuperado de Odoo: {existing[0]} "
+                        f"→ SubOrder {suborder.sub_order_number}"
+                    )
+                    return existing[0]
+            except Exception as inner_e:
+                logger.error(f"No se pudo recuperar ID de Odoo: {inner_e}")
         logger.error(
             f"❌ Error sincronizando SubOrder {suborder.sub_order_number}: {e}"
         )
@@ -352,11 +410,9 @@ def recalculate_order_status(sender, instance, **kwargs):
     elif 'confirmado' in active_statuses:
         # Al menos una procesándose en Odoo
         new_status = 'procesando'
-    elif active_statuses <= {'pago_en_revision', 'pagado'}:
-        # Todas las activas con pago subido por el cliente (pago_en_revision)
-        # o ya confirmado por el proveedor (pagado).
-        # «pagado» en Order = el cliente pagó su parte; no requiere aprobación
-        # del proveedor.
+    elif active_statuses <= {'pago_en_revision'}:
+        # Todas las SubOrders activas tienen comprobante subido (en revisión).
+        # El proveedor aún no ha confirmado en Odoo.
         new_status = 'pagado'
     else:
         # Caso base: alguna SubOrder sin pago
@@ -374,7 +430,7 @@ def recalculate_order_status(sender, instance, **kwargs):
 
 def update_odoo_payment_status(suborder):
     """Actualiza estado de pago en Odoo cuando avanza la SubOrder.
-    Solo se llama para SubOrders en status >= 'pagado' (con odoo_sale_id).
+    Solo se llama para SubOrders que ya tienen odoo_sale_id (status 'pago_en_revision' en adelante).
 
     Returns:
         bool: True si la actualización fue exitosa, False en caso contrario.
@@ -404,10 +460,14 @@ def update_odoo_payment_status(suborder):
             or suborder.payments.order_by('-uploaded_at').first()
         )
 
+        mapped_payment_status = _PAYMENT_STATUS_MAP.get(suborder.status, 'pendiente_revision')
         update_data = {
-            'x_payment_status': _PAYMENT_STATUS_MAP.get(suborder.status, 'pagado'),
-            'warehouse_id': _get_warehouse_id(odoo, provider.odoo_company_id),
+            'x_last_sync_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
         }
+        # Solo incluir x_payment_status si el valor mapeado es válido para Odoo.
+        # False (cancelado) limpia el campo; omitirlo evita errores de validación.
+        if mapped_payment_status is not False:
+            update_data['x_payment_status'] = mapped_payment_status
 
         if latest_proof:
             update_data.update(
@@ -420,7 +480,7 @@ def update_odoo_payment_status(suborder):
         odoo.execute_kw(
             'sale.order',
             'write',
-            [[[suborder.odoo_sale_id], update_data]],
+            [[suborder.odoo_sale_id], update_data],
         )
 
         logger.info(
@@ -433,5 +493,66 @@ def update_odoo_payment_status(suborder):
         logger.error(
             "❌ Error actualizando estado de pago en Odoo "
             f"para SubOrder {suborder.sub_order_number}: {e}"
+        )
+        return False
+
+
+def update_odoo_delivery_status(suborder):
+    """Actualiza el estado logístico marketplace en la sale.order de Odoo.
+
+    Se usa para reflejar `enviado` y `entregado/recibido` en la pestaña Marketplace.
+
+    Returns:
+        bool: True si la actualización fue exitosa, False en caso contrario.
+    """
+    if not suborder.odoo_sale_id:
+        logger.warning(
+            "update_odoo_delivery_status: SubOrder %s no tiene odoo_sale_id, se omite.",
+            suborder.sub_order_number,
+        )
+        return False
+
+    logger.info(
+        "🚚 Actualizando estado logístico en Odoo para SubOrder %s "
+        "(sale.order ID=%s, nuevo status='%s')...",
+        suborder.sub_order_number,
+        suborder.odoo_sale_id,
+        suborder.status,
+    )
+
+    try:
+        odoo = get_odoo_connection()
+        if not odoo:
+            logger.error("No se pudo conectar a Odoo")
+            return False
+
+        update_data = {
+            'x_delivery_status': _DELIVERY_STATUS_MAP.get(suborder.status, 'pendiente'),
+            'x_last_sync_at': timezone.now().strftime('%Y-%m-%d %H:%M:%S'),
+        }
+
+        if suborder.tracking_number:
+            update_data['x_tracking_number'] = suborder.tracking_number
+
+        if suborder.delivered_at:
+            update_data['x_received_at'] = suborder.delivered_at.strftime('%Y-%m-%d %H:%M:%S')
+
+        odoo.execute_kw(
+            'sale.order',
+            'write',
+            [[suborder.odoo_sale_id], update_data],
+        )
+
+        logger.info(
+            "✅ Estado logístico actualizado en Odoo para sale.order ID=%s",
+            suborder.odoo_sale_id,
+        )
+        return True
+
+    except Exception as e:
+        logger.error(
+            "❌ Error actualizando estado logístico en Odoo para SubOrder %s: %s",
+            suborder.sub_order_number,
+            e,
         )
         return False

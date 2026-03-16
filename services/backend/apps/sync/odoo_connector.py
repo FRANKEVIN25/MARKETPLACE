@@ -84,7 +84,15 @@ class OdooConnector:
     @property
     def uid(self):
         """
-        Obtiene el UID autenticado (con caché por sesión)
+        Obtiene el UID autenticado.
+
+        No se cachea en Redis porque el UID está ligado a las cookies de sesión
+        almacenadas en self._session.  Si se reutilizara el UID de otra instancia
+        (o de una instancia anterior) sin las cookies correspondientes, Odoo
+        devuelve "Session Expired" en todas las llamadas.
+
+        La autenticación es rápida (~50 ms) y se llama una sola vez por instancia
+        de OdooConnector (self._uid actúa de caché intra-instancia).
 
         Returns:
             int: User ID de Odoo o None si falla
@@ -92,13 +100,10 @@ class OdooConnector:
         if self._uid:
             return self._uid
 
-        cache_key = f'odoo_uid_{self.username}_{self.db_name}'
-        cached_uid = cache.get(cache_key)
+        return self._authenticate()
 
-        if cached_uid:
-            self._uid = cached_uid
-            return self._uid
-
+    def _authenticate(self):
+        """Autentica contra Odoo y almacena el UID en self._uid."""
         try:
             result = self._call("/web/session/authenticate", {
                 "db": self.db_name,
@@ -110,7 +115,6 @@ class OdooConnector:
 
             if uid:
                 self._uid = uid
-                cache.set(cache_key, uid, 3600)  # Cache por 1 hora
                 logger.info(
                     f"✅ Conectado a Odoo {self.url} como {self.username} (UID: {uid})"
                 )
@@ -145,35 +149,36 @@ class OdooConnector:
         args = args or []
         kwargs = kwargs or {}
 
-        try:
+        # Extraer context del llamador (si lo pasa) y fusionar con el nuestro.
+        # No forzamos 'lang' — Odoo usará el idioma del usuario autenticado.
+        caller_context = kwargs.pop('context', {})
+        merged_context = {'tz': 'America/Lima', **caller_context}
+
+        def _do_call():
             return self._call("/web/dataset/call_kw", {
                 "model": model,
                 "method": method,
                 "args": args,
                 "kwargs": {
                     **kwargs,
-                    "context": {
-                        "lang": "es_PE",
-                        "tz": "America/Lima",
-                    },
+                    "context": merged_context,
                 },
             })
 
+        try:
+            return _do_call()
         except Exception as e:
-            if "Session Expired" in str(e) or "session" in str(e).lower():
-                logger.warning("Sesión Odoo expirada, re-autenticando...")
-                cache_key = f"odoo_uid_{self.username}_{self.db_name}"
-                cache.delete(cache_key)
+            err_msg = str(e).lower()
+            # Sesión expirada: borrar UID, reautenticar y reintentar una vez.
+            if 'session expired' in err_msg or 'session_invalid' in err_msg:
+                logger.warning(
+                    f"⚠️  Sesión Odoo expirada en {method}/{model}. "
+                    "Reautenticando y reintentando..."
+                )
                 self._uid = None
-                self._session = __import__("requests").Session()
-                self._session.headers.update({"Content-Type": "application/json"})
-                if self.uid:
-                    return self._call("/web/dataset/call_kw", {
-                        "model": model,
-                        "method": method,
-                        "args": args,
-                        "kwargs": {**kwargs, "context": {"lang": "es_PE", "tz": "America/Lima"}},
-                    })
+                if self._authenticate():
+                    return _do_call()   # segundo intento con sesión fresca
+
             logger.exception(f"Error ejecutando {method} en {model}: {e}")
             raise
 

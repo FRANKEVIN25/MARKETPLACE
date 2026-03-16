@@ -182,13 +182,13 @@ export type OrderStatus =
 export type DeliveryMethod = 'domicilio' | 'agencia' | 'tienda';
 
 export type SubOrderStatus =
-  | 'pendiente_pago'
-  | 'pago_en_revision'
-  | 'pagado'
-  | 'confirmado'
-  | 'enviado'
-  | 'entregado'
-  | 'cancelado';
+  | 'pendiente_pago'   // timer activo, cliente no ha subido comprobante
+  | 'pago_en_revision' // comprobante subido, esperando aprobación del proveedor
+  | 'pago_rechazado'   // v5: proveedor rechazó el comprobante, cliente debe corregir
+  | 'confirmado'       // pago aprobado, orden confirmada en Odoo
+  | 'enviado'          // despacho registrado en Odoo
+  | 'entregado'        // cliente confirmó recepción
+  | 'cancelado';       // expirado o cancelado manualmente
 
 export type PaymentMethod =
   | 'transferencia'
@@ -243,6 +243,7 @@ export interface SubOrder {
   delivered_at: string | null;
   // Flags (sustituyen estados extra)
   payment_rejected: boolean;   // proveedor rechazó el último comprobante
+  rejection_reason: string;    // motivo de rechazo del proveedor (v5)
   expired: boolean;            // superó payment_deadline sin pagar
   refunded: boolean;           // reembolso realizado
   odoo_sync_error: boolean;    // error al sincronizar con Odoo

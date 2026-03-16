@@ -116,6 +116,12 @@ CELERY_BEAT_SCHEDULE = {
         'task': 'apps.orders.tasks.expire_pending_suborders',
         'schedule': crontab(minute='*/15'),
     },
+    # Red de seguridad: reencolar SubOrders que deberían existir en Odoo pero aún
+    # no tienen `odoo_sale_id` por caídas temporales o reinicios durante el arranque.
+    'reconcile-suborders-pending-odoo': {
+        'task': 'apps.orders.tasks.reconcile_suborders_pending_odoo',
+        'schedule': crontab(minute='*/10'),
+    },
 }
 
 # Redis Cache

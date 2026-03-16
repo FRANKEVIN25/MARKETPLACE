@@ -131,6 +131,27 @@ function createCheckoutStore() {
       update(s => ({ ...s, order, step: 'pago', error: '' }));
     },
 
+    /**
+     * Actualizar el status de una SubOrder específica dentro de state.order.
+     * Se usa para reflejar la transición optimista pendiente_pago → pago_en_revision
+     * inmediatamente después de que el cliente sube su comprobante, sin necesidad
+     * de re-fetch completo. Esto detiene el countdown timer.
+     */
+    patchSubOrderStatus(subOrderId: number, newStatus: string) {
+      update(s => {
+        if (!s.order) return s;
+        return {
+          ...s,
+          order: {
+            ...s.order,
+            sub_orders: s.order.sub_orders.map(so =>
+              so.id === subOrderId ? { ...so, status: newStatus } : so
+            ),
+          },
+        };
+      });
+    },
+
     /** Estado de carga */
     setLoading(loading: boolean) {
       update(s => ({ ...s, loading }));

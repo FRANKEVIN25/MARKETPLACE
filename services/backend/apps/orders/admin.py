@@ -12,20 +12,12 @@ class OrderItemInline(admin.TabularInline):
     can_delete = False
 
 
-class SupplierOrderInline(admin.TabularInline):
-    model = SubOrder
-    extra = 0
-    readonly_fields = ['provider', 'status', 'subtotal', 'total']
-    can_delete = False
-
-
 @admin.register(Order)
 class OrderAdmin(admin.ModelAdmin):
     list_display = ['order_number', 'customer', 'status', 'total', 'created_at']
     list_filter = ['status', 'created_at']
     search_fields = ['order_number', 'customer__user__email']
     readonly_fields = ['order_number', 'created_at', 'updated_at']
-    inlines = [SupplierOrderInline]
 
 
 class PaymentProofInline(admin.TabularInline):

@@ -123,6 +123,10 @@
         amount: parseFloat(form.amount),
       });
       proofForms[sub.id] = { ...proofForms[sub.id], uploading: false, uploaded: true };
+      // Transición optimista: actualiza el status en el store para que
+      // subsRealmentePendientes se recalcule y detenga el countdown si
+      // ya no quedan subórdenes en 'pendiente_pago'.
+      checkout.patchSubOrderStatus(sub.id, 'pago_en_revision');
     } catch (e: any) {
       const msg = e?.response?.data?.detail || 'Error al subir el comprobante.';
       proofForms[sub.id] = { ...proofForms[sub.id], uploading: false, error: msg };
@@ -167,7 +171,9 @@
 
   $: hayPagosPendientes = subsRealmentePendientes.length > 0;
 
-  $: if (state.order?.payment_deadline && state.step === 'pago' && hayPagosPendientes) {
+  // Guard: solo iniciar si no hay ya un interval corriendo, para no reiniciar
+  // el timer en cada re-render reactivo mientras hayPagosPendientes sigue true.
+  $: if (state.order?.payment_deadline && state.step === 'pago' && hayPagosPendientes && !countdownInterval) {
     startCountdown(state.order.payment_deadline);
   }
 

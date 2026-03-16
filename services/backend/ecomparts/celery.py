@@ -27,7 +27,9 @@ def debug_task(self):
 
 
 # Scheduled tasks (Celery Beat)
+# Importante: actualizar el schedule cargado desde Django settings, no reemplazarlo.
 app.conf.beat_schedule = {
+    **getattr(app.conf, 'beat_schedule', {}),
     'sync-odoo-products-every-hour': {
         'task': 'apps.sync.tasks.sync_products_from_odoo',
         'schedule': crontab(minute=0),  # Every hour
