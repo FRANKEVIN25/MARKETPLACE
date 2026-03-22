@@ -402,7 +402,7 @@ class OdooConnector:
                 'fields': [
                     'id', 'name', 'default_code', 'description_sale',
                     'list_price', 'standard_price', 'qty_available',
-                    'barcode', 'weight', 'active'
+                    'barcode', 'weight', 'active', 'image_1920'
                 ]
             }
             if limit:

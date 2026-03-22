@@ -57,8 +57,8 @@
   <meta name="description" content={product.description || `Detalle del producto ${product.name}`} />
   <meta property="og:title" content={product.name} />
   <meta property="og:description" content={product.description || `Detalle del producto ${product.name}`} />
-  {#if product.image}
-    <meta property="og:image" content={product.image} />
+  {#if product.image_url}
+    <meta property="og:image" content={product.image_url} />
   {/if}
 </svelte:head>
 
@@ -86,9 +86,9 @@
       <!-- Imagen del Producto -->
       <div class="flex flex-col gap-4">
         <div class="bg-white rounded-lg shadow-lg overflow-hidden flex items-center justify-center h-96">
-          {#if product.image}
+          {#if product.image_url}
             <img
-              src={product.image}
+              src={product.image_url}
               alt={product.name}
               class="w-full h-full object-cover"
             />

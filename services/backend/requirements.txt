@@ -45,3 +45,5 @@ ipython==8.26.0
 
 # UI & Customization
 django-jazzmin==3.0.1
+cloudinary==1.41.0
+django-cloudinary-storage==0.3.0

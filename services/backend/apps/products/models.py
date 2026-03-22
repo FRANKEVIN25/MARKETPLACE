@@ -23,7 +23,7 @@ class Category(MPTTModel):
         related_name='children'
     )
     description = models.TextField(blank=True, null=True)
-    image = models.ImageField(upload_to='categories/', blank=True, null=True)
+    image_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL de la imagen en Cloudinary/CDN")
     is_active = models.BooleanField(default=True)
     
     # Metadata
@@ -95,11 +95,17 @@ class Product(models.Model):
     manufacturer_code = models.CharField(max_length=50, blank=True, null=True, help_text="Código del fabricante")
     
     # Contenido
-    image = models.ImageField(
-        upload_to='products/',
+    image_url = models.URLField(
+        max_length=500,
         blank=True,
         null=True,
-        help_text="Imagen principal del producto"
+        help_text="URL de la imagen en Cloudinary/CDN"
+    )
+    image_cloudinary_id = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Public ID en Cloudinary para transformaciones"
     )
 
     description = models.TextField(blank=True, null=True)

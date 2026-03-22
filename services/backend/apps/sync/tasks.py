@@ -174,6 +174,32 @@ def sync_provider_products(provider_id):
         
         for odoo_product in odoo_products:
             try:
+                # Subir imagen a Cloudinary si existe en Odoo
+                image_url = None
+                image_cloudinary_id = None
+                image_b64 = odoo_product.get('image_1920')
+                if image_b64 and image_b64 is not False:
+                    try:
+                        import cloudinary.uploader, base64
+                        image_data = base64.b64decode(image_b64)
+                        product_ref = odoo_product.get('default_code') or str(odoo_product['id'])
+                        upload_result = cloudinary.uploader.upload(
+                            image_data,
+                            public_id=f"ecomparts/products/{product_ref}",
+                            overwrite=True,
+                            resource_type="image",
+                            transformation=[{
+                                "width": 800, "height": 800,
+                                "crop": "limit", "quality": "auto",
+                                "fetch_format": "auto"
+                            }]
+                        )
+                        image_url = upload_result.get('secure_url')
+                        image_cloudinary_id = upload_result.get('public_id')
+                        logger.info(f"✅ Imagen subida a Cloudinary: {image_url}")
+                    except Exception as img_err:
+                        logger.warning(f"⚠️ No se pudo subir imagen a Cloudinary: {img_err}")
+
                 # Buscar o crear producto en marketplace
                 product, created = Product.objects.update_or_create(
                     provider=provider,
@@ -183,10 +209,8 @@ def sync_provider_products(provider_id):
                         'reference': odoo_product.get('default_code', ''),
                         'description': odoo_product.get('description_sale', ''),
                         'price': odoo_product.get('list_price', 0),
-                        
-                        
-                        
-                        
+                        'image_url': image_url,
+                        'image_cloudinary_id': image_cloudinary_id,
                         'is_active': odoo_product.get('active', True),
                         'last_sync_at': timezone.now()
                     }

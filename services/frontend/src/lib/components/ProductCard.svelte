@@ -23,7 +23,7 @@
   $: proveedor = product.proveedor || product.supplier || product.provider_name || 'Sin proveedor';
   $: categoria = product.categoria || product.category || product.category_name || 'Sin categoría';
   $: precio = product.precio || product.price || 0;
-  $: imagen = product.imagen || product.image;
+  $: imagen = product.image_url || product.imagen || product.image;
 
   const toggleFavorito = () => {
     esFavorito = !esFavorito;

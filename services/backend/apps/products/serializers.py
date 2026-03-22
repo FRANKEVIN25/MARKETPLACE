@@ -12,7 +12,7 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = [
             'id', 'name', 'slug', 'parent',
-            'description', 'image',
+            'description', 'image_url',
             'is_active', 'children_count',
             'created_at', 'updated_at'
         ]
@@ -68,7 +68,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'reference', 'slug',
             'provider_group', 'provider_name',
             'product_type', 'manufacturer_code',
-            'description', 'image', 
+            'description', 'image_url', 
             'price', 'tax_percent',
             'category', 'category_name',
             'is_active', 'is_synced',
@@ -120,7 +120,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'id', 'name', 'reference', 'slug',
             'provider_group', 'provider_name', 'product_type',
             'price', 'price_with_tax', 'tax_percent',
-            'category_name', 'image',
+            'category_name', 'image_url',
             'is_active', 'total_stock',
             'is_synced', 'created_at'
         ]
@@ -142,7 +142,7 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'manufacturer_code', 'description',
             'price', 'tax_percent',
             'category', 'is_active', 'es_universal',
-            'image'
+            'image_url', 'image_cloudinary_id'
         ]
     
     def validate_reference(self, value):
