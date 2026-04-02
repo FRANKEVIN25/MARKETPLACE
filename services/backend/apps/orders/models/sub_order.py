@@ -68,7 +68,21 @@ class SubOrder(models.Model):
         decimal_places=2,
         default=0
     )
-    
+
+    discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Porcentaje de Descuento Aplicado"
+    )
+
+    discount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Monto Descuento"
+    )
+
     igv_rate = models.DecimalField(
         max_digits=5,
         decimal_places=2,

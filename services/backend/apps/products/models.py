@@ -25,7 +25,18 @@ class Category(MPTTModel):
     description = models.TextField(blank=True, null=True)
     image_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL de la imagen en Cloudinary/CDN")
     is_active = models.BooleanField(default=True)
-    
+
+    # Vínculo con Odoo — clave para sincronización correcta
+    # NO confiamos en que el ID sea el mismo en ambos sistemas: guardamos el ID
+    # de Odoo aquí y hacemos update_or_create por este campo.
+    odoo_category_id = models.IntegerField(
+        null=True,
+        blank=True,
+        unique=True,
+        help_text="ID de la categoría en Odoo (product.category). "
+                  "Permite vincular categorías aunque los IDs auto-incrementales difieran."
+    )
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)

@@ -27,11 +27,13 @@ class MarcaVehiculo(models.Model):
         index=True
     )
 
+    # readonly=True se aplica solo en las vistas (vehicle_views.xml), NO aquí.
+    # A nivel de campo en el modelo, readonly bloquearía también las escrituras
+    # vía RPC (push desde Django), lo cual rompe el comando push_vehicles.
     django_external_id = fields.Char(
         string='ID Externo Django',
         index=True,
         copy=False,
-        readonly=True
     )
 
     modelo_ids = fields.One2many(
@@ -80,7 +82,6 @@ class ModeloVehiculo(models.Model):
         string='ID Externo Django',
         index=True,
         copy=False,
-        readonly=True
     )
 
     nombre_mostrar = fields.Char(
@@ -137,7 +138,6 @@ class TransmisionVehiculo(models.Model):
         string='ID Externo Django',
         index=True,
         copy=False,
-        readonly=True
     )
 
     display_name = fields.Char(
@@ -180,7 +180,6 @@ class TraccionVehiculo(models.Model):
         string='ID Externo Django',
         index=True,
         copy=False,
-        readonly=True
     )
 
     display_name = fields.Char(
@@ -237,7 +236,6 @@ class MotorVehiculo(models.Model):
         string='ID Externo Django',
         index=True,
         copy=False,
-        readonly=True
     )
 
     nombre = fields.Char(
@@ -318,7 +316,27 @@ class VarianteVehiculo(models.Model):
         string='ID Externo Django',
         index=True,
         copy=False,
-        readonly=True
+    )
+
+    # ── Scope por proveedor ──────────────────────────────────────────────────
+    # Controla qué tenants (compañías/proveedores) pueden ver y usar esta variante
+    # en el selector de compatibilidades.
+    # - Gestionado exclusivamente por push_vehicles vía RPC (admin bypasea record rules).
+    # - Usuarios de Odoo no ven ni editan este campo (oculto en vistas).
+    # - Una variante con company_ids vacío es visible para TODOS (fallback seguro
+    #   durante la migración y para la puesta en marcha inicial).
+    company_ids = fields.Many2many(
+        'res.company',
+        'vehiculo_variante_company_rel',
+        'variante_id',
+        'company_id',
+        string='Compañías habilitadas',
+        help=(
+            'Proveedores (compañías de Odoo) con acceso a esta variante. '
+            'Gestionado automáticamente desde Django vía push_vehicles --provider-id. '
+            'No modificar manualmente.'
+        ),
+        copy=False,
     )
 
     nombre = fields.Char(

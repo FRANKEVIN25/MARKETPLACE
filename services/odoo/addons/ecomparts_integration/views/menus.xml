@@ -1,18 +1,31 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <odoo>
-    <!-- Menú raíz para Autoparts -->
+    <!-- Menú raíz para Autoparts — visible para todos los usuarios internos -->
     <menuitem id="menu_autoparts_root" name="Autoparts" sequence="10"/>
 
-    <!-- Submenú Vehículos -->
-    <menuitem id="menu_autoparts_vehicles" name="Vehículos" parent="menu_autoparts_root" sequence="10"/>
+    <!--
+        Submenú Vehículos: solo administradores (group_erp_manager).
+        Los proveedores no necesitan navegar el catálogo maestro de vehículos.
+        Interactúan con variantes únicamente desde la pestaña Compatibilidades
+        de su ficha de producto, donde la record rule ya filtra por su scope.
+    -->
+    <menuitem id="menu_vehiculo_variante"
+              name="Variantes"
+              parent="menu_autoparts_root"
+              action="action_vehiculo_variante"
+              sequence="10"
+              groups="base.group_erp_manager"/>
 
-    <menuitem id="menu_vehiculo_marca" name="Marcas" parent="menu_autoparts_vehicles" action="action_vehiculo_marca" sequence="10"/>
-    <menuitem id="menu_vehiculo_modelo" name="Modelos" parent="menu_autoparts_vehicles" action="action_vehiculo_modelo" sequence="20"/>
-    <menuitem id="menu_vehiculo_variante" name="Variantes" parent="menu_autoparts_vehicles" action="action_vehiculo_variante" sequence="30"/>
-    <menuitem id="menu_vehiculo_motor" name="Motores" parent="menu_autoparts_vehicles" action="action_vehiculo_motor" sequence="40"/>
-    <menuitem id="menu_vehiculo_transmision" name="Transmisiones" parent="menu_autoparts_vehicles" action="action_vehiculo_transmision" sequence="50"/>
-    <menuitem id="menu_vehiculo_traccion" name="Tracciones" parent="menu_autoparts_vehicles" action="action_vehiculo_traccion" sequence="60"/>
 
-    <!-- Submenú Compatibilidades -->
-    <menuitem id="menu_autoparts_compatibilities" name="Compatibilidades" parent="menu_autoparts_root" action="action_autopart_compatibility" sequence="20"/>
+    <!--
+        Compatibilidades: visible para todos los usuarios internos.
+        Permite a los proveedores revisar el listado de sus compatibilidades
+        asignadas (un proveedor solo ve sus propios productos gracias al
+        aislamiento de compañía estándar de Odoo en product.template).
+    -->
+    <menuitem id="menu_autoparts_compatibilities"
+              name="Compatibilidades"
+              parent="menu_autoparts_root"
+              action="action_autopart_compatibility"
+              sequence="20"/>
 </odoo>

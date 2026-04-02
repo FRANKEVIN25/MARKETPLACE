@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import { cart } from '$lib/store/cart';
   import { auth } from '$lib/store/auth';
+  import { isWorkshopBusinessActivity } from '$lib/constants/customer';
   import { derived } from 'svelte/store';
 
   // Contador reactivo del carrito
@@ -9,6 +10,7 @@
 
   // Extraer isAuthenticated como store independiente para usar con $
   const isAuthenticated = auth.isAuthenticated;
+  const customer = auth.customer;
 
   let userMenuOpen = false;
 
@@ -25,7 +27,7 @@
   const navigation = [
     { name: 'Inicio', href: '/' },
     { name: 'Productos', href: '/productos' },
-    { name: 'Categorías', href: '/categorias' },
+    { name: 'Servicios', href: '/servicios' },
   ];
   
   let mobileMenuOpen = false;
@@ -38,6 +40,8 @@
   function toggleVendorMenu() {
     vendorMenuOpen = !vendorMenuOpen;
   }
+
+  $: showWorkshopLinks = !!($customer?.is_workshop || isWorkshopBusinessActivity($customer?.business_activity));
 </script>
 
 <header class="bg-white shadow-sm sticky top-0 z-50">
@@ -97,6 +101,16 @@
                   on:click={() => userMenuOpen = false}>
                   📦 Mis Compras
                 </a>
+                {#if showWorkshopLinks}
+                  <a href="/taller/perfil" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                    on:click={() => userMenuOpen = false}>
+                    🔧 Mi Taller
+                  </a>
+                  <a href="/taller/servicios" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                    on:click={() => userMenuOpen = false}>
+                    🧰 Mis Servicios
+                  </a>
+                {/if}
                 <div class="border-t border-gray-200 my-1"></div>
                 <button on:click={logout} class="w-full text-left block px-4 py-2 text-red-600 hover:bg-red-50 text-sm">
                   🚪 Cerrar Sesión

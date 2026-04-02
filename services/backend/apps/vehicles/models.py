@@ -155,6 +155,17 @@ class VariantVehiculo(models.Model):
     anio_desde = models.PositiveIntegerField()
     anio_hasta = models.PositiveIntegerField(null=True, blank=True)
 
+    # Vínculo con Odoo — almacena el ID de vehiculo.variante en Odoo.
+    # Permite resolver la variante en queries de compatibilidad sin depender
+    # de django_external_id (que es el campo inverso, guardado en Odoo).
+    odoo_variante_id = models.IntegerField(
+        null=True,
+        blank=True,
+        unique=True,
+        help_text="ID de la variante en Odoo (vehiculo.variante). "
+                  "Ancla para la sincronización de compatibilidades."
+    )
+
     class Meta:
         unique_together = ('modelo','motor','transmision','traccion','anio_desde','anio_hasta')
         indexes = [

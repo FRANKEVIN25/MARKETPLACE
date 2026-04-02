@@ -876,12 +876,33 @@
                         <span class="font-medium">S/ {parseFloat(item.subtotal).toFixed(2)}</span>
                       </div>
                     {/each}
-                    {#if parseFloat(sub.igv_amount) > 0}
-                      <div class="flex justify-between text-xs text-gray-400 pt-1 border-t border-dashed border-gray-200">
-                        <span>IGV ({sub.igv_rate}%)</span>
-                        <span>S/ {parseFloat(sub.igv_amount).toFixed(2)}</span>
+
+                    <!-- Desglose financiero: subtotal, descuento, IGV, total -->
+                    <div class="mt-3 pt-3 border-t border-dashed border-gray-200 space-y-1.5 text-xs">
+                      <div class="flex justify-between text-gray-500">
+                        <span>Subtotal</span>
+                        <span>S/ {parseFloat(sub.subtotal).toFixed(2)}</span>
                       </div>
-                    {/if}
+
+                      {#if parseFloat(sub.discount) > 0}
+                        <div class="flex justify-between text-green-600 font-medium">
+                          <span>Descuento cliente ({sub.discount_percent}%)</span>
+                          <span>− S/ {parseFloat(sub.discount).toFixed(2)}</span>
+                        </div>
+                      {/if}
+
+                      {#if parseFloat(sub.igv_amount) > 0}
+                        <div class="flex justify-between text-gray-400">
+                          <span>IGV ({sub.igv_rate}%)</span>
+                          <span>S/ {parseFloat(sub.igv_amount).toFixed(2)}</span>
+                        </div>
+                      {/if}
+
+                      <div class="flex justify-between font-semibold text-gray-800 pt-1 border-t border-gray-200">
+                        <span>Total a pagar</span>
+                        <span>S/ {parseFloat(sub.total).toFixed(2)}</span>
+                      </div>
+                    </div>
                   </div>
 
                   <!-- Datos de pago del proveedor -->
@@ -1147,10 +1168,30 @@
 
         <!-- Separador -->
         <div class="border-t border-dashed border-gray-200 pt-3 space-y-2 text-sm">
-          <div class="flex justify-between text-gray-600">
-            <span>Productos ({state.items.length})</span>
-            <span>{fmt(subtotal)}</span>
-          </div>
+          {#if state.order}
+            <!-- Desglose real una vez creada la orden -->
+            <div class="flex justify-between text-gray-600">
+              <span>Subtotal</span>
+              <span>{fmt(parseFloat(state.order.subtotal))}</span>
+            </div>
+            {#if parseFloat(state.order.discount) > 0}
+              <div class="flex justify-between text-green-600 font-medium">
+                <span>Descuento</span>
+                <span>− {fmt(parseFloat(state.order.discount))}</span>
+              </div>
+            {/if}
+            {#if parseFloat(state.order.tax) > 0}
+              <div class="flex justify-between text-gray-500">
+                <span>IGV (18%)</span>
+                <span>{fmt(parseFloat(state.order.tax))}</span>
+              </div>
+            {/if}
+          {:else}
+            <div class="flex justify-between text-gray-600">
+              <span>Productos ({state.items.length})</span>
+              <span>{fmt(subtotal)}</span>
+            </div>
+          {/if}
           {#if provCount > 1}
             <p class="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">
               ⚠️ Pedido con {provCount} proveedores — se generará una sub-orden por cada uno.
@@ -1161,12 +1202,16 @@
         <!-- Total -->
         <div class="border-t border-gray-200 pt-3 flex justify-between items-center">
           <span class="font-bold text-gray-900">Total</span>
-          <span class="font-bold text-gray-900 text-lg">{fmt(subtotal)}</span>
+          <span class="font-bold text-gray-900 text-lg">
+            {state.order ? fmt(parseFloat(state.order.total)) : fmt(subtotal)}
+          </span>
         </div>
 
-        <p class="text-xs text-gray-400 italic">
-          *Precio final sujeto a medio de pago con descuento.
-        </p>
+        {#if !state.order}
+          <p class="text-xs text-gray-400 italic">
+            *El descuento por historial de compras se aplicará al confirmar el pedido.
+          </p>
+        {/if}
 
         <!-- Indicadores de pasos -->
         <div class="border-t border-gray-100 pt-4 space-y-2">

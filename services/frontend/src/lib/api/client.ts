@@ -7,10 +7,15 @@ import type {
   Category,
   PaginatedResponse,
   ProductFilters,
+  ServiceCategoryItem,
+  ServiceFilters,
+  ServiceListing,
+  WorkshopLocationOptions,
   Customer,
   Address,
   AuthTokens,
   AuthUser,
+  BusinessActivity,
   Order,
   SubOrder,
   CreateOrderPayload,
@@ -19,6 +24,50 @@ import type {
   VehicleModelo,
   VehicleVariantFilter,
 } from './types';
+
+type RawServiceListing = Omit<ServiceListing, 'district' | 'province' | 'department' | 'totalJobs' | 'successRate' | 'repeatFailureRate' | 'avgRating'> & {
+  mainLocation?: {
+    id: number;
+    name: string;
+    address: string;
+    district: string;
+    province: string;
+    department: string;
+    latitude: string;
+    longitude: string;
+    is_main: boolean;
+  } | null;
+  totalDemand?: number;
+  avgRating?: number;
+};
+
+function normalizeServiceListing(listing: RawServiceListing): ServiceListing {
+  const location = listing.mainLocation ?? null;
+  const avgRating = Number(listing.avgRating ?? 0);
+
+  return {
+    ...listing,
+    mainLocation: location,
+    district: location?.district ?? '',
+    province: location?.province ?? '',
+    department: location?.department ?? '',
+    totalJobs: Number(listing.totalDemand ?? 0),
+    avgRating,
+    // Se mantienen para no romper el resto del frontend mientras migramos la UI
+    // a labels más precisos basados en rating/demanda reales del backend.
+    successRate: avgRating * 20,
+    repeatFailureRate: 0,
+  };
+}
+
+function normalizeServiceListingResponse(
+  response: PaginatedResponse<RawServiceListing>,
+): PaginatedResponse<ServiceListing> {
+  return {
+    ...response,
+    results: (response.results ?? []).map(normalizeServiceListing),
+  };
+}
 
 // Configuración base
 const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
@@ -231,6 +280,59 @@ export const api = {
   },
 
   /**
+   * SERVICIOS DE TALLER
+   */
+  services: {
+    async categories(): Promise<ServiceCategoryItem[]> {
+      const response = await apiClient.get<PaginatedResponse<ServiceCategoryItem> | ServiceCategoryItem[]>(
+        '/api/v1/services/categories/'
+      );
+      const data = response.data as any;
+      return Array.isArray(data) ? data : (data.results ?? []);
+    },
+
+    async list(filters?: ServiceFilters): Promise<PaginatedResponse<ServiceListing>> {
+      const params: Record<string, string> = {};
+
+      if (filters?.q) params['q'] = filters.q;
+      if (filters?.category_id) params['category_id'] = String(filters.category_id);
+      if (filters?.category) params['category'] = filters.category;
+      if (filters?.service_type) params['service_type'] = filters.service_type;
+      if (filters?.district) params['district'] = filters.district;
+      if (filters?.province) params['province'] = filters.province;
+      if (filters?.department) params['department'] = filters.department;
+      if (filters?.verified_only !== undefined) params['verified_only'] = String(filters.verified_only);
+      if (filters?.specialized_only !== undefined) params['specialized_only'] = String(filters.specialized_only);
+      if (filters?.erp_only !== undefined) params['erp_only'] = String(filters.erp_only);
+      if (filters?.marca_id) params['marca_id'] = String(filters.marca_id);
+      if (filters?.modelo_id) params['modelo_id'] = String(filters.modelo_id);
+      if (filters?.page) params['page'] = String(filters.page);
+      if (filters?.page_size) params['page_size'] = String(filters.page_size);
+      if (filters?.ordering) params['ordering'] = filters.ordering;
+
+      const response = await apiClient.get<PaginatedResponse<RawServiceListing>>(
+        '/api/v1/services/listings/',
+        { params }
+      );
+      return normalizeServiceListingResponse(response.data);
+    },
+
+    async locationOptions(
+      department?: string,
+      province?: string,
+    ): Promise<WorkshopLocationOptions> {
+      const params: Record<string, string> = {};
+      if (department) params['department'] = department;
+      if (province) params['province'] = province;
+      const response = await apiClient.get<WorkshopLocationOptions>(
+        '/api/v1/services/locations/',
+        { params },
+      );
+      return response.data;
+    },
+  },
+
+  /**
    * AUTH
    */
   auth: {
@@ -281,6 +383,7 @@ export const api = {
       customer_type: 'individual' | 'company';
       document_type: 'DNI' | 'RUC';
       document_number: string;
+      business_activity?: BusinessActivity | '';
       email: string;
       password: string;
     }): Promise<{ customer: Customer; tokens: AuthTokens }> {

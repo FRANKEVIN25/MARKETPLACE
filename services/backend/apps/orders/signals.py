@@ -8,6 +8,19 @@ from apps.sync.odoo_connector import OdooConnector
 
 logger = logging.getLogger(__name__)
 
+
+def _company_context(company_id):
+    """Construye contexto Odoo explícito para operaciones multi-company."""
+    if not company_id:
+        return {'tz': 'America/Lima'}
+
+    return {
+        'tz': 'America/Lima',
+        'company_id': company_id,
+        'force_company': company_id,
+        'allowed_company_ids': [company_id],
+    }
+
 # Mapa SubOrder.status → x_payment_status reducido (v5).
 # Solo los estados que tienen una sale.order en Odoo.
 # x_payment_status en Odoo acepta exactamente 3 valores: pendiente_revision, aprobado, rechazado.
@@ -320,6 +333,7 @@ def sync_suborder_to_odoo(suborder):
                 'sale.order',
                 'create',
                 [[sale_order_data]],
+                {'context': _company_context(provider.odoo_company_id)},
             )
             # En JSON-RPC, create multi devuelve [id]; create simple devuelve id.
             if isinstance(result, (list, tuple)):
@@ -426,6 +440,163 @@ def recalculate_order_status(sender, instance, **kwargs):
         logger.info(
             f'📊 Order {order.order_number}: status '
             f'"{order.status}" → "{new_status}"'
+        )
+
+
+# ─────────────────────────────────────────────────────────────
+# Signal: update_customer_provider_stats
+# ─────────────────────────────────────────────────────────────
+
+ESTADOS_VALIDOS_STATS = {'confirmado', 'enviado', 'entregado'}
+
+
+def update_customer_provider_stats(sender, instance, **kwargs):
+    """
+    Recalcula CustomerProviderStats cuando una SubOrder entra en un estado válido
+    (confirmado / enviado / entregado).
+
+    Se conecta en OrdersConfig.ready().
+    """
+    if instance.status not in ESTADOS_VALIDOS_STATS:
+        return
+
+    try:
+        from django.db.models import Sum, Count
+        from apps.customer.models import CustomerProviderStats
+        from apps.discounts.models import DiscountRule
+        from apps.orders.pricing.customer_discount import (
+            _historial_ponderado, _esquema_ponderacion,
+        )
+        from decimal import Decimal
+
+        customer = instance.order.customer
+        provider = instance.provider
+
+        # ── Acumulados brutos ────────────────────────────────────────────
+        agg = (
+            sender.objects.filter(
+                order__customer=customer,
+                provider=provider,
+                status__in=list(ESTADOS_VALIDOS_STATS),
+            ).aggregate(
+                total=Sum('total'),
+                orders=Count('id'),
+            )
+        )
+        total_spent = agg['total'] or Decimal('0.00')
+        total_orders = agg['orders'] or 0
+
+        # ── Historial ponderado (igual que el motor de descuentos) ───────
+        esquema = _esquema_ponderacion(customer.customer_type)
+        weighted = _historial_ponderado(customer, provider, esquema)
+
+        # ── Descuento actual ─────────────────────────────────────────────
+        def _buscar_porcentaje(monto):
+            regla = (
+                DiscountRule.objects
+                .filter(
+                    customer_type=customer.customer_type,
+                    provider=provider,
+                    min_amount__lte=monto,
+                    is_active=True,
+                )
+                .order_by('-min_amount')
+                .first()
+            )
+            if regla:
+                return regla.discount_percent
+            regla = (
+                DiscountRule.objects
+                .filter(
+                    customer_type=customer.customer_type,
+                    provider__isnull=True,
+                    min_amount__lte=monto,
+                    is_active=True,
+                )
+                .order_by('-min_amount')
+                .first()
+            )
+            return regla.discount_percent if regla else Decimal('0')
+
+        current_pct = _buscar_porcentaje(weighted)
+
+        # ── Siguiente tier ────────────────────────────────────────────────
+        siguiente_regla = (
+            DiscountRule.objects
+            .filter(
+                customer_type=customer.customer_type,
+                provider__isnull=True,
+                min_amount__gt=weighted,
+                is_active=True,
+            )
+            .order_by('min_amount')
+            .first()
+        )
+        # Intentar también regla de proveedor específico
+        siguiente_regla_prov = (
+            DiscountRule.objects
+            .filter(
+                customer_type=customer.customer_type,
+                provider=provider,
+                min_amount__gt=weighted,
+                is_active=True,
+            )
+            .order_by('min_amount')
+            .first()
+        )
+        candidatos = [r for r in [siguiente_regla, siguiente_regla_prov] if r]
+        next_tier_amount = Decimal('0.00')
+        if candidatos:
+            siguiente = min(candidatos, key=lambda r: r.min_amount)
+            next_tier_amount = max(Decimal('0.00'), siguiente.min_amount - weighted)
+
+        # ── Upsert ────────────────────────────────────────────────────────
+        CustomerProviderStats.objects.update_or_create(
+            customer=customer,
+            provider=provider,
+            defaults={
+                'total_spent': total_spent,
+                'total_orders': total_orders,
+                'weighted_history': weighted,
+                'current_discount_percent': current_pct,
+                'next_tier_amount': next_tier_amount,
+            },
+        )
+        logger.info(
+            "📈 CustomerProviderStats actualizado: %s → %s | "
+            "gastado=%.2f ponderado=%.2f descuento=%s%% falta=%.2f",
+            customer, provider.name,
+            total_spent, weighted, current_pct, next_tier_amount,
+        )
+
+        # ── Actualizar CustomerStats global (agrega todos los proveedores) ──
+        from apps.customer.models import CustomerStats
+
+        global_agg = (
+            sender.objects.filter(
+                order__customer=customer,
+                status__in=list(ESTADOS_VALIDOS_STATS),
+            ).aggregate(
+                total_sum=Sum('total'),
+                orders=Count('id'),
+            )
+        )
+        g_total = global_agg['total_sum'] or Decimal('0.00')
+        g_orders = global_agg['orders'] or 0
+        g_avg = (g_total / g_orders).quantize(Decimal('0.01')) if g_orders else Decimal('0.00')
+
+        CustomerStats.objects.update_or_create(
+            customer=customer,
+            defaults={
+                'total_spent': g_total,
+                'total_orders': g_orders,
+                'average_order_value': g_avg,
+            },
+        )
+    except Exception:
+        logger.exception(
+            "⚠️ Error actualizando CustomerProviderStats para SubOrder %s",
+            instance.pk,
         )
 
 def update_odoo_payment_status(suborder):

@@ -12,6 +12,11 @@ class CustomerSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user.username', read_only=True)
     full_name = serializers.CharField(source='get_full_name', read_only=True)
     full_document = serializers.CharField(read_only=True)
+    business_activity_display = serializers.CharField(
+        source='get_business_activity_display',
+        read_only=True
+    )
+    is_workshop = serializers.BooleanField(read_only=True)
     
     class Meta:
         model = Customer
@@ -29,10 +34,12 @@ class CustomerSerializer(serializers.ModelSerializer):
             'full_document',
             'company_name',
             'business_activity',
+            'business_activity_display',
             'receive_newsletter',
             'receive_promotions',
             'is_active',
             'is_verified',
+            'is_workshop',
             'created_at',
             'updated_at',
             'last_order_date'
@@ -130,6 +137,11 @@ class CustomerRegisterSerializer(serializers.Serializer):
     customer_type = serializers.ChoiceField(choices=['individual', 'company'])
     document_type = serializers.ChoiceField(choices=['DNI', 'RUC'])
     document_number = serializers.CharField(max_length=20)
+    business_activity = serializers.ChoiceField(
+        choices=Customer.BUSINESS_ACTIVITY_CHOICES,
+        required=False,
+        allow_blank=True
+    )
     email = serializers.EmailField()
     password = serializers.CharField(write_only=True, min_length=8)
 
@@ -141,6 +153,10 @@ class CustomerRegisterSerializer(serializers.Serializer):
             raise serializers.ValidationError({'document_type': 'Persona natural debe usar DNI.'})
         if data['customer_type'] == 'company' and data['document_type'] != 'RUC':
             raise serializers.ValidationError({'document_type': 'Empresa debe usar RUC.'})
+        if data['customer_type'] == 'company' and not data.get('business_activity'):
+            raise serializers.ValidationError({'business_activity': 'Selecciona la actividad económica de la empresa.'})
+        if data['customer_type'] == 'individual':
+            data['business_activity'] = ''
         return data
 
     def create(self, validated_data):
@@ -163,5 +179,6 @@ class CustomerRegisterSerializer(serializers.Serializer):
             customer_type=validated_data['customer_type'],
             document_type=validated_data['document_type'],
             document_number=validated_data['document_number'],
+            business_activity=validated_data.get('business_activity', ''),
         )
         return customer

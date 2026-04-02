@@ -216,6 +216,19 @@ class Provider(models.Model):
         verbose_name="Número Plin"
     )
     
+    # ====== SCOPE DE VEHÍCULOS ======
+    variantes_habilitadas = models.ManyToManyField(
+        'vehicles.VariantVehiculo',
+        blank=True,
+        related_name='providers_habilitados',
+        verbose_name='Variantes de vehículos habilitadas',
+        help_text=(
+            "Variantes con las que trabaja este proveedor. "
+            "push_vehicles --provider-id solo empuja estas variantes al tenant "
+            "Odoo del proveedor y gestiona automáticamente la visibilidad."
+        )
+    )
+
     # ====== METADATA ======
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -547,3 +560,69 @@ class Member(models.Model):
         super().save(*args, **kwargs)
 
 
+# ─────────────────────────────────────────────
+# Signal: sincronizar scope de Odoo cuando cambia variantes_habilitadas
+# ─────────────────────────────────────────────
+
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
+
+
+@receiver(m2m_changed, sender=Provider.variantes_habilitadas.through)
+def sync_variante_scope_on_change(sender, instance, action, pk_set, **kwargs):
+    """
+    Cuando el admin agrega o quita variantes del scope de un Provider,
+    refleja el cambio en Odoo (company_ids de vehiculo.variante).
+
+    - post_add    → scope_variante_for_company   (añade visibilidad)
+    - post_remove → unscope_variante_from_company (quita visibilidad)
+
+    Solo actúa si el Provider ya tiene odoo_company_id (está configurado en Odoo).
+    Las variantes sin odoo_variante_id son ignoradas; se vinculan con push_vehicles.
+    """
+    if action not in ('post_add', 'post_remove'):
+        return
+
+    if not isinstance(instance, Provider):
+        return
+
+    company_id = instance.odoo_company_id
+    if not company_id:
+        return  # Proveedor aún no configurado en Odoo
+
+    if not pk_set:
+        return
+
+    try:
+        from apps.vehicles.models import VariantVehiculo
+        from apps.sync.odoo_connector import OdooConnector
+
+        variantes = VariantVehiculo.objects.filter(
+            pk__in=pk_set,
+            odoo_variante_id__isnull=False,
+        ).values_list('odoo_variante_id', flat=True)
+
+        if not variantes:
+            return
+
+        odoo = OdooConnector()
+        if not odoo._authenticate():
+            import logging
+            logging.getLogger(__name__).error(
+                "sync_variante_scope_on_change: no se pudo conectar a Odoo"
+            )
+            return
+
+        for odoo_variante_id in variantes:
+            if action == 'post_add':
+                odoo.scope_variante_for_company(odoo_variante_id, company_id)
+            else:
+                odoo.unscope_variante_from_company(odoo_variante_id, company_id)
+
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error(
+            f"sync_variante_scope_on_change error ({action}) "
+            f"provider={instance.pk}: {exc}",
+            exc_info=True,
+        )

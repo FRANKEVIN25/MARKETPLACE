@@ -10,7 +10,7 @@
 </svelte:head>
 
 <div class="bg-gradient-to-r from-blue-600 to-blue-800 text-white py-4">
-  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto px-4 sm:px-4 lg:px-6">
     <div class="flex flex-col md:flex-row items-center justify-between gap-4">
       <div class="flex items-center gap-3">
         <span class="text-2xl">💼</span>

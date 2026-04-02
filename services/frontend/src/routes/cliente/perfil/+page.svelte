@@ -3,6 +3,12 @@
   import { api } from '$lib/api/client';
   import { onMount } from 'svelte';
   import type { Customer } from '$lib/api/types';
+  import {
+    BUSINESS_ACTIVITY_OPTIONS,
+    isWorkshopBusinessActivity,
+    normalizeBusinessActivity,
+    type BusinessActivity,
+  } from '$lib/constants/customer';
 
   let customer: Customer | null = null;
   let loading = true;
@@ -16,7 +22,7 @@
     document_type: 'DNI' | 'RUC' | 'CE' | 'PASSPORT';
     document_number: string;
     company_name: string;
-    business_activity: string;
+    business_activity: BusinessActivity | '';
     receive_newsletter: boolean;
     receive_promotions: boolean;
   } = {
@@ -43,7 +49,7 @@
         document_type: (customer.document_type as 'DNI' | 'RUC' | 'CE' | 'PASSPORT') || 'DNI',
         document_number: customer.document_number || '',
         company_name: customer.company_name || '',
-        business_activity: customer.business_activity || '',
+        business_activity: normalizeBusinessActivity(customer.business_activity),
         receive_newsletter: customer.receive_newsletter,
         receive_promotions: customer.receive_promotions,
       };
@@ -70,6 +76,11 @@
       guardando = false;
     }
   }
+
+  $: isWorkshopCompany = !!(
+    customer?.customer_type === 'company' &&
+    (customer?.is_workshop || isWorkshopBusinessActivity(customer?.business_activity))
+  );
 </script>
 
 <svelte:head>
@@ -142,8 +153,14 @@
             </div>
             <div class="md:col-span-2">
               <label class="block text-sm font-medium text-gray-700 mb-1" for="business_activity">Actividad Económica</label>
-              <input id="business_activity" type="text" bind:value={form.business_activity}
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <select id="business_activity" bind:value={form.business_activity}
+                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <option value="">Selecciona el tipo de empresa</option>
+                {#each BUSINESS_ACTIVITY_OPTIONS as option}
+                  <option value={option.value}>{option.label}</option>
+                {/each}
+              </select>
+              <p class="text-xs text-gray-500 mt-1">La configuración de taller se habilita solo cuando la actividad económica es Taller mecánico.</p>
             </div>
           {/if}
         </div>
@@ -175,6 +192,16 @@
             class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2 rounded-lg transition">
             {guardando ? 'Guardando...' : 'Guardar Cambios'}
           </button>
+          {#if isWorkshopCompany}
+            <a href="/taller/perfil"
+              class="border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-6 py-2 rounded-lg transition">
+              Configurar taller
+            </a>
+            <a href="/taller/servicios"
+              class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-6 py-2 rounded-lg transition">
+              Configurar servicios
+            </a>
+          {/if}
           <a href="/cliente/direcciones"
             class="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-6 py-2 rounded-lg transition">
             Mis Direcciones
@@ -185,6 +212,50 @@
           </a>
         </div>
       </form>
+
+      {#if customer.customer_type === 'company' && !isWorkshopCompany}
+        <section class="pt-6 border-t border-gray-100 space-y-3">
+          <h2 class="text-xl font-bold text-gray-900">Módulos especializados</h2>
+          <p class="text-sm text-gray-600">
+            Tu empresa todavía no tiene habilitado el módulo de taller. Si operas como taller mecánico, cambia la actividad económica y guarda el perfil para activar esas configuraciones.
+          </p>
+          <a href="/servicios" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700">
+            Ver propuesta de servicios →
+          </a>
+        </section>
+      {/if}
+
+      {#if isWorkshopCompany}
+        <section class="pt-6 border-t border-gray-100 space-y-4">
+          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+            <div>
+              <h2 class="text-xl font-bold text-gray-900">Panel de taller</h2>
+              <p class="text-sm text-gray-600">
+                Usa tus datos de empresa como base y completa la configuración operativa de tu taller.
+              </p>
+            </div>
+            <a href="/servicios"
+              class="text-sm font-semibold text-blue-600 hover:text-blue-700">
+              Ver propuesta de servicios →
+            </a>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <a href="/taller/perfil" class="rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition">
+              <p class="text-sm font-semibold text-gray-900 mb-1">Perfil comercial</p>
+              <p class="text-sm text-gray-600">Marca del taller, especialidades, cobertura y propuesta de valor.</p>
+            </a>
+            <a href="/taller/servicios" class="rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition">
+              <p class="text-sm font-semibold text-gray-900 mb-1">Catálogo de servicios</p>
+              <p class="text-sm text-gray-600">Precios base, tiempos estimados, garantía y servicios destacados.</p>
+            </a>
+            <a href="/cliente/historial-compras" class="rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition">
+              <p class="text-sm font-semibold text-gray-900 mb-1">Historial conservado</p>
+              <p class="text-sm text-gray-600">Tus compras y beneficios del marketplace siguen ligados al mismo usuario.</p>
+            </a>
+          </div>
+        </section>
+      {/if}
     </div>
   {/if}
 </div>

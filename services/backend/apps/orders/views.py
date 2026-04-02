@@ -24,7 +24,9 @@ from .serializers import (
     CreateOrderSerializer,
     UploadPaymentProofSerializer,
     ConfirmPaymentSerializer,
+    CheckoutPreviewSerializer,
 )
+from .pricing.customer_discount import calcular_descuento_suborder
 from apps.customer.models import Customer
 from apps.products.models import Product
 
@@ -50,6 +52,112 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         return Order.objects.none()
     
+    @action(detail=False, methods=['post'], url_path='checkout-preview')
+    def checkout_preview(self, request):
+        """
+        Previsualización del checkout con descuentos aplicados.
+        No crea ninguna orden. Útil para el frontend antes de confirmar.
+
+        Request:
+            { "customer_id": 1, "items": [{"product_id": 5, "quantity": 2}, ...] }
+
+        Response:
+            {
+              "providers": [
+                {
+                  "provider_id": 1, "provider_name": "...",
+                  "igv_applicable": true,
+                  "subtotal": "250.00",
+                  "discount_percent": "5.00",
+                  "discount": "13.00",
+                  "igv_amount": "42.66",
+                  "total": "279.66",
+                  "items": [...]
+                }
+              ],
+              "summary": { "subtotal": ..., "discount": ..., "igv": ..., "total": ... }
+            }
+        """
+        serializer = CheckoutPreviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        customer = Customer.objects.get(id=data['customer_id'])
+
+        # Agrupar items por proveedor
+        items_by_provider = {}
+        for item_data in data['items']:
+            product = Product.objects.select_related('provider').get(id=item_data['product_id'])
+            provider = product.provider
+            if provider.id not in items_by_provider:
+                items_by_provider[provider.id] = {'provider': provider, 'items': []}
+            items_by_provider[provider.id]['items'].append({
+                'product': product,
+                'quantity': item_data['quantity'],
+            })
+
+        providers_preview = []
+        summary_subtotal = Decimal('0.00')
+        summary_discount = Decimal('0.00')
+        summary_igv = Decimal('0.00')
+        summary_total = Decimal('0.00')
+
+        for provider_data in items_by_provider.values():
+            provider = provider_data['provider']
+            igv_rate = Decimal('18.00') if provider.igv_applicable else Decimal('0.00')
+
+            sub_subtotal = Decimal('0.00')
+            sub_igv = Decimal('0.00')
+            items_detail = []
+
+            for item_info in provider_data['items']:
+                product = item_info['product']
+                qty = item_info['quantity']
+                base = product.price * qty
+                igv_amount = (base * igv_rate / 100).quantize(Decimal('0.01')) if provider.igv_applicable else Decimal('0.00')
+
+                sub_subtotal += base
+                sub_igv += igv_amount
+                items_detail.append({
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'product_sku': product.reference,
+                    'quantity': qty,
+                    'unit_price': str(product.price),
+                    'igv_amount': str(igv_amount),
+                    'line_total': str(base + igv_amount),
+                })
+
+            discount_pct, discount_monto = calcular_descuento_suborder(customer, provider, sub_subtotal)
+            provider_total = sub_subtotal - discount_monto + sub_igv
+
+            providers_preview.append({
+                'provider_id': provider.id,
+                'provider_name': provider.name,
+                'igv_applicable': provider.igv_applicable,
+                'subtotal': str(sub_subtotal),
+                'discount_percent': str(discount_pct),
+                'discount': str(discount_monto),
+                'igv_amount': str(sub_igv),
+                'total': str(provider_total),
+                'items': items_detail,
+            })
+
+            summary_subtotal += sub_subtotal
+            summary_discount += discount_monto
+            summary_igv += sub_igv
+            summary_total += provider_total
+
+        return Response({
+            'providers': providers_preview,
+            'summary': {
+                'subtotal': str(summary_subtotal),
+                'discount': str(summary_discount),
+                'igv': str(summary_igv),
+                'total': str(summary_total),
+            },
+        })
+
     @transaction.atomic
     @action(detail=False, methods=['post'])
     def create_order(self, request):
@@ -101,6 +209,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # 4 y 5. Crear SubOrders y OrderItems
         order_subtotal = Decimal('0.00')
+        order_discount = Decimal('0.00')
         order_tax = Decimal('0.00')
         
         for provider_data in items_by_provider.values():
@@ -157,9 +266,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 sub_order_igv += igv_amount
             
             # Actualizar SubOrder totales
+            # Calcular descuento cliente-proveedor sobre el subtotal (sin IGV)
+            descuento_pct, descuento_monto = calcular_descuento_suborder(
+                customer, provider, sub_order_subtotal
+            )
+
             sub_order.subtotal = sub_order_subtotal
+            sub_order.discount_percent = descuento_pct
+            sub_order.discount = descuento_monto
             sub_order.igv_amount = sub_order_igv
-            sub_order.total = sub_order_subtotal + sub_order_igv
+            sub_order.total = sub_order_subtotal - descuento_monto + sub_order_igv
             sub_order.save()
 
             # ✅ NO se encola ninguna tarea Celery hacia Odoo aquí (create_order).
@@ -167,11 +283,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             # su comprobante (SubOrder.status → 'pago_en_revision').
 
             order_subtotal += sub_order_subtotal
+            order_discount += descuento_monto
+            order_tax += sub_order_igv
         
         # 6. Actualizar Order totales
         order.subtotal = order_subtotal
+        order.discount = order_discount
         order.tax = order_tax
-        order.total = order_subtotal + order_tax
+        order.total = order_subtotal - order_discount + order_tax
         order.save()
         
         # Retornar orden creada

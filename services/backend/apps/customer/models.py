@@ -23,6 +23,18 @@ class Customer(models.Model):
         ('CE', 'Carnet de Extranjería'),
         ('PASSPORT', 'Pasaporte'),
     ]
+
+    BUSINESS_ACTIVITY_CHOICES = [
+        ('workshop', 'Taller mecánico'),
+        ('parts_supplier', 'Proveedor de autopartes'),
+        ('retail_store', 'Tienda de repuestos'),
+        ('distributor', 'Distribuidor'),
+        ('fleet', 'Flota o transporte'),
+        ('dealer', 'Concesionario'),
+        ('manufacturer', 'Fabricación o rectificación'),
+        ('insurance', 'Aseguradora o peritaje'),
+        ('other', 'Otro rubro automotriz'),
+    ]
     
     # Relación con User, para mayor flexibilidad usear AbstractUser en el futuro(version de lanzamiento).
     user = models.OneToOneField(
@@ -72,8 +84,9 @@ class Customer(models.Model):
         help_text="Solo para tipo empresa"
     )
     business_activity = models.CharField(
-        max_length=200,
+        max_length=40,
         blank=True,
+        choices=BUSINESS_ACTIVITY_CHOICES,
         verbose_name="Actividad Económica"
     )
     
@@ -129,6 +142,11 @@ class Customer(models.Model):
     def full_document(self):
         """Retorna documento formateado"""
         return f"{self.document_type}: {self.document_number}" if self.document_number else "Sin documento"
+
+    @property
+    def is_workshop(self):
+        """Indica si la empresa opera como taller."""
+        return self.customer_type == 'company' and self.business_activity == 'workshop'
 
 
 class Address(models.Model):
@@ -238,6 +256,89 @@ class Address(models.Model):
     @property
     def is_agency(self):
         return self.address_type == 'agency'
+
+
+class CustomerProviderStats(models.Model):
+    """
+    Historial de compra agregado por par (cliente, proveedor).
+
+    Se actualiza automáticamente via signal cada vez que una SubOrder
+    alcanza un estado válido: confirmado / enviado / entregado.
+
+    Campos calculados que se cachean:
+      - total_spent:             suma de SubOrder.total en estados válidos
+      - total_orders:            cantidad de SubOrders válidas
+      - weighted_history:        historial ponderado (usado por el motor de descuentos)
+      - current_discount_percent: % de descuento activo según DiscountRule
+      - next_tier_amount:        monto que falta para el siguiente tier (0 = en el máximo)
+    """
+
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='provider_stats',
+        verbose_name="Cliente",
+    )
+    provider = models.ForeignKey(
+        'marketplace.Provider',
+        on_delete=models.CASCADE,
+        related_name='customer_stats',
+        verbose_name="Proveedor",
+    )
+
+    # Acumulados en estados válidos (confirmado/enviado/entregado)
+    total_spent = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Total Gastado",
+    )
+    total_orders = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Pedidos Completados",
+    )
+
+    # Caché del historial ponderado (resultado de _historial_ponderado)
+    weighted_history = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Historial Ponderado",
+        help_text="Valor calculado por el motor de descuentos (ventana temporal ponderada).",
+    )
+
+    # Tier de descuento actual
+    current_discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Descuento Actual (%)",
+    )
+    next_tier_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=2,
+        default=0,
+        verbose_name="Falta para Siguiente Tier",
+        help_text="Monto adicional necesario para el siguiente nivel de descuento (0 = tier máximo).",
+    )
+
+    last_recalculated = models.DateTimeField(
+        auto_now=True,
+        verbose_name="Último Recálculo",
+    )
+
+    class Meta:
+        db_table = 'customer_provider_stats'
+        verbose_name = 'Historial por Proveedor'
+        verbose_name_plural = 'Historial por Proveedor'
+        unique_together = [('customer', 'provider')]
+        ordering = ['-total_spent']
+
+    def __str__(self):
+        return (
+            f"{self.customer} → {self.provider.name} | "
+            f"S/ {self.total_spent} | {self.current_discount_percent}%"
+        )
 
 
 class CustomerStats(models.Model):

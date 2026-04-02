@@ -32,33 +32,44 @@ class MotorAdmin(admin.ModelAdmin):
 class VariantVehiculoAdmin(admin.ModelAdmin):
     # Organiza las columnas en la lista principal
     list_display = (
-        'modelo', 
-        'get_marca', 
-        'motor', 
-        'transmision', 
-        'traccion', 
-        'anio_desde', 
-        'anio_hasta'
-    )
-    
-    # Agrega filtros laterales para encontrar variantes rápido
-    list_filter = (
-        'modelo__marca', 
-        'transmision__tipo', 
-        'traccion__tipo', 
-        'anio_desde'
-    )
-    
-    # Permite buscar por nombre de modelo o marca
-    search_fields = (
-        'modelo__nombre', 
-        'modelo__marca__nombre', 
-        'motor__codigo_motor'
+        'modelo',
+        'get_marca',
+        'motor',
+        'transmision',
+        'traccion',
+        'anio_desde',
+        'anio_hasta',
+        'odoo_variante_id',
+        'get_providers_count',
     )
 
-    # Método para mostrar la marca en la lista (ya que no está directo en VariantVehiculo)
+    # Agrega filtros laterales para encontrar variantes rápido
+    list_filter = (
+        'modelo__marca',
+        'transmision__tipo',
+        'traccion__tipo',
+        'anio_desde',
+    )
+
+    # Permite buscar por nombre de modelo, marca o código de motor.
+    # Estos campos también son usados por el widget filter_horizontal
+    # de ProviderAdmin para buscar variantes al asignar el scope.
+    search_fields = (
+        'modelo__nombre',
+        'modelo__marca__nombre',
+        'motor__codigo_motor',
+        'motor__tecnologia',
+        'anio_desde',
+        'anio_hasta',
+    )
+
+    readonly_fields = ('odoo_variante_id',)
+
     @admin.display(ordering='modelo__marca', description='Marca')
     def get_marca(self, obj):
         return obj.modelo.marca
-    
+
+    @admin.display(description='Providers')
+    def get_providers_count(self, obj):
+        return obj.providers_habilitados.count()
 

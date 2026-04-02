@@ -30,12 +30,14 @@ def debug_task(self):
 # Importante: actualizar el schedule cargado desde Django settings, no reemplazarlo.
 app.conf.beat_schedule = {
     **getattr(app.conf, 'beat_schedule', {}),
+    # Sincronización completa (productos + categorías + almacenes + stock) cada hora
     'sync-odoo-products-every-hour': {
-        'task': 'apps.sync.tasks.sync_products_from_odoo',
+        'task': 'apps.sync.tasks.sync_all_active_providers',
         'schedule': crontab(minute=0),  # Every hour
     },
+    # Sincronización solo de stock cada 15 min (más ligera)
     'sync-odoo-stock-every-15min': {
-        'task': 'apps.sync.tasks.sync_stock_from_odoo',
+        'task': 'apps.sync.tasks.sync_all_stock',
         'schedule': crontab(minute='*/15'),  # Every 15 minutes
     },
 }

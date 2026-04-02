@@ -11,11 +11,12 @@ logger = logging.getLogger(__name__)
 
 @admin.register(Provider)
 class ProviderAdmin(admin.ModelAdmin):
-    list_display = ['name', 'owner', 'tier', 'is_approved', 'is_active', 'has_odoo_credentials', 'created_at']
+    list_display = ['name', 'owner', 'tier', 'is_approved', 'is_active', 'has_odoo_credentials', 'get_variantes_count', 'created_at']
     list_filter = ['is_approved', 'is_active', 'tier', 'created_at']
     search_fields = ['name', 'ruc', 'email']
     readonly_fields = ['slug', 'odoo_company_id', 'odoo_user_id', 'odoo_username', 'created_at', 'updated_at']
-    actions = ['aprobar_y_configurar_odoo', 'solo_aprobar']
+    filter_horizontal = ('variantes_habilitadas',)
+    actions = ['aprobar_y_configurar_odoo', 'solo_aprobar', 'push_variantes_a_odoo']
 
     fieldsets = (
         ('Información Básica', {'fields': ('name', 'slug', 'owner', 'tier')}),
@@ -25,8 +26,20 @@ class ProviderAdmin(admin.ModelAdmin):
         ('💳 Datos de Pago', {
             'fields': ('banco_nombre', 'banco_cuenta', 'banco_cci', 'yape_numero', 'plin_numero'),
         }),
+        ('🚗 Scope de Vehículos', {
+            'fields': ('variantes_habilitadas',),
+            'description': (
+                'Selecciona las variantes de vehículo con las que trabaja este proveedor. '
+                'Después de guardar, ejecuta la acción "Push variantes a Odoo" para que '
+                'el proveedor las vea disponibles en su UI de Odoo.'
+            ),
+        }),
         ('Metadata', {'fields': ('created_at', 'updated_at'), 'classes': ('collapse',)}),
     )
+
+    @admin.display(description='Variantes')
+    def get_variantes_count(self, obj):
+        return obj.variantes_habilitadas.count()
 
     @admin.action(description='✅ Aprobar y configurar en Odoo (crea Company + Usuario)')
     def aprobar_y_configurar_odoo(self, request, queryset):
@@ -89,6 +102,67 @@ class ProviderAdmin(admin.ModelAdmin):
             f"✅ {updated} proveedor(es) aprobado(s).",
             messages.SUCCESS
         )
+
+    @admin.action(description='🚗 Push variantes a Odoo (scope por proveedor)')
+    def push_variantes_a_odoo(self, request, queryset):
+        """
+        Ejecuta push_vehicles --provider-id para cada proveedor seleccionado.
+        Empuja las variantes_habilitadas de cada provider hacia su tenant de Odoo
+        y actualiza el scope (company_ids) en vehiculo.variante.
+        """
+        from django.core.management import call_command
+        from io import StringIO
+
+        total_ok = 0
+        total_err = 0
+
+        for provider in queryset:
+            if not provider.odoo_company_id:
+                self.message_user(
+                    request,
+                    f"⚠️ {provider.name} no tiene odoo_company_id. Omitido.",
+                    messages.WARNING
+                )
+                continue
+
+            count = provider.variantes_habilitadas.count()
+            if count == 0:
+                self.message_user(
+                    request,
+                    f"ℹ️ {provider.name} no tiene variantes habilitadas asignadas. Omitido.",
+                    messages.WARNING
+                )
+                continue
+
+            try:
+                out = StringIO()
+                call_command(
+                    'push_vehicles',
+                    provider_id=provider.pk,
+                    stdout=out,
+                    stderr=out,
+                )
+                total_ok += 1
+                self.message_user(
+                    request,
+                    f"✅ {provider.name}: {count} variante(s) empujada(s) a Odoo.",
+                    messages.SUCCESS
+                )
+            except Exception as exc:
+                total_err += 1
+                logger.error(f"push_variantes_a_odoo error para {provider.name}: {exc}", exc_info=True)
+                self.message_user(
+                    request,
+                    f"❌ {provider.name}: error durante push — {exc}",
+                    messages.ERROR
+                )
+
+        if total_ok:
+            self.message_user(
+                request,
+                f"🏁 Push completado: {total_ok} proveedor(es) OK, {total_err} con error(es).",
+                messages.SUCCESS if total_err == 0 else messages.WARNING
+            )
 
 
 @admin.register(Member)

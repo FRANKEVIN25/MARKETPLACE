@@ -84,6 +84,8 @@ class SubOrderSerializer(serializers.ModelSerializer):
             'provider_tax_regime',
             'status',
             'subtotal',
+            'discount_percent',
+            'discount',
             'igv_rate',
             'igv_amount',
             'total',
@@ -107,6 +109,8 @@ class SubOrderSerializer(serializers.ModelSerializer):
         read_only_fields = [
             'sub_order_number',
             'subtotal',
+            'discount_percent',
+            'discount',
             'igv_rate',
             'igv_amount',
             'total',
@@ -286,3 +290,40 @@ class ConfirmPaymentSerializer(serializers.Serializer):
                 'rejection_reason': 'Debe proporcionar un motivo de rechazo'
             })
         return data
+
+
+class CheckoutPreviewSerializer(serializers.Serializer):
+    """
+    Serializer para previsualizar el checkout con descuentos aplicados.
+    No crea ninguna orden; solo calcula y devuelve el desglose.
+    """
+    customer_id = serializers.IntegerField()
+    items = serializers.ListField(
+        child=serializers.DictField(),
+        min_length=1
+    )
+
+    def validate_customer_id(self, value):
+        try:
+            Customer.objects.get(id=value)
+        except Customer.DoesNotExist:
+            raise serializers.ValidationError("Cliente no encontrado")
+        return value
+
+    def validate_items(self, value):
+        for item in value:
+            if 'product_id' not in item:
+                raise serializers.ValidationError("Cada item debe tener 'product_id'")
+            if 'quantity' not in item:
+                raise serializers.ValidationError("Cada item debe tener 'quantity'")
+            try:
+                product = Product.objects.get(id=item['product_id'])
+                if not product.is_active:
+                    raise serializers.ValidationError(
+                        f"Producto {product.name} no está disponible"
+                    )
+            except Product.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Producto con ID {item['product_id']} no encontrado"
+                )
+        return value

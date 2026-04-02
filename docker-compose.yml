@@ -77,10 +77,10 @@ services:
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8069/web/health"]
-      interval: 30s
+      interval: 35s
       timeout: 10s
       retries: 3
-      start_period: 30s
+      start_period: 40s
 
   # ============================================
   # Django Backend - API REST

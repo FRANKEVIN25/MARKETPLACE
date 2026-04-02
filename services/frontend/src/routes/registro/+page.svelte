@@ -1,12 +1,17 @@
 <script lang="ts">
   import { api } from '$lib/api/client';
   import { auth } from '$lib/store/auth';
+  import {
+    BUSINESS_ACTIVITY_OPTIONS,
+    type BusinessActivity,
+  } from '$lib/constants/customer';
 
   type CustomerType = 'individual' | 'company';
   type DocumentType = 'DNI' | 'RUC';
 
   let customerType: CustomerType = 'individual';
   let documentNumber = '';
+  let businessActivity: BusinessActivity | '' = '';
   let email = '';
   let password = '';
   let confirmPassword = '';
@@ -26,6 +31,8 @@
       fieldErrors.documentNumber = 'El DNI debe tener 8 dígitos';
     else if (customerType === 'company' && documentNumber.length !== 11)
       fieldErrors.documentNumber = 'El RUC debe tener 11 dígitos';
+    if (customerType === 'company' && !businessActivity)
+      fieldErrors.businessActivity = 'Selecciona el tipo de empresa';
     if (!email) fieldErrors.email = 'Requerido';
     if (!password) fieldErrors.password = 'Requerido';
     else if (password.length < 8) fieldErrors.password = 'Mínimo 8 caracteres';
@@ -38,7 +45,14 @@
     if (!validar()) return;
     loading = true;
     try {
-      const result = await api.customer.register({ customer_type: customerType, document_type: documentType, document_number: documentNumber, email, password });
+      const result = await api.customer.register({
+        customer_type: customerType,
+        document_type: documentType,
+        document_number: documentNumber,
+        business_activity: businessActivity,
+        email,
+        password,
+      });
       // El backend devuelve tokens + customer en la misma respuesta — no hace falta segundo request
       auth.setTokens(result.tokens);
       auth.customer.set(result.customer);
@@ -80,7 +94,10 @@
         <p class="block text-sm font-medium text-gray-700 mb-2">Tipo de cuenta</p>
         <div class="grid grid-cols-2 gap-3">
           <button type="button"
-            on:click={() => customerType = 'individual'}
+            on:click={() => {
+              customerType = 'individual';
+              businessActivity = '';
+            }}
             class="flex flex-col items-center gap-1 border-2 rounded-xl p-4 transition cursor-pointer
               {customerType === 'individual' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}">
             <span class="text-2xl">👤</span>
@@ -115,6 +132,27 @@
           <p class="text-red-500 text-xs mt-1">{fieldErrors.documentNumber}</p>
         {/if}
       </div>
+
+      {#if customerType === 'company'}
+        <div>
+          <label class="block text-sm font-medium text-gray-700 mb-1" for="businessActivity">Actividad económica</label>
+          <select
+            id="businessActivity"
+            bind:value={businessActivity}
+            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500
+              {fieldErrors.businessActivity ? 'border-red-400' : ''}"
+          >
+            <option value="">Selecciona el tipo de empresa</option>
+            {#each BUSINESS_ACTIVITY_OPTIONS as option}
+              <option value={option.value}>{option.label}</option>
+            {/each}
+          </select>
+          <p class="text-xs text-gray-500 mt-1">Solo las empresas marcadas como taller verán la configuración de taller y servicios.</p>
+          {#if fieldErrors.businessActivity}
+            <p class="text-red-500 text-xs mt-1">{fieldErrors.businessActivity}</p>
+          {/if}
+        </div>
+      {/if}
 
       <!-- Email -->
       <div>

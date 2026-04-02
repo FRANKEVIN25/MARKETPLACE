@@ -93,6 +93,17 @@ export interface PaginatedResponse<T> {
 // ============================================
 // CUSTOMER
 // ============================================
+export type BusinessActivity =
+  | 'workshop'
+  | 'parts_supplier'
+  | 'retail_store'
+  | 'distributor'
+  | 'fleet'
+  | 'dealer'
+  | 'manufacturer'
+  | 'insurance'
+  | 'other';
+
 export interface Customer {
   id: number;
   customer_id: string;
@@ -106,11 +117,13 @@ export interface Customer {
   document_number: string;
   full_document: string;
   company_name?: string;
-  business_activity?: string;
+  business_activity?: BusinessActivity | '';
+  business_activity_display?: string;
   receive_newsletter: boolean;
   receive_promotions: boolean;
   is_active: boolean;
   is_verified: boolean;
+  is_workshop?: boolean;
   created_at: string;
   updated_at: string;
   last_order_date?: string;
@@ -232,6 +245,8 @@ export interface SubOrder {
   provider_tax_regime: string;
   status: SubOrderStatus;
   subtotal: string;
+  discount_percent: string;
+  discount: string;
   igv_rate: string;
   igv_amount: string;
   total: string;
@@ -342,6 +357,92 @@ export interface ProductFilters {
 }
 
 // ============================================
+// SERVICIOS DE TALLER
+// ============================================
+
+export type ServiceType = 'maintenance' | 'repair' | 'diagnostic';
+export type ServiceLevel = 'BASIC' | 'MANAGED' | 'ADVANCED';
+export type CommerceLevel = 'NONE' | 'BUYER' | 'B2B_BUYER' | 'SELLER';
+
+export interface ServiceCategoryItem {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+  order: number;
+  services_count: number;
+  workshops_count: number;
+}
+
+export interface WorkshopLocationOptions {
+  departments: string[];
+  provinces: string[];
+  districts: string[];
+}
+
+export interface ServiceMainLocation {
+  id: number;
+  name: string;
+  address: string;
+  district: string;
+  province: string;
+  department: string;
+  latitude: string;
+  longitude: string;
+  is_main: boolean;
+}
+
+export interface ServiceListing {
+  id: number;
+  serviceSlug: string;
+  serviceName: string;
+  category: string;
+  serviceType: ServiceType;
+  workshopId: number;
+  workshopSlug: string;
+  workshopName: string;
+  workshopHeadline: string;
+  mainLocation?: ServiceMainLocation | null;
+  district: string;
+  province: string;
+  department: string;
+  priceMin: number | null;
+  priceMax: number | null;
+  durationMin: number;
+  verified: boolean;
+  specialized: boolean;
+  erpIntegrated: boolean;
+  certified: boolean;
+  totalJobs: number;
+  avgRating: number;
+  successRate: number;
+  repeatFailureRate: number;
+  yearsExperience: number;
+  serviceLevel: ServiceLevel;
+  commerceLevel: CommerceLevel;
+  vehicleExpertise: string[];
+  trustNotes: string[];
+}
+
+export interface ServiceFilters {
+  q?: string;
+  category_id?: number;
+  category?: string;
+  service_type?: ServiceType;
+  district?: string;
+  province?: string;
+  department?: string;
+  verified_only?: boolean;
+  specialized_only?: boolean;
+  erp_only?: boolean;
+  marca_id?: number;
+  modelo_id?: number;
+  page?: number;
+  page_size?: number;
+  ordering?: string;
+}
+
+// ============================================
 // VEHÍCULOS PARA FILTROS DE PRODUCTO
 // ============================================
 
@@ -363,10 +464,12 @@ export interface VehicleModelo {
 
 export interface VehicleVariantFilter {
   id: number;
-  display_name: string;
+  nombre: string;
   modelo: number;
-  anio_desde: number;
-  anio_hasta: number | null;
+  modelo_nombre: string;
+  anio_inicio?: number;
+  anio_fin?: number;
+  activo: boolean;
 }
 
 // ============================================
