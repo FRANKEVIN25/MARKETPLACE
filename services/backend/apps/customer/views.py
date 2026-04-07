@@ -13,7 +13,15 @@ class CustomerViewSet(viewsets.ModelViewSet):
     """
     ViewSet para gestionar clientes
     """
-    queryset = Customer.objects.all()
+    queryset = Customer.objects.select_related(
+        'user',
+        'selected_vehicle_marca',
+        'selected_vehicle_modelo__marca',
+        'selected_vehicle_variante__modelo__marca',
+        'selected_vehicle_variante__motor',
+        'selected_vehicle_variante__transmision',
+        'selected_vehicle_variante__traccion',
+    )
     serializer_class = CustomerSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -44,7 +52,7 @@ class CustomerViewSet(viewsets.ModelViewSet):
     def me(self, request):
         """Obtener o actualizar perfil del usuario actual"""
         try:
-            customer = Customer.objects.get(user=request.user)
+            customer = self.get_queryset().get(user=request.user)
         except Customer.DoesNotExist:
             return Response(
                 {'detail': 'No tienes un perfil de cliente'},

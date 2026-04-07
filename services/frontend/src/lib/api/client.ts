@@ -7,6 +7,8 @@ import type {
   Category,
   PaginatedResponse,
   ProductFilters,
+  PublicProviderDetail,
+  ProviderReview,
   ServiceCategoryItem,
   ServiceFilters,
   ServiceListing,
@@ -469,6 +471,24 @@ export const api = {
         { headers: authHeaders(token) }
       );
       return response.data.sub_order;
+    },
+  },
+
+  marketplace: {
+    providers: {
+      async getPublicBySlug(slug: string): Promise<PublicProviderDetail> {
+        const response = await apiClient.get<PublicProviderDetail>(
+          `/api/v1/marketplace/providers/public/${slug}/`
+        );
+        return response.data;
+      },
+
+      async getPublicReviews(slug: string): Promise<ProviderReview[]> {
+        const response = await apiClient.get<ProviderReview[]>(
+          `/api/v1/marketplace/providers/public/${slug}/reviews/`
+        );
+        return response.data;
+      },
     },
   },
 };

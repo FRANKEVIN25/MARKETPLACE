@@ -3,6 +3,7 @@ Serializers de Customer
 """
 from rest_framework import serializers
 from django.contrib.auth.models import User
+from apps.vehicles.models import Marca, ModeloVehiculo, VariantVehiculo
 from .models import Customer, Address, CustomerStats
 
 
@@ -17,6 +18,25 @@ class CustomerSerializer(serializers.ModelSerializer):
         read_only=True
     )
     is_workshop = serializers.BooleanField(read_only=True)
+    selected_vehicle_marca_id = serializers.PrimaryKeyRelatedField(
+        source='selected_vehicle_marca',
+        queryset=Marca.objects.filter(activo=True),
+        allow_null=True,
+        required=False,
+    )
+    selected_vehicle_modelo_id = serializers.PrimaryKeyRelatedField(
+        source='selected_vehicle_modelo',
+        queryset=ModeloVehiculo.objects.filter(activo=True),
+        allow_null=True,
+        required=False,
+    )
+    selected_vehicle_variante_id = serializers.PrimaryKeyRelatedField(
+        source='selected_vehicle_variante',
+        queryset=VariantVehiculo.objects.select_related('modelo__marca', 'motor', 'transmision', 'traccion'),
+        allow_null=True,
+        required=False,
+    )
+    selected_vehicle = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Customer
@@ -35,6 +55,10 @@ class CustomerSerializer(serializers.ModelSerializer):
             'company_name',
             'business_activity',
             'business_activity_display',
+            'selected_vehicle_marca_id',
+            'selected_vehicle_modelo_id',
+            'selected_vehicle_variante_id',
+            'selected_vehicle',
             'receive_newsletter',
             'receive_promotions',
             'is_active',
@@ -50,6 +74,57 @@ class CustomerSerializer(serializers.ModelSerializer):
             'updated_at',
             'last_order_date'
         ]
+
+    def validate(self, attrs):
+        marca = attrs.get('selected_vehicle_marca', getattr(self.instance, 'selected_vehicle_marca', None))
+        modelo = attrs.get('selected_vehicle_modelo', getattr(self.instance, 'selected_vehicle_modelo', None))
+        variante = attrs.get('selected_vehicle_variante', getattr(self.instance, 'selected_vehicle_variante', None))
+
+        if variante is not None:
+            modelo = variante.modelo
+            marca = variante.modelo.marca
+            attrs['selected_vehicle_modelo'] = modelo
+            attrs['selected_vehicle_marca'] = marca
+        elif modelo is not None:
+            marca = modelo.marca
+            attrs['selected_vehicle_marca'] = marca
+
+        if modelo is not None and marca is not None and modelo.marca_id != marca.id:
+            raise serializers.ValidationError({
+                'selected_vehicle_modelo_id': 'El modelo no pertenece a la marca seleccionada.'
+            })
+
+        if variante is not None and modelo is not None and variante.modelo_id != modelo.id:
+            raise serializers.ValidationError({
+                'selected_vehicle_variante_id': 'La variante no pertenece al modelo seleccionado.'
+            })
+
+        return attrs
+
+    def get_selected_vehicle(self, obj):
+        marca = obj.selected_vehicle_marca
+        modelo = obj.selected_vehicle_modelo
+        variante = obj.selected_vehicle_variante
+
+        if not marca and not modelo and not variante:
+            return None
+
+        variante_display_name = None
+        if variante:
+            hasta = variante.anio_hasta or 'Actual'
+            variante_display_name = (
+                f"{variante.motor} | {variante.transmision} | {variante.traccion} "
+                f"({variante.anio_desde}-{hasta})"
+            )
+
+        return {
+            'marca_id': marca.id if marca else None,
+            'marca_nombre': marca.nombre if marca else None,
+            'modelo_id': modelo.id if modelo else None,
+            'modelo_nombre': modelo.nombre if modelo else None,
+            'variante_id': variante.id if variante else None,
+            'variante_display_name': variante_display_name,
+        }
 
 
 class AddressSerializer(serializers.ModelSerializer):

@@ -7,7 +7,7 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
-import secrets
+from django.db.models import Avg, Count, Q
 
 
 class TierChoices(models.TextChoices):
@@ -15,6 +15,12 @@ class TierChoices(models.TextChoices):
     STARTER = 'starter', 'Starter (Compartido)'
     PRO = 'pro', 'Pro (Compartido Optimizado)'  
     PREMIUM = 'premium', 'Premium (Instancia Dedicada)'
+
+
+class ProviderReviewStatusChoices(models.TextChoices):
+    PUBLISHED = 'published', 'Publicado'
+    PENDING = 'pending', 'Pendiente de revisión'
+    HIDDEN = 'hidden', 'Oculto'
 
 
 class Provider(models.Model):
@@ -40,6 +46,23 @@ class Provider(models.Model):
         null=True, 
         help_text="RUC del proveedor (Perú)"
     )
+
+    logo = models.ImageField(
+        upload_to='providers/logos/',
+        blank=True,
+        null=True,
+        help_text='Logo público del proveedor'
+    )
+    short_description = models.CharField(
+        max_length=180,
+        blank=True,
+        help_text='Resumen corto visible en cards y cabeceras del proveedor'
+    )
+    long_description = models.TextField(
+        blank=True,
+        help_text='Descripción editorial extendida para la página pública del proveedor'
+    )
+    
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
 
@@ -232,6 +255,23 @@ class Provider(models.Model):
     # ====== METADATA ======
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # ====== REPUTACIÓN ======
+    rating_average = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        default=0,
+        help_text="Calificación promedio visible del proveedor (0.00 - 5.00)"
+    )
+    rating_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Cantidad total de reseñas visibles del proveedor"
+    )
+    rating_breakdown = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Distribución de calificaciones visibles por estrella"
+    )
 
     # ====== LÍMITES POR TIER ======
     TIER_LIMITS = {
@@ -492,6 +532,45 @@ class Provider(models.Model):
         """Cantidad de productos de este proveedor"""
         return self.products.count()
 
+    def get_public_headline(self):
+        """Texto corto para hero y enlaces públicos."""
+        if self.short_description:
+            return self.short_description
+        return f"Proveedor de autopartes con operación {self.get_tier_display().lower()} en el marketplace"
+
+    def recalculate_rating_summary(self, save=True):
+        """Recalcula los agregados visibles de reputación del proveedor."""
+        visible_reviews = self.reviews.filter(
+            status=ProviderReviewStatusChoices.PUBLISHED,
+            is_visible=True,
+        )
+
+        summary = visible_reviews.aggregate(
+            average=Avg('rating'),
+            total=Count('id'),
+        )
+        breakdown_queryset = (
+            visible_reviews.values('rating')
+            .annotate(total=Count('id'))
+            .order_by('rating')
+        )
+        breakdown = {str(star): 0 for star in range(1, 6)}
+        for item in breakdown_queryset:
+            breakdown[str(item['rating'])] = item['total']
+
+        self.rating_average = summary['average'] or 0
+        self.rating_count = summary['total'] or 0
+        self.rating_breakdown = breakdown
+
+        if save:
+            self.save(update_fields=['rating_average', 'rating_count', 'rating_breakdown', 'updated_at'])
+
+        return {
+            'rating_average': self.rating_average,
+            'rating_count': self.rating_count,
+            'rating_breakdown': self.rating_breakdown,
+        }
+
 
 class Member(models.Model):
     """
@@ -557,6 +636,90 @@ class Member(models.Model):
 
     def save(self, *args, **kwargs):
         self.clean()
+        super().save(*args, **kwargs)
+
+
+class ProviderReview(models.Model):
+    """Reseña de un cliente para una suborden/proveedor ya entregado."""
+
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+    )
+    customer = models.ForeignKey(
+        'customer.Customer',
+        on_delete=models.CASCADE,
+        related_name='provider_reviews',
+    )
+    sub_order = models.ForeignKey(
+        'orders.SubOrder',
+        on_delete=models.CASCADE,
+        related_name='provider_reviews',
+        help_text='Suborden entregada asociada a esta reseña',
+    )
+    rating = models.PositiveSmallIntegerField(
+        choices=[(i, i) for i in range(1, 6)],
+        help_text='Calificación del 1 al 5',
+    )
+    comment = models.TextField(
+        blank=True,
+        help_text='Comentario opcional del cliente sobre el proveedor',
+    )
+    is_verified_purchase = models.BooleanField(
+        default=True,
+        help_text='True cuando la reseña está asociada a una suborden del cliente',
+    )
+    is_visible = models.BooleanField(
+        default=True,
+        help_text='Permite ocultar la reseña sin eliminarla',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ProviderReviewStatusChoices.choices,
+        default=ProviderReviewStatusChoices.PUBLISHED,
+        help_text='Estado de moderación de la reseña',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'marketplace_provider_review'
+        verbose_name = 'Reseña de Proveedor'
+        verbose_name_plural = 'Reseñas de Proveedores'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer', 'sub_order'],
+                name='unique_provider_review_per_customer_suborder',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['provider', 'status', 'is_visible']),
+            models.Index(fields=['customer', 'created_at']),
+            models.Index(fields=['sub_order']),
+        ]
+
+    def __str__(self):
+        return f"{self.provider.name} - {self.customer} ({self.rating})"
+
+    def clean(self):
+        if self.sub_order_id and self.provider_id and self.sub_order.provider_id != self.provider_id:
+            raise ValidationError({'sub_order': 'La suborden no pertenece a este proveedor.'})
+
+        if self.sub_order_id and self.customer_id and self.sub_order.order.customer_id != self.customer_id:
+            raise ValidationError({'sub_order': 'La suborden no pertenece a este cliente.'})
+
+        if self.sub_order_id and self.sub_order.status != 'entregado':
+            raise ValidationError({'sub_order': 'Solo se puede reseñar una suborden entregada.'})
+
+    def save(self, *args, **kwargs):
+        if self.sub_order_id:
+            self.provider_id = self.sub_order.provider_id
+            self.customer_id = self.sub_order.order.customer_id
+            self.is_verified_purchase = True
+
+        self.full_clean()
         super().save(*args, **kwargs)
 
 

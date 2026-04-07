@@ -58,8 +58,6 @@ class Category(MPTTModel):
         super().save(*args, **kwargs)
 
 
-
-
 class Product(models.Model):
     """
     Producto de un proveedor específico.
@@ -138,6 +136,37 @@ class Product(models.Model):
 
     is_active = models.BooleanField(default=True)
     es_universal = models.BooleanField(default=False, db_index=True) # si es True no necesita compatibilidad
+
+    SIDE_CHOICES = [
+        ('left', 'Izquierda'),
+        ('right', 'Derecha'),
+        ('front', 'Delantera'),
+        ('rear', 'Posterior'),
+        ('both', 'Ambos lados'),
+        ('na', 'No aplica'),
+    ]
+
+    autopart_side = models.CharField(
+        max_length=10,
+        choices=SIDE_CHOICES,
+        verbose_name='Lado del vehículo',
+        help_text='Lado del vehículo al que aplica la autoparte',
+        default='na', blank=True, null=True
+    )
+
+    QUALITY_CHOICES = [
+        ('original', 'Original'),
+        ('oem', 'OEM'),
+        ('aftermarket_premium', 'Alternativo Premium'),
+        ('aftermarket_standard', 'Alternativo Estándar'),
+    ]
+
+    autopart_quality = models.CharField(
+        max_length=20,
+        choices=QUALITY_CHOICES,
+        verbose_name='Calidad del repuesto',
+        default='aftermarket_standard', blank=True, null=True
+    )
 
     vehiculos_compatibles = models.ManyToManyField(
         'vehicles.VariantVehiculo',

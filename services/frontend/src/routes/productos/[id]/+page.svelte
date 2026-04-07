@@ -24,7 +24,9 @@
   $: clasesStock = totalStock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 
   // Agrupar stock por almacén
-  $: stockPorAlmacen = (product.stock_items || []).reduce((acc: Record<string, StockItem[]>, item: StockItem) => {
+  $: stockItems = product.stock_items || product.stock_por_almacen || [];
+  $: providerUrl = product.provider_slug ? `/proveedores/${product.provider_slug}` : null;
+  $: stockPorAlmacen = stockItems.reduce((acc: Record<string, StockItem[]>, item: StockItem) => {
     const ciudad = item.warehouse_city || 'Sin ciudad';
     if (!acc[ciudad]) acc[ciudad] = [];
     acc[ciudad].push(item);
@@ -109,7 +111,7 @@
 
         <!-- Información de Stock por Almacén -->
          
-        {#if product.stock_items && product.stock_items.length > 0}
+        {#if stockItems.length > 0}
           <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Disponibilidad por Almacén</h3>
             <div class="space-y-3">
@@ -162,8 +164,21 @@
           <!-- Proveedor -->
           <div class="flex gap-2 items-center mb-2">
             <span class="text-gray-600">Proveedor:</span>
-            <p class="text-gray-900 font-medium">{product.provider_name}</p>
+            {#if providerUrl}
+              <a href={providerUrl} class="text-gray-900 font-medium hover:text-blue-700 transition-colors">
+                {product.provider_name}
+              </a>
+            {:else}
+              <p class="text-gray-900 font-medium">{product.provider_name}</p>
+            {/if}
           </div>
+          {#if providerUrl}
+            <div class="mb-2">
+              <a href={providerUrl} class="inline-flex items-center rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors">
+                Ver perfil del proveedor
+              </a>
+            </div>
+          {/if}
         </div>
 
         <!-- Precios -->

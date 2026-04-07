@@ -387,8 +387,8 @@
                   <div class="flex gap-4 items-start">
                     <!-- Imagen -->
                     <div class="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden border border-gray-200">
-                      {#if item.product.image}
-                        <img src={item.product.image} alt={item.product.name}
+                      {#if item.product.image_url || item.product.image}
+                        <img src={item.product.image_url || item.product.image} alt={item.product.name}
                              class="w-full h-full object-cover" />
                       {:else}
                         <div class="w-full h-full flex items-center justify-center text-gray-400 text-2xl">📦</div>

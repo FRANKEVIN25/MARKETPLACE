@@ -89,6 +89,30 @@ class Customer(models.Model):
         choices=BUSINESS_ACTIVITY_CHOICES,
         verbose_name="Actividad Económica"
     )
+    selected_vehicle_marca = models.ForeignKey(
+        'vehicles.Marca',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customers_with_selected_marca',
+        verbose_name='Marca seleccionada',
+    )
+    selected_vehicle_modelo = models.ForeignKey(
+        'vehicles.ModeloVehiculo',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customers_with_selected_modelo',
+        verbose_name='Modelo seleccionado',
+    )
+    selected_vehicle_variante = models.ForeignKey(
+        'vehicles.VariantVehiculo',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='customers_with_selected_variante',
+        verbose_name='Variante seleccionada',
+    )
     
     # Preferencias
     receive_newsletter = models.BooleanField(
@@ -147,6 +171,14 @@ class Customer(models.Model):
     def is_workshop(self):
         """Indica si la empresa opera como taller."""
         return self.customer_type == 'company' and self.business_activity == 'workshop'
+
+    @property
+    def has_selected_vehicle(self):
+        return any([
+            self.selected_vehicle_marca_id,
+            self.selected_vehicle_modelo_id,
+            self.selected_vehicle_variante_id,
+        ])
 
 
 class Address(models.Model):

@@ -8,13 +8,18 @@ from rest_framework.response import Response
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from django.contrib.auth.models import User
 from django.db import transaction
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
 from apps.sync.tasks import create_provider_with_odoo_setup
-from .models import Provider, Member
+from .models import Provider, Member, ProviderReview
 from .serializers import (
     ProviderSerializer,
     ProviderDetailSerializer,
+    PublicProviderDetailSerializer,
     MembershipSerializer,
-    VendorRegistrationSerializer
+    VendorRegistrationSerializer,
+    ProviderReviewSerializer,
+    ProviderReviewCreateSerializer,
 )
 import logging
 
@@ -153,6 +158,11 @@ class ProviderViewSet(viewsets.ModelViewSet):
     Solo accesible para usuarios autenticados
     """
     permission_classes = [IsAuthenticated]
+
+    def get_permissions(self):
+        if self.action in ['public_detail', 'public_reviews']:
+            return [AllowAny()]
+        return [permission() for permission in self.permission_classes]
     
     def get_queryset(self):
         """
@@ -163,11 +173,14 @@ class ProviderViewSet(viewsets.ModelViewSet):
         
         if user.is_superuser:
             return Provider.objects.all()
-        else:
-            # Ver providers donde es owner o member
-            return Provider.objects.filter(
-                models.Q(owner=user) | models.Q(members__user=user)
-            ).distinct()
+
+        if hasattr(user, 'customer_profile'):
+            return Provider.objects.filter(is_active=True, is_approved=True)
+
+        # Ver providers donde es owner o member
+        return Provider.objects.filter(
+            Q(owner=user) | Q(members__user=user)
+        ).distinct()
     
     def get_serializer_class(self):
         """Usar serializer detallado para retrieve"""
@@ -208,6 +221,72 @@ class ProviderViewSet(viewsets.ModelViewSet):
         result = verify_provider_odoo_connection(provider.id)
         
         return Response(result)
+
+    @action(detail=True, methods=['get', 'post'])
+    def reviews(self, request, pk=None):
+        """Lista reseñas visibles o permite crear una nueva reseña para el proveedor."""
+        provider = self.get_object()
+
+        if request.method == 'GET':
+            queryset = provider.reviews.select_related('customer__user', 'sub_order')
+
+            if request.user.is_staff or provider.owner_id == request.user.id:
+                serializer = ProviderReviewSerializer(queryset, many=True)
+            else:
+                serializer = ProviderReviewSerializer(
+                    queryset.filter(status='published', is_visible=True),
+                    many=True,
+                )
+
+            return Response(serializer.data)
+
+        serializer = ProviderReviewCreateSerializer(
+            data=request.data,
+            context={'request': request, 'provider': provider},
+        )
+        serializer.is_valid(raise_exception=True)
+        review = serializer.save()
+
+        return Response(
+            ProviderReviewSerializer(review).data,
+            status=status.HTTP_201_CREATED,
+        )
+
+    @action(detail=False, methods=['get'])
+    def my_reviews(self, request):
+        """Lista las reseñas hechas por el cliente autenticado."""
+        if not hasattr(request.user, 'customer_profile'):
+            return Response([], status=status.HTTP_200_OK)
+
+        queryset = ProviderReview.objects.filter(
+            customer=request.user.customer_profile,
+        ).select_related('provider', 'sub_order', 'customer__user')
+        serializer = ProviderReviewSerializer(queryset, many=True)
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='public/(?P<slug>[^/.]+)')
+    def public_detail(self, request, slug=None):
+        """Detalle público del proveedor por slug para páginas storefront."""
+        provider = get_object_or_404(
+            Provider.objects.filter(is_active=True, is_approved=True),
+            slug=slug,
+        )
+        serializer = PublicProviderDetailSerializer(provider, context={'request': request})
+        return Response(serializer.data)
+
+    @action(detail=False, methods=['get'], url_path='public/(?P<slug>[^/.]+)/reviews')
+    def public_reviews(self, request, slug=None):
+        """Lista pública de reseñas visibles de un proveedor por slug."""
+        provider = get_object_or_404(
+            Provider.objects.filter(is_active=True, is_approved=True),
+            slug=slug,
+        )
+        queryset = provider.reviews.filter(
+            status='published',
+            is_visible=True,
+        ).select_related('customer__user', 'sub_order')
+        serializer = ProviderReviewSerializer(queryset, many=True, context={'request': request})
+        return Response(serializer.data)
 
 
 # ====== VIEWSET DE MEMBERS ======

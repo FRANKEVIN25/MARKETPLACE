@@ -19,13 +19,16 @@ PROVIDER_GROUPS_ADD = [23, 45, 26]   # Ventas/Admin, Inventario/Admin, Facturaci
 PROVIDER_GROUPS_REMOVE = [21, 22, 44]  # grupos básicos que se reemplazan
 
 # Reglas de aislamiento a aplicar {rule_id: domain}
+# Nota: estos IDs corresponden a registros existentes en la instancia Odoo
+# actual. Los dominios deben respetar los campos reales de cada modelo para no
+# romper el arranque al ejecutar setup_odoo en cada boot.
 ISOLATION_RULES = {
-    71:  "['|', ('company_id', 'in', company_ids), ('company_id', '=', False)]",  # product multi-company
-    161: "[('company_id', 'in', company_ids)]",   # stock.quant
-    105: "[('company_id', 'in', company_ids)]",   # account All Journal Entries
-    137: "[('company_id', 'in', company_ids), ('move_type', 'in', ('out_invoice', 'out_refund'))]",
-    109: "[('company_id', 'in', company_ids)]",
-    111: "[('company_id', 'in', company_ids)]",
+    71:  "['|', ('company_id', 'in', company_ids), ('company_id', '=', False)]",  # product.supplierinfo
+    161: "[('move_ids.move_type', 'in', ('out_invoice', 'out_refund'))]",         # account.move.send.batch.wizard
+    105: "[('company_id', 'in', company_ids)]",                                    # account.move
+    137: "[(1, '=', 1)]",                                                          # payment.token
+    109: "[('company_ids', 'parent_of', company_ids)]",                           # account.account
+    111: "[('company_id', 'in', company_ids)]",                                    # account.tax.group
 }
 
 

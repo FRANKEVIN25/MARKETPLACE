@@ -16,7 +16,7 @@ urlpatterns = [
     
     # Verificar estado de registro
     path('registration-status/<str:task_id>/', views.check_registration_status, name='registration-status'),
-    
+
     # ViewSets
     path('', include(router.urls)),
 ]

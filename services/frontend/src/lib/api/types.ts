@@ -14,10 +14,59 @@ export interface ProviderGroup {
   name: string;             // Nombre de la empresa
   slug: string;             // URL amigable (ej: "autopartes-abc")
   ruc?: string;             // RUC (opcional)
+  logo?: string | null;     // Ruta del logo en backend
+  logo_url?: string | null; // URL pública del logo
   email?: string;           // Email de contacto
   phone?: string;           // Teléfono
   is_active: boolean;       // ¿Está activo?
   is_approved: boolean;     // ¿Está aprobado por admin?
+}
+
+export interface ProviderReview {
+  id: number;
+  provider: number;
+  provider_name: string;
+  customer: number;
+  customer_name: string;
+  sub_order: number;
+  sub_order_number: string;
+  rating: number;
+  comment: string;
+  is_verified_purchase: boolean;
+  is_visible: boolean;
+  status: 'published' | 'pending' | 'hidden';
+  status_display: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PublicProviderDetail {
+  id: number;
+  name: string;
+  slug: string;
+  logo_url: string | null;
+  headline: string;
+  short_description?: string | null;
+  long_description?: string | null;
+  email?: string | null;
+  phone?: string | null;
+  ruc?: string | null;
+  tier: 'starter' | 'pro' | 'premium';
+  tier_display: string;
+  tax_regime: 'RUS' | 'RER' | 'RMT' | 'GENERAL';
+  tax_regime_display: string;
+  emite_comprobante: 'boleta' | 'factura' | 'ambos';
+  emite_comprobante_display: string;
+  igv_applicable: boolean;
+  rating_average: string | number;
+  rating_count: number;
+  rating_breakdown: Record<string, number>;
+  products_count: number;
+  members_count: number;
+  monthly_orders: number;
+  vehicle_scope_count: number;
+  created_at: string;
+  latest_reviews: ProviderReview[];
 }
 
 // ============================================
@@ -30,6 +79,7 @@ export interface Category {
   slug: string;             // URL amigable
   parent?: number;          // ID de categoría padre (si es subcategoría)
   description?: string;     // Descripción
+  image_url?: string;       // URL de la imagen en CDN/Cloudinary
   image?: string;           // URL de la imagen
   is_active: boolean;       // ¿Está activa?
   children_count: number;   // Cantidad de subcategorías
@@ -61,9 +111,11 @@ export interface Product {
   slug: string;             // URL amigable
   provider_group: number;   // ID del proveedor que lo vende
   provider_name: string;    // Nombre del proveedor
+  provider_slug?: string;   // Slug público del proveedor
   product_type: 'consu' | 'service' | 'product'; // Tipo de producto
   manufacturer_code?: string; // Código del fabricante
   description?: string;     // Descripción del producto
+  image_url?: string;       // URL de la imagen en CDN/Cloudinary
   image?: string;           // URL de la imagen
   price: string;            // Precio (como texto: "150.00")
   tax_percent: string; 
@@ -72,7 +124,9 @@ export interface Product {
   es_universal: boolean;    // ¿Compatible con todos los vehículos?
   total_stock: number;      // Stock total sumado de todos los almacenes
   stock_items?: StockItem[]; // Detalle de stock por almacén (opcional en listados)
-  active: boolean;          // ¿Está activo?
+  stock_por_almacen?: StockItem[]; // Alias de compatibilidad desde backend
+  active?: boolean;         // Compatibilidad con payloads antiguos
+  is_active?: boolean;      // ¿Está activo?
   is_synced: boolean;       // ¿Está sincronizado con Odoo?
   created_at: string;       // Fecha de creación
   updated_at: string;       // Fecha de actualización
@@ -104,6 +158,15 @@ export type BusinessActivity =
   | 'insurance'
   | 'other';
 
+export interface CustomerSelectedVehicle {
+  marca_id: number | null;
+  marca_nombre: string | null;
+  modelo_id: number | null;
+  modelo_nombre: string | null;
+  variante_id: number | null;
+  variante_display_name: string | null;
+}
+
 export interface Customer {
   id: number;
   customer_id: string;
@@ -119,6 +182,10 @@ export interface Customer {
   company_name?: string;
   business_activity?: BusinessActivity | '';
   business_activity_display?: string;
+  selected_vehicle_marca_id?: number | null;
+  selected_vehicle_modelo_id?: number | null;
+  selected_vehicle_variante_id?: number | null;
+  selected_vehicle?: CustomerSelectedVehicle | null;
   receive_newsletter: boolean;
   receive_promotions: boolean;
   is_active: boolean;
@@ -222,6 +289,9 @@ export interface OrderItem {
   unit_price: string;
   igv_rate: string;
   igv_amount: string;
+  headline: string; // Título destacado del proveedor
+  short_description?: string | null; // Descripción corta del proveedor
+  long_description?: string | null; // Descripción larga del proveedor
   discount: string;
   subtotal: string;
 }
@@ -464,12 +534,10 @@ export interface VehicleModelo {
 
 export interface VehicleVariantFilter {
   id: number;
-  nombre: string;
+  display_name: string;
   modelo: number;
-  modelo_nombre: string;
-  anio_inicio?: number;
-  anio_fin?: number;
-  activo: boolean;
+  anio_desde?: number;
+  anio_hasta?: number;
 }
 
 // ============================================

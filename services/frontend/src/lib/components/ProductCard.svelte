@@ -7,11 +7,13 @@
     proveedor?: string;
     supplier?: string;
     provider_name?: string;
+    provider_slug?: string;
     categoria?: string;
     category?: string | number;
     category_name?: string;
     precio?: number;
     price?: number | string;
+    image_url?: string;
     imagen?: string;
     image?: string;
   };
@@ -21,6 +23,7 @@
   // Mapear propiedades según la estructura de la API
   $: nombre = product.nombre || product.name || 'Sin nombre';
   $: proveedor = product.proveedor || product.supplier || product.provider_name || 'Sin proveedor';
+  $: proveedorUrl = product.provider_slug ? `/proveedores/${product.provider_slug}` : null;
   $: categoria = product.categoria || product.category || product.category_name || 'Sin categoría';
   $: precio = product.precio || product.price || 0;
   $: imagen = product.image_url || product.imagen || product.image;
@@ -78,9 +81,15 @@
     </h3>
 
     <!-- Proveedor -->
-    <p class="text-sm text-gray-500 mb-3">
-      {proveedor}
-    </p>
+    {#if proveedorUrl}
+      <a href={proveedorUrl} class="mb-3 block text-sm text-gray-500 hover:text-blue-700 transition-colors">
+        {proveedor}
+      </a>
+    {:else}
+      <p class="text-sm text-gray-500 mb-3">
+        {proveedor}
+      </p>
+    {/if}
 
     <!-- Precio -->
     <div class="mb-4">

@@ -55,34 +55,42 @@ class WarehouseSerializer(serializers.ModelSerializer):
 class ProductDetailSerializer(serializers.ModelSerializer):
     """Serializer detallado de producto con stock por almacén"""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
+    provider_slug = serializers.CharField(source='provider.slug', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     is_synced = serializers.BooleanField(read_only=True)
     provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     
     total_stock = serializers.IntegerField(read_only=True)
+    stock_items = serializers.SerializerMethodField()
     stock_por_almacen = serializers.SerializerMethodField()
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider_group', 'provider_name',
+            'provider_group', 'provider_name', 'provider_slug',
             'product_type', 'manufacturer_code',
             'description', 'image_url', 
             'price', 'tax_percent',
             'category', 'category_name',
             'is_active', 'is_synced',
-            'total_stock', 'stock_por_almacen',
+            'total_stock', 'stock_items', 'stock_por_almacen',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'slug', 'is_synced', 'provider_group', 'provider_name',
+            'slug', 'is_synced', 'provider_group', 'provider_name', 'provider_slug',
             'odoo_product_id', 'odoo_template_id',
             'last_synced_at', 'created_at', 'updated_at',
-            'total_stock', 'stock_por_almacen'
+            'total_stock', 'stock_items', 'stock_por_almacen'
         ]
 
+    def get_stock_items(self, obj):
+        return self._serialize_stock_items(obj)
+
     def get_stock_por_almacen(self, obj):
+        return self._serialize_stock_items(obj)
+
+    def _serialize_stock_items(self, obj):
         # Devuelve lista de almacenes con stock para este producto
         stock_items = obj.stock_items.select_related('warehouse')
         return [
@@ -106,6 +114,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 class ProductListSerializer(serializers.ModelSerializer):
     """Serializer simplificado para listados (mejor rendimiento)"""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
+    provider_slug = serializers.CharField(source='provider.slug', read_only=True)
     provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
     total_stock = serializers.IntegerField(read_only=True)
@@ -118,7 +127,7 @@ class ProductListSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider_group', 'provider_name', 'product_type',
+            'provider_group', 'provider_name', 'provider_slug', 'product_type',
             'price', 'price_with_tax', 'tax_percent',
             'category_name', 'image_url',
             'is_active', 'total_stock',
