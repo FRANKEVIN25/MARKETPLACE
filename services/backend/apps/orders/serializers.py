@@ -137,8 +137,14 @@ class OrderSerializer(serializers.ModelSerializer):
     customer_email = serializers.EmailField(source='customer.user.email', read_only=True)
     shipping_address_detail = serializers.SerializerMethodField()
     sub_orders = SubOrderSerializer(many=True, read_only=True)
-    items = OrderItemSerializer(many=True, read_only=True)
+    items = serializers.SerializerMethodField()
     provider_count = serializers.IntegerField(read_only=True)
+
+    def get_items(self, obj):
+        """Agrega todos los OrderItems de todas las SubOrders sin queries extra
+        (aprovecha el prefetch_related de sub_orders__items en get_queryset)."""
+        items = [item for sub in obj.sub_orders.all() for item in sub.items.all()]
+        return OrderItemSerializer(items, many=True).data
     
     class Meta:
         model = Order

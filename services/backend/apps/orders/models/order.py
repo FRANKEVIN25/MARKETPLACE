@@ -19,11 +19,6 @@ Arquitectura:
 
 from django.db import models
 from django.contrib.auth import get_user_model
-from django.utils import timezone
-from decimal import Decimal
-from django.core.exceptions import ValidationError
-from django.contrib.auth.models import User
-from shortuuid.django_fields import ShortUUIDField
 
 
 User = get_user_model()
@@ -154,27 +149,26 @@ class Order(models.Model):
     
     def save(self, *args, **kwargs):
         if not self.order_number:
-            self.order_number = self.generate_order_number()
+            from django.db import transaction
+            from django.utils import timezone
+            year = timezone.now().year
+            prefix = f'ORD-{year}-'
+            with transaction.atomic():
+                # select_for_update() serializa creaciones concurrentes:
+                # el row lock se mantiene hasta que la transacción externa
+                # (ej. @transaction.atomic en create_order) haga commit.
+                last_order = (
+                    Order.objects
+                    .select_for_update()
+                    .filter(order_number__startswith=prefix)
+                    .order_by('-order_number')
+                    .first()
+                )
+                new_num = (int(last_order.order_number.split('-')[-1]) + 1) if last_order else 1
+                self.order_number = f'{prefix}{new_num:05d}'
+                super().save(*args, **kwargs)
+            return
         super().save(*args, **kwargs)
-    
-    @staticmethod
-    def generate_order_number():
-        """Genera número de orden: ORD-2026-00001"""
-        from django.utils import timezone
-        year = timezone.now().year
-        
-        # Obtener el último número del año
-        last_order = Order.objects.filter(
-            order_number__startswith=f'ORD-{year}-'
-        ).order_by('-order_number').first()
-        
-        if last_order:
-            last_num = int(last_order.order_number.split('-')[-1])
-            new_num = last_num + 1
-        else:
-            new_num = 1
-        
-        return f'ORD-{year}-{new_num:05d}'
     
     @property
     def provider_count(self):

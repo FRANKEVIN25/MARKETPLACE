@@ -2,9 +2,11 @@
 Modelos de Clientes para Marketplace Multi-Proveedor
 """
 from django.db import models
-from django.contrib.auth.models import User
+from django.contrib.auth import get_user_model
 from django.utils import timezone
 from shortuuid.django_fields import ShortUUIDField
+
+User = get_user_model()
 
 
 class Customer(models.Model):
@@ -89,31 +91,6 @@ class Customer(models.Model):
         choices=BUSINESS_ACTIVITY_CHOICES,
         verbose_name="Actividad Económica"
     )
-    selected_vehicle_marca = models.ForeignKey(
-        'vehicles.Marca',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='customers_with_selected_marca',
-        verbose_name='Marca seleccionada',
-    )
-    selected_vehicle_modelo = models.ForeignKey(
-        'vehicles.ModeloVehiculo',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='customers_with_selected_modelo',
-        verbose_name='Modelo seleccionado',
-    )
-    selected_vehicle_variante = models.ForeignKey(
-        'vehicles.VariantVehiculo',
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name='customers_with_selected_variante',
-        verbose_name='Variante seleccionada',
-    )
-    
     # Preferencias
     receive_newsletter = models.BooleanField(
         default=True,
@@ -150,6 +127,15 @@ class Customer(models.Model):
             models.Index(fields=['customer_type']),
             models.Index(fields=['is_active', 'is_verified']),
         ]
+        constraints = [
+            # DNI/RUC deben ser únicos por tipo cuando están presentes.
+            # La condición excluye registros sin documento (blank=True).
+            models.UniqueConstraint(
+                fields=['document_type', 'document_number'],
+                condition=models.Q(document_number__gt=''),
+                name='unique_document_if_present',
+            ),
+        ]
     
     def __str__(self):
         if self.customer_type == 'company' and self.company_name:
@@ -174,11 +160,7 @@ class Customer(models.Model):
 
     @property
     def has_selected_vehicle(self):
-        return any([
-            self.selected_vehicle_marca_id,
-            self.selected_vehicle_modelo_id,
-            self.selected_vehicle_variante_id,
-        ])
+        return self.vehicles.filter(is_active=True).exists()
 
 
 class Address(models.Model):
@@ -258,6 +240,14 @@ class Address(models.Model):
         indexes = [
             models.Index(fields=['customer', 'is_default']),
         ]
+        constraints = [
+            # Garantiza que cada cliente tenga como máximo una dirección predeterminada.
+            models.UniqueConstraint(
+                fields=['customer'],
+                condition=models.Q(is_default=True),
+                name='unique_default_address_per_customer',
+            ),
+        ]
     
     def __str__(self):
         return f"{self.get_address_type_display()} - {self.contact_name}"
@@ -288,6 +278,84 @@ class Address(models.Model):
     @property
     def is_agency(self):
         return self.address_type == 'agency'
+
+
+class CustomerVehicle(models.Model):
+    """
+    Vehículo guardado por el cliente.
+    Un cliente puede tener varios vehículos pero solo uno activo a la vez.
+    El vehículo activo se usa como filtro de compatibilidad en el catálogo.
+    """
+    customer = models.ForeignKey(
+        Customer,
+        on_delete=models.CASCADE,
+        related_name='vehicles',
+        verbose_name='Cliente',
+    )
+    variante = models.ForeignKey(
+        'vehicles.VariantVehiculo',
+        on_delete=models.CASCADE,
+        related_name='saved_by_customers',
+        verbose_name='Variante de vehículo',
+    )
+    is_active = models.BooleanField(
+        default=False,
+        verbose_name='Activo',
+        help_text='Es el vehículo actualmente seleccionado para filtrar productos.',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        db_table = 'customer_vehicle'
+        verbose_name = 'Vehículo guardado'
+        verbose_name_plural = 'Vehículos guardados'
+        ordering = ['-is_active', '-created_at']
+        indexes = [
+            models.Index(fields=['customer', 'is_active']),
+        ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer'],
+                condition=models.Q(is_active=True),
+                name='unique_active_vehicle_per_customer',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.customer} — {self.variante} ({'activo' if self.is_active else 'guardado'})"
+
+    MAX_VEHICLES = 12
+
+    @classmethod
+    def set_active(cls, customer, variante):
+        """
+        Activa la variante indicada para el cliente.
+        Si ya existe un CustomerVehicle para esa variante lo reutiliza;
+        de lo contrario crea uno nuevo (respetando el límite MAX_VEHICLES).
+        Siempre desactiva los demás. Retorna el CustomerVehicle activo resultante.
+        """
+        from django.core.exceptions import ValidationError
+        from django.db import transaction
+        with transaction.atomic():
+            existing = cls.objects.filter(customer=customer, variante=variante).first()
+            if existing is None:
+                count = cls.objects.filter(customer=customer).count()
+                if count >= cls.MAX_VEHICLES:
+                    raise ValidationError(
+                        f"No puedes guardar más de {cls.MAX_VEHICLES} vehículos. "
+                        "Elimina uno antes de agregar otro."
+                    )
+            cls.objects.filter(customer=customer, is_active=True).update(is_active=False)
+            obj, _ = cls.objects.get_or_create(customer=customer, variante=variante)
+            if not obj.is_active:
+                obj.is_active = True
+                obj.save(update_fields=['is_active'])
+        return obj
+
+    @classmethod
+    def clear_active(cls, customer):
+        """Desactiva todos los vehículos del cliente (sin selección)."""
+        cls.objects.filter(customer=customer, is_active=True).update(is_active=False)
 
 
 class CustomerProviderStats(models.Model):
@@ -403,10 +471,12 @@ class CustomerStats(models.Model):
     ) 
     
     # Información adicional
-    preferred_brands = models.TextField(
+    preferred_models = models.ManyToManyField(
+        'vehicles.ModeloVehiculo',
         blank=True,
-        verbose_name="Marcas Preferidas",
-        help_text="Marcas/modelos de vehículos preferidos"
+        related_name='preferred_by_customers',
+        verbose_name='Modelos de vehículo preferidos',
+        help_text='Modelos de vehículos con los que el cliente trabaja habitualmente.',
     )
     notes = models.TextField(blank=True, verbose_name="Notas Internas")
     

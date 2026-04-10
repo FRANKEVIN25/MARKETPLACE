@@ -8,7 +8,8 @@ from django.contrib.auth.hashers import make_password, check_password
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
 from django.db.models import Avg, Count, Q
-
+from cryptography.fernet import Fernet
+from django.conf import settings
 
 class TierChoices(models.TextChoices):
     """Niveles de servicio para providers"""
@@ -323,8 +324,6 @@ class Provider(models.Model):
     
     def set_odoo_password_temp(self, raw_password):
         """Guarda la contraseña Odoo encriptada reversiblemente hasta que se apruebe"""
-        from cryptography.fernet import Fernet
-        from django.conf import settings
         import base64, hashlib
         key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
         f = Fernet(key)
@@ -334,8 +333,6 @@ class Provider(models.Model):
         """Recupera la contraseña Odoo encriptada temporalmente"""
         if not self.odoo_password_temp:
             return None
-        from cryptography.fernet import Fernet
-        from django.conf import settings
         import base64, hashlib
         key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
         f = Fernet(key)

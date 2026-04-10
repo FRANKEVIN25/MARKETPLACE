@@ -6,11 +6,10 @@ from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters.rest_framework import DjangoFilterBackend
 
-from .models import Category, Product, Warehouse, StockItem
+from .models import Category, Product, Store
 from .serializers import (
     CategorySerializer, ProductListSerializer, ProductDetailSerializer,
-    ProductCreateUpdateSerializer, WarehouseSerializer, StockItemSerializer,
-    StockUpdateSerializer
+    ProductCreateUpdateSerializer, StoreSerializer
 )
 from apps.marketplace.permissions import CanManageProducts, BelongsToGroup
 
@@ -48,7 +47,7 @@ class ProductViewSet(viewsets.ModelViewSet):
     """
     permission_classes = [CanManageProducts, BelongsToGroup]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['is_active', 'product_type', 'category']
+    filterset_fields = ['is_active', 'is_published', 'product_type', 'category']
     search_fields = ['name', 'reference', 'manufacturer_code', 'description']
     ordering_fields = ['name', 'price', 'created_at']
     ordering = ['-created_at']
@@ -72,15 +71,14 @@ class ProductViewSet(viewsets.ModelViewSet):
         SuperAdmin ve todos los productos.
         """
         if self.request.user.is_superuser:
-            return Product.objects.all()
-        
-        # Filtrar por grupo del usuario
-        current_provider = getattr(self.request, 'current_provider', None)
-        if current_provider:
-            return Product.objects.for_group(current_provider)
-        
-        # Sin grupo = sin productos
-        return Product.objects.none()
+            qs = Product.objects.all()
+        else:
+            current_provider = getattr(self.request, 'current_provider', None)
+            if not current_provider:
+                return Product.objects.none()
+            qs = Product.objects.for_provider(current_provider)
+
+        return qs.select_related('provider', 'category')
     
     def perform_create(self, serializer):
         """Asignar automáticamente el grupo al crear"""
@@ -140,7 +138,7 @@ class MarketplaceProductViewSet(viewsets.ReadOnlyModelViewSet):
         - category_slug: slug de Category (incluye descendientes)
         """
 
-        qs = Product.objects.for_marketplace().filter(is_active=True)
+        qs = Product.objects.for_marketplace().select_related('provider', 'category')
 
         request = self.request
         params = request.query_params
@@ -210,60 +208,26 @@ class MarketplaceProductViewSet(viewsets.ReadOnlyModelViewSet):
         return qs.distinct()
 
 
-class WarehouseViewSet(viewsets.ModelViewSet):
+class StoreViewSet(viewsets.ModelViewSet):
     """
-    ViewSet de Almacenes (gestión por proveedor)
+    Tiendas físicas del proveedor (puntos de retiro).
+    No gestiona stock — solo información de ubicación.
     """
-    serializer_class = WarehouseSerializer
+    serializer_class = StoreSerializer
     permission_classes = [BelongsToGroup]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['is_active', 'city']
     search_fields = ['name', 'city', 'address']
     ordering_fields = ['name', 'city']
     ordering = ['name']
-    
+
     def get_queryset(self):
-        """Filtrar almacenes del proveedor actual"""
         if self.request.user.is_superuser:
-            return Warehouse.objects.all()
-        
+            return Store.objects.all()
         current_provider = getattr(self.request, 'current_provider', None)
         if current_provider:
-            return Warehouse.objects.filter(provider=current_provider)
-        
-        return Warehouse.objects.none()
-    
+            return Store.objects.filter(provider=current_provider)
+        return Store.objects.none()
+
     def perform_create(self, serializer):
-        """Asignar automáticamente el proveedor"""
         serializer.save(provider=self.request.current_provider)
-
-
-class StockItemViewSet(viewsets.ModelViewSet):
-    """
-    ViewSet de Stock (gestión de inventario)
-    """
-    permission_classes = [BelongsToGroup]
-    filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
-    filterset_fields = ['warehouse', 'product']
-    search_fields = ['product__name', 'product__reference', 'warehouse__name']
-    ordering_fields = ['product', 'warehouse', 'quantity']
-    ordering = ['warehouse', 'product']
-    
-    def get_serializer_class(self):
-        """Usar StockUpdateSerializer para updates"""
-        if self.action in ['update', 'partial_update']:
-            return StockUpdateSerializer
-        return StockItemSerializer
-    
-    def get_queryset(self):
-        """Filtrar stock del proveedor actual"""
-        if self.request.user.is_superuser:
-            return StockItem.objects.all()
-        
-        current_provider = getattr(self.request, 'current_provider', None)
-        if current_provider:
-            return StockItem.objects.filter(
-                product__provider=current_provider
-            )
-        
-        return StockItem.objects.none()

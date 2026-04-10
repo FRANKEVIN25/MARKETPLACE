@@ -76,10 +76,10 @@ class SubOrderAdmin(admin.ModelAdmin):
 
 @admin.register(OrderItem)
 class OrderItemAdmin(admin.ModelAdmin):
-    list_display = ['id', 'order', 'product_name', 'quantity', 'unit_price', 'subtotal']
-    list_filter = ['order__status', 'provider']
-    search_fields = ['product_name', 'product_sku', 'order__order_number']
-    readonly_fields = ['order', 'sub_order', 'product', 'provider', 'created_at']
+    list_display = ['id', 'sub_order', 'product_name', 'quantity', 'unit_price', 'subtotal']
+    list_filter = ['sub_order__status', 'provider']
+    search_fields = ['product_name', 'product_sku', 'sub_order__sub_order_number']
+    readonly_fields = ['sub_order', 'product', 'provider', 'created_at']
 
 
 @admin.register(PaymentProof)

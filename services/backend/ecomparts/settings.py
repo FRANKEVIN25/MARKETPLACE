@@ -173,6 +173,11 @@ MEDIA_ROOT = BASE_DIR / 'media'
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# El modelo de usuario activo del proyecto.
+# Hoy usa el User de Django. Cuando se migre a AbstractUser
+# este es el ÚNICO lugar que cambia (y las migraciones se regeneran).
+AUTH_USER_MODEL = 'auth.User'
+
 # REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [

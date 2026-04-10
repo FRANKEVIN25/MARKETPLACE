@@ -63,7 +63,7 @@ class MotorViewSet(viewsets.ModelViewSet):
 
 class VariantVehiculoViewSet(viewsets.ModelViewSet):
     queryset = VariantVehiculo.objects.select_related(
-        'modelo', 'motor', 'transmision', 'traccion'
+        'modelo__marca', 'motor', 'transmision', 'traccion'
     )
     serializer_class = VariantVehiculoSerializer
     permission_classes = [IsAuthenticated]
@@ -88,16 +88,15 @@ class PublicMarcaListView(generics.ListAPIView):
         Si aún no hay compatibilidades cargadas, devuelve todas las marcas activas
         para no dejar el selector vacío durante etapas tempranas del proyecto.
         """
-
-        productos_marketplace = Product.objects.for_marketplace().filter(is_active=True)
+        productos_marketplace = Product.objects.for_marketplace()
 
         qs_con_productos = Marca.objects.filter(
             activo=True,
             modelovehiculo__variantvehiculo__compatibilidadproducto__producto__in=productos_marketplace,
-        ).distinct()
+        ).distinct().order_by('nombre')
 
         if qs_con_productos.exists():
-            return qs_con_productos.order_by('nombre')
+            return qs_con_productos
 
         # Fallback: todas las marcas activas
         return Marca.objects.filter(activo=True).order_by('nombre')
@@ -110,12 +109,12 @@ class PublicModeloListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        productos_marketplace = Product.objects.for_marketplace().filter(is_active=True)
+        productos_marketplace = Product.objects.for_marketplace()
         marca_id = self.request.query_params.get('marca_id')
         qs = ModeloVehiculo.objects.filter(
             activo=True,
             variantvehiculo__compatibilidadproducto__producto__in=productos_marketplace,
-        )
+        ).select_related('marca')
         if marca_id:
             qs = qs.filter(marca_id=marca_id)
         return qs.distinct().order_by('marca__nombre', 'nombre')
@@ -131,7 +130,7 @@ class PublicVariantListView(generics.ListAPIView):
     permission_classes = [AllowAny]
 
     def get_queryset(self):
-        productos_marketplace = Product.objects.for_marketplace().filter(is_active=True)
+        productos_marketplace = Product.objects.for_marketplace()
         modelo_id = self.request.query_params.get('modelo_id')
 
         qs = VariantVehiculo.objects.filter(

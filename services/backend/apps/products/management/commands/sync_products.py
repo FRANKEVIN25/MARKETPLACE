@@ -1,12 +1,12 @@
 """
-Comando para sincronizar productos, categorías, almacenes, stock y compatibilidades desde Odoo.
+Comando para sincronizar productos, categorías y compatibilidades desde Odoo.
 Útil para devops, migraciones manuales y debugging.
 Soporta --dry-run, --limit, --skip-stock y --skip-compat.
 """
 from django.core.management.base import BaseCommand
 from django.utils import timezone
 from apps.marketplace.models import Provider
-from apps.products.models import Product, Category, Warehouse, StockItem, CompatibilidadProducto
+from apps.products.models import Product, Category, CompatibilidadProducto
 from apps.vehicles.models import VariantVehiculo
 from apps.sync.odoo_connector import get_odoo_connector_for_provider
 import logging
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Sincroniza productos (+ categorías + almacenes + stock) desde Odoo al marketplace'
+    help = 'Sincroniza productos (+ categorías + stock + compatibilidades) desde Odoo al marketplace'
 
     def add_arguments(self, parser):
         parser.add_argument(
@@ -85,7 +85,6 @@ class Command(BaseCommand):
         total_stats = {
             'providers': 0,
             'categories_created': 0, 'categories_updated': 0,
-            'warehouses_created': 0, 'warehouses_updated': 0,
             'products_created': 0,   'products_updated': 0,
             'stock_updated': 0,
             'compat_created': 0,     'compat_updated': 0,
@@ -106,12 +105,7 @@ class Command(BaseCommand):
                 # ── 1. CATEGORÍAS ─────────────────────────────────────────────
                 odoo_categ_map = self._sync_categories(odoo, dry_run, total_stats)
 
-                # ── 2. ALMACENES ──────────────────────────────────────────────
-                warehouse_map, location_map = self._sync_warehouses(
-                    odoo, provider, dry_run, total_stats
-                )
-
-                # ── 3. PRODUCTOS ──────────────────────────────────────────────
+                # ── 2. PRODUCTOS ──────────────────────────────────────────────
                 self.stdout.write('   📡 Obteniendo productos de Odoo...')
                 odoo_products = odoo.get_products(
                     company_id=provider.odoo_company_id,
@@ -139,23 +133,43 @@ class Command(BaseCommand):
                         tmpl_raw = op.get('product_tmpl_id')
                         tmpl_id = tmpl_raw[0] if isinstance(tmpl_raw, (list, tuple)) else tmpl_raw
 
+                        # Protección contra referencias duplicadas desde Odoo.
+                        # Odoo advierte sobre duplicados pero no los bloquea,
+                        # así que es posible que dos productos compartan default_code.
+                        # Si la referencia ya está ocupada por otro producto del
+                        # mismo proveedor, usamos ODOO-{id} como fallback estable.
+                        raw_reference = op.get('default_code') or None
+                        if raw_reference:
+                            conflict = Product.objects.filter(
+                                provider=provider,
+                                reference=raw_reference
+                            ).exclude(odoo_product_id=op['id']).exists()
+                            if conflict:
+                                logger.warning(
+                                    f"Referencia duplicada en Odoo '{raw_reference}' "
+                                    f"(provider={provider.id}, odoo_id={op['id']}). "
+                                    f"Usando fallback ODOO-{op['id']}."
+                                )
+                                raw_reference = f'ODOO-{op["id"]}'
+
                         product_data = {
-                            'name':            op['name'],
-                            'reference':       op.get('default_code') or f'ODOO-{op["id"]}',
-                            'description':     op.get('description_sale') or '',
-                            'price':           op.get('list_price', 0),
-                            'product_type':    op.get('type', 'product'),
-                            'category':        category,
-                            'is_active':       op.get('active', True),
-                            'odoo_product_id': op['id'],
-                            'odoo_template_id': tmpl_id,
-                            'odoo_state':      'synced',
-                            'last_sync_at':    now,
+                            'name':               op['name'],
+                            'reference':          raw_reference,
+                            'description':        op.get('description_sale') or '',
+                            'price':              op.get('list_price', 0),
+                            'product_type':       op.get('type', 'product'),
+                            'category':           category,
+                            'is_active':          op.get('active', True),
+                            'odoo_product_id':    op['id'],
+                            'odoo_template_id':   tmpl_id,
+                            'odoo_state':         'synced',
+                            'last_sync_at':       now,
+                            'total_stock_cached': int(op.get('qty_available') or 0),
                         }
 
                         existing = Product.objects.filter(
                             provider=provider,
-                            odoo_id=op['id']
+                            odoo_product_id=op['id']
                         ).first()
 
                         if dry_run:
@@ -174,7 +188,6 @@ class Command(BaseCommand):
                             else:
                                 Product.objects.create(
                                     provider=provider,
-                                    odoo_id=op['id'],
                                     **product_data
                                 )
                                 action = '✨ Creado'
@@ -182,10 +195,12 @@ class Command(BaseCommand):
 
                         if idx % 10 == 0 or idx == 1:
                             cat_name = category.name if category else '—'
+                            qty = int(op.get('qty_available') or 0)
                             self.stdout.write(
                                 f'   [{idx}/{len(odoo_products)}] {action}: {op["name"][:45]} '
                                 f'| Cat: {cat_name} '
-                                f'| S/ {op.get("list_price", 0):.2f}'
+                                f'| S/ {op.get("list_price", 0):.2f} '
+                                f'| Stock: {qty}'
                             )
 
                     except Exception as e:
@@ -197,13 +212,10 @@ class Command(BaseCommand):
 
                 total_stats['products_created'] += p_stats['created']
                 total_stats['products_updated'] += p_stats['updated']
+                total_stats['stock_updated']    += p_stats['created'] + p_stats['updated']
                 total_stats['errors']           += p_stats['errors']
 
-                # ── 4. STOCK POR ALMACÉN ──────────────────────────────────────
-                if not skip_stock and not dry_run:
-                    self._sync_stock(odoo, provider, warehouse_map, location_map, total_stats)
-
-                # ── 5. COMPATIBILIDADES PRODUCTO ↔ VEHÍCULO ──────────────────
+                # ── 3. COMPATIBILIDADES PRODUCTO ↔ VEHÍCULO ──────────────────
                 if not skip_compat and not dry_run:
                     self._sync_compatibility(odoo, provider, total_stats)
 
@@ -218,8 +230,6 @@ class Command(BaseCommand):
                 self.stdout.write(f'\n   📊 Resumen de {provider.name}:')
                 self.stdout.write(f'      📂 Categorías creadas/upd: '
                                   f'{total_stats["categories_created"]} / {total_stats["categories_updated"]}')
-                self.stdout.write(f'      🏭 Almacenes creados/upd: '
-                                  f'{total_stats["warehouses_created"]} / {total_stats["warehouses_updated"]}')
                 self.stdout.write(f'      ✨ Productos creados:      {p_stats["created"]}')
                 self.stdout.write(f'      🔄 Productos actualizados: {p_stats["updated"]}')
                 self.stdout.write(f'      ❌ Errores:                {p_stats["errors"]}')
@@ -236,9 +246,8 @@ class Command(BaseCommand):
         self.stdout.write(f'{"=" * 60}')
         self.stdout.write(f'Providers procesados:       {total_stats["providers"]}')
         self.stdout.write(f'Categorías creadas/upd:     {total_stats["categories_created"]} / {total_stats["categories_updated"]}')
-        self.stdout.write(f'Almacenes creados/upd:      {total_stats["warehouses_created"]} / {total_stats["warehouses_updated"]}')
         self.stdout.write(f'Productos creados/upd:      {total_stats["products_created"]} / {total_stats["products_updated"]}')
-        self.stdout.write(f'Stock items actualizados:   {total_stats["stock_updated"]}')
+        self.stdout.write(f'Stock actualizado:          {total_stats["stock_updated"]} productos')
         self.stdout.write(f'Compat creadas/upd:         {total_stats["compat_created"]} / {total_stats["compat_updated"]}')
         self.stdout.write(f'Compat omitidas (sin match):{total_stats["compat_skipped"]}')
         self.stdout.write(f'Errores:                    {total_stats["errors"]}')
@@ -346,87 +355,6 @@ class Command(BaseCommand):
             f'   ✅ {label} {len(odoo_categories)} categorías'
         ))
         return categ_map
-
-    def _sync_warehouses(self, odoo, provider, dry_run, total_stats):
-        """
-        Sincroniza almacenes de la company desde Odoo.
-        Retorna:
-          warehouse_map: {odoo_warehouse_id: Warehouse instance}
-          location_map:  {odoo_warehouse_id: lot_stock_id (int)}
-        """
-        self.stdout.write('   🏭 Sincronizando almacenes...')
-        odoo_warehouses = odoo.get_warehouses(provider.odoo_company_id)
-        warehouse_map = {}
-        location_map  = {}
-
-        for ow in odoo_warehouses:
-            lot_stock_id = ow['lot_stock_id'][0] if ow.get('lot_stock_id') else None
-            if not dry_run:
-                wh, created = Warehouse.objects.update_or_create(
-                    odoo_warehouse_id=ow['id'],
-                    provider=provider,
-                    defaults={'name': ow['name'], 'is_active': True}
-                )
-                warehouse_map[ow['id']] = wh
-                if created:
-                    total_stats['warehouses_created'] += 1
-                else:
-                    total_stats['warehouses_updated'] += 1
-            if lot_stock_id:
-                location_map[ow['id']] = lot_stock_id
-
-        label = 'Encontrados' if dry_run else 'Sincronizados'
-        self.stdout.write(self.style.SUCCESS(
-            f'   ✅ {label} {len(odoo_warehouses)} almacén(es)'
-        ))
-        return warehouse_map, location_map
-
-    def _sync_stock(self, odoo, provider, warehouse_map, location_map, total_stats):
-        """
-        Actualiza StockItem por almacén usando stock.quant de Odoo.
-        Consulta en lote (un read_group por almacén) para evitar N+1 queries.
-        """
-        self.stdout.write('   📦 Sincronizando stock por almacén...')
-
-        provider_products = (
-            Product.objects
-            .filter(provider=provider, odoo_template_id__isnull=False)
-            .values('id', 'odoo_template_id')
-        )
-        tmpl_to_product = {p['odoo_template_id']: p['id'] for p in provider_products}
-        tmpl_ids = list(tmpl_to_product.keys())
-
-        if not tmpl_ids:
-            self.stdout.write('   ⚠️  Sin productos con odoo_template_id, omitiendo stock')
-            return
-
-        for odoo_wh_id, warehouse in warehouse_map.items():
-            location_id = location_map.get(odoo_wh_id)
-            if not location_id:
-                continue
-
-            stock_by_tmpl = odoo.get_stock_quants_for_warehouse(tmpl_ids, location_id)
-
-            for tmpl_id, qty in stock_by_tmpl.items():
-                product_id = tmpl_to_product.get(tmpl_id)
-                if not product_id:
-                    continue
-                try:
-                    StockItem.objects.update_or_create(
-                        product_id=product_id,
-                        warehouse=warehouse,
-                        defaults={'quantity': qty}
-                    )
-                    total_stats['stock_updated'] += 1
-                except Exception as e:
-                    self.stdout.write(self.style.ERROR(
-                        f'   ❌ Error stock product_id={product_id} wh={warehouse.name}: {e}'
-                    ))
-                    total_stats['errors'] += 1
-
-        self.stdout.write(self.style.SUCCESS(
-            f'   ✅ Stock actualizado: {total_stats["stock_updated"]} items'
-        ))
 
     def _sync_compatibility(self, odoo, provider, total_stats):
         """

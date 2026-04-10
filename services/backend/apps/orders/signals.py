@@ -185,19 +185,6 @@ def _get_or_create_partner(odoo: OdooConnector, customer):
 # ─────────────────────────────────────────────────────────────
 # Funciones públicas
 # ─────────────────────────────────────────────────────────────
-
-def _get_warehouse_id(odoo, company_id):
-    """Obtiene el warehouse_id de Odoo para una company"""
-    try:
-        wh = odoo.execute_kw(
-            'stock.warehouse', 'search_read',
-            [[['company_id', '=', company_id]]],
-            {'fields': ['id'], 'limit': 1, 'context': {'allowed_company_ids': [company_id]}}
-        )
-        return wh[0]['id'] if wh else False
-    except Exception:
-        return False
-
 def sync_suborder_to_odoo(suborder):
     """Crea la Sale Order en Odoo para una SubOrder de Django (estado draft).
     Debe llamarse DESPUÉS de que los OrderItems estén guardados.
@@ -403,6 +390,13 @@ def recalculate_order_status(sender, instance, **kwargs):
 
     Se conecta en OrdersConfig.ready() para evitar importaciones circulares.
     """
+    # Si solo se actualizaron campos que no afectan el estado derivado
+    # (ej. odoo_sale_id, tracking_number, odoo_sync_error_detail),
+    # no hay nada que recalcular.
+    update_fields = kwargs.get('update_fields')
+    if update_fields is not None and 'status' not in update_fields:
+        return
+
     order = instance.order
     sub_orders = list(order.sub_orders.all())
 
@@ -569,17 +563,12 @@ def update_customer_provider_stats(sender, instance, **kwargs):
             total_spent, weighted, current_pct, next_tier_amount,
         )
 
-        # ── Actualizar CustomerStats global (agrega todos los proveedores) ──
+        # ── Actualizar CustomerStats global (derivado de provider_stats ya calculados) ──
         from apps.customer.models import CustomerStats
 
-        global_agg = (
-            sender.objects.filter(
-                order__customer=customer,
-                status__in=list(ESTADOS_VALIDOS_STATS),
-            ).aggregate(
-                total_sum=Sum('total'),
-                orders=Count('id'),
-            )
+        global_agg = customer.provider_stats.aggregate(
+            total_sum=Sum('total_spent'),
+            orders=Sum('total_orders'),
         )
         g_total = global_agg['total_sum'] or Decimal('0.00')
         g_orders = global_agg['orders'] or 0

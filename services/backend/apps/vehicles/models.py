@@ -8,10 +8,19 @@ class Marca(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     activo = models.BooleanField(default=True)
 
+    def _generate_unique_slug(self):
+        base_slug = slugify(self.nombre)
+        slug = base_slug
+        counter = 1
+        while Marca.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.nombre)
-        super().save(*args, **kwargs) 
+            self.slug = self._generate_unique_slug()
+        super().save(*args, **kwargs)
 
     class Meta:
         indexes = [
@@ -27,10 +36,19 @@ class ModeloVehiculo(models.Model):
     slug = models.SlugField(unique=True, blank=True)
     activo = models.BooleanField(default=True)
 
+    def _generate_unique_slug(self):
+        base_slug = slugify(f"{self.marca.nombre}-{self.nombre}")
+        slug = base_slug
+        counter = 1
+        while ModeloVehiculo.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(f"{self.marca.nombre}-{self.nombre}")
-        super().save(*args, **kwargs) 
+            self.slug = self._generate_unique_slug()
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ('marca', 'nombre')
@@ -105,9 +123,9 @@ class Motor(models.Model):
         (Dis, 'Diésel'),
     ]
 
+    codigo_motor = models.CharField(max_length=100, blank=True, null=True)
     combustible = models.CharField(max_length=10, null=True, blank=True, choices=FUEL_CHOICES)
     cilindrada_cc = models.PositiveIntegerField(blank=True, null=True)
-    codigo_motor = models.CharField(max_length=100, blank=True, null=True)
     #potencia_kw = models.PositiveIntegerField(null=True,blank=True, help_text="útil para EV / híbridos")
     tecnologia = models.CharField(
         max_length=100,
@@ -165,6 +183,13 @@ class VariantVehiculo(models.Model):
         help_text="ID de la variante en Odoo (vehiculo.variante). "
                   "Ancla para la sincronización de compatibilidades."
     )
+
+    def clean(self):
+        from django.core.exceptions import ValidationError
+        if self.anio_hasta is not None and self.anio_hasta < self.anio_desde:
+            raise ValidationError(
+                {'anio_hasta': 'El año de fin no puede ser anterior al año de inicio.'}
+            )
 
     class Meta:
         unique_together = ('modelo','motor','transmision','traccion','anio_desde','anio_hasta')

@@ -1,12 +1,14 @@
 """
 Views para Orders - API REST y Lógica de Negocio
 """
+import hmac
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
@@ -41,15 +43,26 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filtrar órdenes según el usuario"""
         user = self.request.user
-        
+
+        base_qs = Order.objects.select_related(
+            'customer__user', 'shipping_address',
+        ).prefetch_related(
+            'sub_orders__provider',
+            'sub_orders__items__product',
+            'sub_orders__items__provider',
+            'sub_orders__payments',
+            'items__product',
+            'items__provider',
+        )
+
         # Si es customer, solo sus órdenes
         if hasattr(user, 'customer_profile'):
-            return Order.objects.filter(customer=user.customer_profile)
-        
+            return base_qs.filter(customer=user.customer_profile)
+
         # Si es admin, todas las órdenes
         if user.is_staff:
-            return Order.objects.all()
-        
+            return base_qs
+
         return Order.objects.none()
     
     @action(detail=False, methods=['post'], url_path='checkout-preview')
@@ -84,10 +97,17 @@ class OrderViewSet(viewsets.ModelViewSet):
 
         customer = Customer.objects.get(id=data['customer_id'])
 
+        # Cargar todos los productos en una sola query para evitar N+1
+        product_ids = [item_data['product_id'] for item_data in data['items']]
+        products_map = {
+            p.id: p
+            for p in Product.objects.select_related('provider').filter(id__in=product_ids)
+        }
+
         # Agrupar items por proveedor
         items_by_provider = {}
         for item_data in data['items']:
-            product = Product.objects.select_related('provider').get(id=item_data['product_id'])
+            product = products_map[item_data['product_id']]
             provider = product.provider
             if provider.id not in items_by_provider:
                 items_by_provider[provider.id] = {'provider': provider, 'items': []}
@@ -191,17 +211,24 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         
         # 3. Agrupar items por proveedor
+        # Cargar todos los productos en una sola query para evitar N+1
+        product_ids = [item_data['product_id'] for item_data in data['items']]
+        products_map = {
+            p.id: p
+            for p in Product.objects.select_related('provider').filter(id__in=product_ids)
+        }
+
         items_by_provider = {}
         for item_data in data['items']:
-            product = Product.objects.select_related('provider').get(id=item_data['product_id'])
+            product = products_map[item_data['product_id']]
             provider = product.provider
-            
+
             if provider.id not in items_by_provider:
                 items_by_provider[provider.id] = {
                     'provider': provider,
                     'items': []
                 }
-            
+
             items_by_provider[provider.id]['items'].append({
                 'product': product,
                 'quantity': item_data['quantity']
@@ -248,7 +275,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 
                 # Crear OrderItem
                 OrderItem.objects.create(
-                    order=order,
                     sub_order=sub_order,
                     product=product,
                     provider=provider,
@@ -406,16 +432,24 @@ class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """Filtrar sub-órdenes según el usuario"""
         user = self.request.user
-        
+
+        base_qs = SubOrder.objects.select_related(
+            'order', 'provider',
+        ).prefetch_related(
+            'items__product',
+            'items__provider',
+            'payments',
+        )
+
         # Si es customer
         if hasattr(user, 'customer_profile'):
-            return SubOrder.objects.filter(order__customer=user.customer_profile)
-        
+            return base_qs.filter(order__customer=user.customer_profile)
+
         # Si es vendor (provider owner)
         if hasattr(user, 'owned_providers'):
             provider_ids = user.owned_providers.values_list('id', flat=True)
-            return SubOrder.objects.filter(provider_id__in=provider_ids)
-        
+            return base_qs.filter(provider_id__in=provider_ids)
+
         # Si es admin
         if user.is_staff:
             return SubOrder.objects.all()
@@ -573,24 +607,23 @@ class VendorOrderViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """Estadísticas de órdenes del vendor"""
-        queryset = self.get_queryset()
-        
-        stats = {
-            'total_orders':          queryset.count(),
-            'pendiente_pago':        queryset.filter(status='pendiente_pago').count(),
-            'pago_en_revision':      queryset.filter(status='pago_en_revision').count(),
-            'pago_rechazado':        queryset.filter(status='pago_rechazado').count(),  # v5
-            'confirmado':            queryset.filter(status='confirmado').count(),
-            'enviado':               queryset.filter(status='enviado').count(),
-            'entregado':             queryset.filter(status='entregado').count(),
-            'cancelado':             queryset.filter(status='cancelado').count(),
-            # Flags de auditoría
-            'con_rechazo_previo':    queryset.filter(payment_rejected=True).count(),
-            'error_odoo':            queryset.filter(odoo_sync_error=True).count(),
-        }
-        
-        return Response(stats)
+        """Estadísticas de órdenes del vendor (1 query agregada)"""
+        qs = self.get_queryset()
+
+        counts = qs.aggregate(
+            total_orders      =Count('id'),
+            pendiente_pago    =Count('id', filter=Q(status='pendiente_pago')),
+            pago_en_revision  =Count('id', filter=Q(status='pago_en_revision')),
+            pago_rechazado    =Count('id', filter=Q(status='pago_rechazado')),
+            confirmado        =Count('id', filter=Q(status='confirmado')),
+            enviado           =Count('id', filter=Q(status='enviado')),
+            entregado         =Count('id', filter=Q(status='entregado')),
+            cancelado         =Count('id', filter=Q(status='cancelado')),
+            con_rechazo_previo=Count('id', filter=Q(payment_rejected=True)),
+            error_odoo        =Count('id', filter=Q(odoo_sync_error=True)),
+        )
+
+        return Response(counts)
 
 
 
@@ -624,12 +657,12 @@ class OdooWebhookView(viewsets.ViewSet):
         
         logger = logging.getLogger(__name__)
         
-        # 1. Validar token de seguridad
-        token = request.data.get('token')
+        # 1. Validar token de seguridad (compare_digest evita timing attacks)
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
-        
-        if token != expected_token:
-            logger.warning(f"❌ Webhook recibido con token inválido")
+
+        if not hmac.compare_digest(token, expected_token):
+            logger.warning("❌ Webhook recibido con token inválido")
             return Response(
                 {'error': 'Invalid token'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -757,10 +790,10 @@ class OdooWebhookView(viewsets.ViewSet):
         """
         from django.conf import settings
 
-        token = request.data.get('token')
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
 
-        if token != expected_token:
+        if not hmac.compare_digest(token, expected_token):
             logger.warning("❌ delivery_update: token inválido desde Odoo")
             return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -885,10 +918,10 @@ class OdooWebhookView(viewsets.ViewSet):
         """
         from django.conf import settings
 
-        token = request.data.get('token')
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
 
-        if token != expected_token:
+        if not hmac.compare_digest(token, expected_token):
             logger.warning("❌ mark_received: token inválido desde Odoo")
             return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -970,9 +1003,9 @@ class OdooWebhookView(viewsets.ViewSet):
         from django.conf import settings
 
         # 1. Validar token
-        token = request.data.get('token')
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
-        if token != expected_token:
+        if not hmac.compare_digest(token, expected_token):
             logger.warning("❌ review_payment: token inválido desde Odoo")
             return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 

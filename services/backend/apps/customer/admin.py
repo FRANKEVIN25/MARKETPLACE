@@ -4,11 +4,19 @@ Configuración del Admin para Customer
 from django.contrib import admin
 from django.utils.html import format_html
 from django.db.models import Sum, Count
-from .models import Customer, Address, CustomerStats, CustomerProviderStats
+from .models import Customer, Address, CustomerStats, CustomerProviderStats, CustomerVehicle
+
+
+class CustomerVehicleInline(admin.TabularInline):
+    model = CustomerVehicle
+    fields = ['variante', 'is_active', 'created_at']
+    readonly_fields = ['created_at']
+    extra = 0
 
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
+    inlines = [CustomerVehicleInline]
     list_display = [
         'customer_id',
         'get_name',
@@ -268,7 +276,7 @@ class CustomerStatsAdmin(admin.ModelAdmin):
             'fields': ('ver_historial_por_proveedor',),
         }),
         ('Información Adicional', {
-            'fields': ('preferred_brands', 'notes'),
+            'fields': ('preferred_models', 'notes'),
         }),
         ('Metadata', {
             'fields': ('created_at', 'updated_at'),

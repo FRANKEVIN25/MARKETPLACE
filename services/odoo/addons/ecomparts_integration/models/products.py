@@ -10,7 +10,7 @@ class ProductTemplate(models.Model):
         string='Código OEM',
         help='Código OEM del fabricante para esta autoparte'
     )
-
+    # falta asignar un default
     autopart_side = fields.Selection(
         selection=[
             ('left', 'Izquierda'),
@@ -23,7 +23,7 @@ class ProductTemplate(models.Model):
         string='Lado del vehículo',
         help='Lado del vehículo al que aplica la autoparte'
     )
-
+    # falta asignar un default
     autopart_quality = fields.Selection(
         selection=[
             ('original', 'Original'),

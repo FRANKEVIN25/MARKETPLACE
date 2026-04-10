@@ -7,7 +7,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from apps.marketplace.models import Provider
-from apps.products.models import Product, Category, Warehouse, StockItem
+from apps.products.models import Product, Category
 from apps.sync.odoo_connector import OdooConnector, get_odoo_connector_for_provider
 from apps.vehicles.models import VariantVehiculo
 from apps.products.models import CompatibilidadProducto
@@ -172,7 +172,6 @@ def sync_provider_products(provider_id):
         stats = {
             'provider': provider.name,
             'categories': {'created': 0, 'updated': 0},
-            'warehouses': {'created': 0, 'updated': 0},
             'products': {'total_odoo': 0, 'created': 0, 'updated': 0, 'errors': 0},
             'stock': {'updated': 0, 'errors': 0},
         }
@@ -254,33 +253,7 @@ def sync_provider_products(provider_id):
             f"+{stats['categories']['created']} / ~{stats['categories']['updated']}"
         )
 
-        # ── 2. ALMACENES ─────────────────────────────────────────────────────
-        odoo_warehouses = odoo.get_warehouses(provider.odoo_company_id)
-        warehouse_map = {}  # {odoo_warehouse_id: Warehouse instance}
-        location_map  = {}  # {odoo_warehouse_id: lot_stock_id}
-        for ow in odoo_warehouses:
-            lot_stock_id = ow['lot_stock_id'][0] if ow.get('lot_stock_id') else None
-            wh, created = Warehouse.objects.update_or_create(
-                odoo_warehouse_id=ow['id'],
-                provider=provider,
-                defaults={
-                    'name': ow['name'],
-                    'is_active': True,
-                }
-            )
-            warehouse_map[ow['id']] = wh
-            if lot_stock_id:
-                location_map[ow['id']] = lot_stock_id
-            if created:
-                stats['warehouses']['created'] += 1
-            else:
-                stats['warehouses']['updated'] += 1
-        logger.info(
-            f"{provider.name} — almacenes: "
-            f"+{stats['warehouses']['created']} / ~{stats['warehouses']['updated']}"
-        )
-
-        # ── 3. PRODUCTOS ─────────────────────────────────────────────────────
+        # ── 2. PRODUCTOS ────────────────────────────────────────────────────
         odoo_products = odoo.get_products(company_id=provider.odoo_company_id)
         stats['products']['total_odoo'] = len(odoo_products)
 
@@ -312,6 +285,24 @@ def sync_provider_products(provider_id):
                     except Exception as img_err:
                         logger.warning(f"⚠️ No se pudo subir imagen a Cloudinary: {img_err}")
 
+                # Resolución de referencia con protección contra duplicados de Odoo
+                raw_reference = odoo_product.get('default_code') or None
+                if raw_reference:
+                    conflict = Product.objects.filter(
+                        provider=provider,
+                        reference=raw_reference
+                    ).exclude(odoo_product_id=odoo_product['id']).exists()
+                    if conflict:
+                        logger.warning(
+                            f"Referencia duplicada en Odoo '{raw_reference}' "
+                            f"(provider={provider.id}, odoo_id={odoo_product['id']}). "
+                            f"Usando fallback ODOO-{odoo_product['id']}."
+                        )
+                        raw_reference = f"ODOO-{odoo_product['id']}"
+
+                # Stock total directo desde qty_available de Odoo
+                qty_available = int(odoo_product.get('qty_available') or 0)
+
                 # Buscar o crear producto en marketplace
                 # Resolver categoría vía odoo_category_id
                 categ_raw = odoo_product.get('categ_id')  # (id, nombre) o False
@@ -325,10 +316,10 @@ def sync_provider_products(provider_id):
 
                 product, created = Product.objects.update_or_create(
                     provider=provider,
-                    odoo_id=odoo_product['id'],
+                    odoo_product_id=odoo_product['id'],
                     defaults={
                         'name': odoo_product['name'],
-                        'reference': odoo_product.get('default_code') or f"ODOO-{odoo_product['id']}",
+                        'reference': raw_reference,
                         'description': odoo_product.get('description_sale') or '',
                         'price': odoo_product.get('list_price', 0),
                         'image_url': image_url,
@@ -336,10 +327,10 @@ def sync_provider_products(provider_id):
                         'product_type': odoo_product.get('type', 'product'),
                         'category': category,
                         'is_active': odoo_product.get('active', True),
-                        'odoo_product_id': odoo_product['id'],
                         'odoo_template_id': tmpl_id,
                         'odoo_state': 'synced',
                         'last_sync_at': now,
+                        'total_stock_cached': qty_available,
                     }
                 )
 
@@ -358,51 +349,17 @@ def sync_provider_products(provider_id):
             f"/ err {stats['products']['errors']}"
         )
 
-        # ── 4. STOCK POR ALMACÉN ─────────────────────────────────────────────
-        # Tomamos los template IDs de todos los productos del provider que ya
-        # tienen odoo_template_id, y consultamos stock.quant una vez por almacén
-        # (en lote) en lugar de una query por producto.
-        provider_products = (
-            Product.objects
-            .filter(provider=provider, odoo_template_id__isnull=False)
-            .values('id', 'odoo_template_id')
-        )
-        tmpl_to_product = {p['odoo_template_id']: p['id'] for p in provider_products}
-        tmpl_ids = list(tmpl_to_product.keys())
-
-        for odoo_wh_id, warehouse in warehouse_map.items():
-            location_id = location_map.get(odoo_wh_id)
-            if not location_id or not tmpl_ids:
-                continue
-
-            stock_by_tmpl = odoo.get_stock_quants_for_warehouse(tmpl_ids, location_id)
-
-            for tmpl_id, qty in stock_by_tmpl.items():
-                product_id = tmpl_to_product.get(tmpl_id)
-                if not product_id:
-                    continue
-                try:
-                    StockItem.objects.update_or_create(
-                        product_id=product_id,
-                        warehouse=warehouse,
-                        defaults={'quantity': qty}
-                    )
-                    stats['stock']['updated'] += 1
-                except Exception as e:
-                    logger.error(
-                        f"Error actualizando stock product_id={product_id} "
-                        f"warehouse={warehouse.name}: {e}"
-                    )
-                    stats['stock']['errors'] += 1
-
+        # ── 3. STOCK TOTAL ────────────────────────────────────────────────────
+        # total_stock_cached ya se actualizó en el paso de productos
+        # desde qty_available de Odoo. No hay tablas de stock separadas.
+        stats['stock']['updated'] = stats['products']['created'] + stats['products']['updated']
         logger.info(
-            f"{provider.name} — stock: "
-            f"~{stats['stock']['updated']} / err {stats['stock']['errors']}"
+            f"{provider.name} — stock: {stats['stock']['updated']} productos con stock actualizado"
         )
 
-        # ── 5. COMPATIBILIDADES PRODUCTO ↔ VEHÍCULO ──────────────────────────
+        # ── 4. COMPATIBILIDADES PRODUCTO ↔ VEHÍCULO ──────────────────────────
         # Se ejecuta al final para garantizar que los productos ya tienen
-        # odoo_template_id poblado (paso 3).
+        # odoo_template_id poblado (paso anterior).
         compat_stats = sync_provider_compatibility(provider_id)
         stats['compatibility'] = {
             'created': compat_stats.get('compat_created', 0),
@@ -643,9 +600,9 @@ def _resolve_django_variant(odoo_variant_id, odoo_variant_map):
 @shared_task
 def sync_provider_stock(provider_id):
     """
-    Sincroniza solo el stock de productos usando stock.quant por almacén.
-    Más rápido que una sincronización completa: no toca categorías ni datos
-    del producto, solo actualiza quantities en StockItem.
+    Actualiza total_stock_cached de todos los productos del provider
+    consultando qty_available directamente desde Odoo.
+    Más rápido que la sync completa: no toca categorías ni datos de producto.
 
     Args:
         provider_id: ID del Provider
@@ -656,58 +613,21 @@ def sync_provider_stock(provider_id):
 
         stats = {'updated': 0, 'errors': 0}
 
-        # Construir mapa tmpl_id → product_id para consultas en lote
-        provider_products = (
-            Product.objects
-            .filter(provider=provider, odoo_template_id__isnull=False)
-            .values('id', 'odoo_template_id')
-        )
-        tmpl_to_product = {p['odoo_template_id']: p['id'] for p in provider_products}
-        tmpl_ids = list(tmpl_to_product.keys())
+        odoo_products = odoo.get_products(company_id=provider.odoo_company_id)
 
-        if not tmpl_ids:
-            logger.info(f"No hay productos con odoo_template_id para {provider.name}")
-            return stats
-
-        # Iterar solo los almacenes activos de este provider
-        warehouses = Warehouse.objects.filter(
-            provider=provider,
-            is_active=True,
-            odoo_warehouse_id__isnull=False
-        )
-
-        for warehouse in warehouses:
-            # Obtener lot_stock_id del warehouse en Odoo
-            odoo_wh_list = odoo.get_warehouses(provider.odoo_company_id)
-            location_id = None
-            for ow in odoo_wh_list:
-                if ow['id'] == warehouse.odoo_warehouse_id and ow.get('lot_stock_id'):
-                    location_id = ow['lot_stock_id'][0]
-                    break
-
-            if not location_id:
-                logger.warning(f"Almacén {warehouse.name} sin lot_stock_id, omitiendo")
-                continue
-
-            stock_by_tmpl = odoo.get_stock_quants_for_warehouse(tmpl_ids, location_id)
-
-            for tmpl_id, qty in stock_by_tmpl.items():
-                product_id = tmpl_to_product.get(tmpl_id)
-                if not product_id:
-                    continue
-                try:
-                    StockItem.objects.update_or_create(
-                        product_id=product_id,
-                        warehouse=warehouse,
-                        defaults={'quantity': qty}
-                    )
-                    stats['updated'] += 1
-                except Exception as e:
-                    logger.error(
-                        f"Error actualizando stock product_id={product_id} "
-                        f"warehouse={warehouse.name}: {e}"
-                    )
-                    stats['errors'] += 1
+        for op in odoo_products:
+            qty = int(op.get('qty_available') or 0)
+            try:
+                rows = Product.objects.filter(
+                    provider=provider,
+                    odoo_product_id=op['id']
+                ).update(total_stock_cached=qty)
+                stats['updated'] += rows
+            except Exception as e:
+                logger.error(
+                    f"Error actualizando stock odoo_product_id={op['id']}: {e}"
+                )
+                stats['errors'] += 1
 
         logger.info(f"Stock actualizado para {provider.name}: {stats}")
         return stats
