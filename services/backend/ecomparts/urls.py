@@ -64,7 +64,7 @@ urlpatterns = [
     path('api/v1/orders/', include('apps.orders.urls')),
     path('api/v1/customer/', include('apps.customer.urls')),
     path('api/v1/vehicles/', include('apps.vehicles.urls')),
-    path('api/v1/orders/', include('apps.orders.urls')), 
+    path('api/v1/cart/', include('apps.cart.urls')),
 ]
 
 # Static and media files in development

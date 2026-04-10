@@ -49,9 +49,9 @@
             <tr>
               <td>
                 <div class="font-semibold">{item.product.name}</div>
-                <div class="text-sm text-gray-500">{item.product.reference}</div>
-                {#if !item.stockDisponible || item.cantidad > item.stockDisponible}
-                  <div class="text-xs text-red-600 mt-1">Stock insuficiente</div>
+                <div class="text-sm text-gray-500">{item.product.reference ?? ''}</div>
+                {#if !item.is_available}
+                  <div class="text-xs text-red-600 mt-1">Producto no disponible</div>
                 {/if}
               </td>
               <td>
@@ -61,21 +61,12 @@
                     disabled={item.cantidad <= 1}
                     class="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1 rounded"
                   >-</button>
-                  <input
-                    type="number"
-                    min="1"
-                    max={item.stockDisponible}
-                    bind:value={item.cantidad}
-                    on:change={() => modificarCantidad(item.product.id, item.cantidad)}
-                    class="w-16 text-center border border-gray-300 rounded"
-                  />
+                  <span class="w-8 text-center">{item.cantidad}</span>
                   <button
                     on:click={() => modificarCantidad(item.product.id, item.cantidad + 1)}
-                    disabled={item.cantidad >= item.stockDisponible}
-                    class="bg-gray-200 hover:bg-gray-300 disabled:opacity-50 disabled:cursor-not-allowed px-2 py-1 rounded"
+                    class="bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded"
                   >+</button>
                 </div>
-                <div class="text-xs text-gray-500 mt-1">Máx. {item.stockDisponible} unidades</div>
               </td>
               <td>S/. {item.precioUnitario.toFixed(2)}</td>
               <td>S/. {item.precioTotal.toFixed(2)}</td>
@@ -99,3 +90,5 @@
     </div>
   {/if}
 </div>
+
+

@@ -71,8 +71,6 @@
 
   function obtenerPayloadVehiculo() {
     return {
-      selected_vehicle_marca_id: filtros.marca_id ? Number(filtros.marca_id) : null,
-      selected_vehicle_modelo_id: filtros.modelo_id ? Number(filtros.modelo_id) : null,
       selected_vehicle_variante_id: filtros.variante_id ? Number(filtros.variante_id) : null,
     };
   }

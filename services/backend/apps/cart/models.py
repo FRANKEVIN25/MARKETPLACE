@@ -1,6 +1,7 @@
 
 from django.db import models
 from django.conf import settings
+from django.db.models import Q
 from decimal import Decimal
 
 class Cart(models.Model):
@@ -40,6 +41,13 @@ class Cart(models.Model):
 			models.Index(fields=['user', 'status']),
 			models.Index(fields=['session_key']),
 		]
+		constraints = [
+			models.UniqueConstraint(
+				fields=['user'],
+				condition=Q(status='active') & Q(user__isnull=False),
+				name='unique_active_cart_per_user',
+			),
+		]
 
 	def __str__(self):
 		return f"Cart #{self.id} ({self.status})"
@@ -66,7 +74,7 @@ class CartLine(models.Model):
 
 	# Datos congelados
 	product_name = models.CharField(max_length=255)
-	product_reference = models.CharField(max_length=50)
+	product_reference = models.CharField(max_length=50, null=True, blank=True)
 	price_unit = models.DecimalField(max_digits=12, decimal_places=2)
 	tax_percent = models.DecimalField(max_digits=5, decimal_places=2)
 

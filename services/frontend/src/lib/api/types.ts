@@ -6,6 +6,44 @@
  */
 
 // ============================================
+// CARRITO (Cart)
+// ============================================
+
+export interface BackendCartProduct {
+  id: number;
+  name: string;
+  slug: string;
+  reference: string | null;
+  image_url: string | null;
+}
+
+export interface BackendCartLine {
+  id: number;
+  cart: number;
+  product: BackendCartProduct;
+  provider: number;
+  provider_name: string;
+  product_name: string;
+  product_reference: string;
+  price_unit: string;
+  tax_percent: string;
+  quantity: number;
+  is_available: boolean;
+  stock_checked_at: string | null;
+  added_at: string;
+}
+
+export interface BackendCart {
+  id: number;
+  user: number | null;
+  session_key: string | null;
+  status: string;
+  currency: string;
+  lines: BackendCartLine[];
+  totals: Record<string, { subtotal: number; tax: number }>;
+}
+
+// ============================================
 // PROVEEDOR (Provider)
 // ============================================
 // Un proveedor es una empresa que vende en el marketplace
@@ -76,11 +114,9 @@ export interface PublicProviderDetail {
 export interface Category {
   id: number;               // ID único
   name: string;             // Nombre de la categoría
-  slug: string;             // URL amigable
+  slug: string;             // URL amigable (estable; no cambia con el nombre)
   parent?: number;          // ID de categoría padre (si es subcategoría)
   description?: string;     // Descripción
-  image_url?: string;       // URL de la imagen en CDN/Cloudinary
-  image?: string;           // URL de la imagen
   is_active: boolean;       // ¿Está activa?
   children_count: number;   // Cantidad de subcategorías
 }
@@ -182,8 +218,6 @@ export interface Customer {
   company_name?: string;
   business_activity?: BusinessActivity | '';
   business_activity_display?: string;
-  selected_vehicle_marca_id?: number | null;
-  selected_vehicle_modelo_id?: number | null;
   selected_vehicle_variante_id?: number | null;
   selected_vehicle?: CustomerSelectedVehicle | null;
   receive_newsletter: boolean;

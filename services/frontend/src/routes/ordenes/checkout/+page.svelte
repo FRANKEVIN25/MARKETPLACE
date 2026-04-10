@@ -387,8 +387,8 @@
                   <div class="flex gap-4 items-start">
                     <!-- Imagen -->
                     <div class="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden border border-gray-200">
-                      {#if item.product.image_url || item.product.image}
-                        <img src={item.product.image_url || item.product.image} alt={item.product.name}
+                      {#if item.product.image_url}
+                        <img src={item.product.image_url} alt={item.product.name}
                              class="w-full h-full object-cover" />
                       {:else}
                         <div class="w-full h-full flex items-center justify-center text-gray-400 text-2xl">📦</div>
@@ -400,7 +400,7 @@
                       <p class="font-semibold text-gray-900 text-sm leading-tight truncate">
                         {item.product.name}
                       </p>
-                      <p class="text-xs text-gray-500 mt-0.5">{item.product.reference}</p>
+                      <p class="text-xs text-gray-500 mt-0.5">{item.product.reference ?? ''}</p>
                       <div class="flex items-center gap-2 mt-2">
                         <button
                           class="w-6 h-6 rounded border border-gray-300 text-gray-600
@@ -414,7 +414,6 @@
                           class="w-6 h-6 rounded border border-gray-300 text-gray-600
                                  hover:bg-gray-100 flex items-center justify-center text-sm
                                  disabled:opacity-40 disabled:cursor-not-allowed"
-                          disabled={item.cantidad >= item.stockDisponible}
                           on:click={() => cart.updateCantidad(item.product.id, item.cantidad + 1)}
                         >+</button>
                         <button

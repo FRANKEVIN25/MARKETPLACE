@@ -25,6 +25,8 @@ import type {
   VehicleMarca,
   VehicleModelo,
   VehicleVariantFilter,
+  BackendCart,
+  BackendCartLine,
 } from './types';
 
 type RawServiceListing = Omit<ServiceListing, 'district' | 'province' | 'department' | 'totalJobs' | 'successRate' | 'repeatFailureRate' | 'avgRating'> & {
@@ -471,6 +473,49 @@ export const api = {
         { headers: authHeaders(token) }
       );
       return response.data.sub_order;
+    },
+  },
+
+  /**
+   * CARRITO
+   */
+  cart: {
+    async get(token: string): Promise<BackendCart> {
+      const response = await apiClient.get<BackendCart>(
+        '/api/v1/cart/cart/',
+        { headers: authHeaders(token) }
+      );
+      return response.data;
+    },
+    async addLine(token: string, productId: number, quantity: number): Promise<BackendCartLine> {
+      const response = await apiClient.post<BackendCartLine>(
+        '/api/v1/cart/cart/add/',
+        { product_id: productId, quantity },
+        { headers: authHeaders(token) }
+      );
+      return response.data;
+    },
+    async updateQuantity(token: string, productId: number, quantity: number): Promise<BackendCartLine> {
+      const response = await apiClient.post<BackendCartLine>(
+        '/api/v1/cart/cart/update/',
+        { product_id: productId, quantity },
+        { headers: authHeaders(token) }
+      );
+      return response.data;
+    },
+    async removeLine(token: string, productId: number): Promise<void> {
+      await apiClient.post(
+        '/api/v1/cart/cart/remove/',
+        { product_id: productId },
+        { headers: authHeaders(token) }
+      );
+    },
+    async clear(token: string): Promise<void> {
+      await apiClient.post(
+        '/api/v1/cart/cart/clear/',
+        {},
+        { headers: authHeaders(token) }
+      );
     },
   },
 

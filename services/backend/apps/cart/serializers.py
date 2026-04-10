@@ -1,11 +1,20 @@
 
 from rest_framework import serializers
 from .models import Cart, CartLine
-from cart.services.cart_calculator import CartCalculator
-from products.serializers import ProductListSerializer
+from .services.cart_calculator import CartCalculator
+from apps.products.models import Product
+
+
+class CartProductSerializer(serializers.ModelSerializer):
+	"""Serializer mínimo del producto para contexto de carrito."""
+	class Meta:
+		model = Product
+		fields = ['id', 'name', 'slug', 'reference', 'image_url']
+		read_only_fields = fields
+
 
 class CartLineSerializer(serializers.ModelSerializer):
-	product = ProductListSerializer(read_only=True)
+	product = CartProductSerializer(read_only=True)
 	provider_name = serializers.CharField(source='provider.name', read_only=True)
 
 	class Meta:

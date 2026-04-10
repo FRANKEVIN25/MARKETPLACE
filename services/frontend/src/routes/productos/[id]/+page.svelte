@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { PageData } from './$types';
   import type { StockItem } from '$lib/api/types';
+  import { goto } from '$app/navigation';
   import { cart } from '$lib/store/cart';
+  import { auth } from '$lib/store/auth';
 
   export let data: PageData;
 
@@ -33,8 +35,12 @@
     return acc;
   }, {});
 
-  const agregarAlCarrito = () => {
-    cart.addItem(product, cantidad);
+  const agregarAlCarrito = async () => {
+    if (!auth.getAccessToken()) {
+      goto('/login');
+      return;
+    }
+    await cart.addItem(product.id, cantidad);
     productoEnCarrito = true;
     setTimeout(() => {
       productoEnCarrito = false;
