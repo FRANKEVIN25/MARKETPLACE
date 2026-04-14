@@ -172,33 +172,66 @@ def sync_provider_products(provider_id):
             'errors': 0
         }
         
+        import cloudinary.uploader, base64
+
+        def upload_image(b64_data, public_id):
+            """Sube imagen base64 a Cloudinary, retorna (url, cloudinary_id)"""
+            if not b64_data or b64_data is False:
+                return None, None
+            try:
+                image_data = base64.b64decode(b64_data)
+                result = cloudinary.uploader.upload(
+                    image_data,
+                    public_id=public_id,
+                    overwrite=True,
+                    resource_type="image",
+                    transformation=[{
+                        "width": 800, "height": 800,
+                        "crop": "limit", "quality": "auto",
+                        "fetch_format": "auto"
+                    }]
+                )
+                return result.get('secure_url'), result.get('public_id')
+            except Exception as img_err:
+                logger.warning(f"⚠️ No se pudo subir imagen a Cloudinary ({public_id}): {img_err}")
+                return None, None
+
+        # Batch-fetch imágenes de galería para todos los templates de este provider
+        tmpl_ids = set()
+        for p in odoo_products:
+            tmpl = p.get('product_tmpl_id')
+            if tmpl:
+                tid = tmpl[0] if isinstance(tmpl, list) else tmpl
+                tmpl_ids.add(tid)
+        gallery_by_tmpl = odoo.get_gallery_images(tmpl_ids)
+        logger.info(f"Galería cargada: {sum(len(v) for v in gallery_by_tmpl.values())} imágenes para {len(gallery_by_tmpl)} templates")
+
         for odoo_product in odoo_products:
             try:
-                # Subir imagen a Cloudinary si existe en Odoo
-                image_url = None
-                image_cloudinary_id = None
-                image_b64 = odoo_product.get('image_1920')
-                if image_b64 and image_b64 is not False:
-                    try:
-                        import cloudinary.uploader, base64
-                        image_data = base64.b64decode(image_b64)
-                        product_ref = odoo_product.get('default_code') or str(odoo_product['id'])
-                        upload_result = cloudinary.uploader.upload(
-                            image_data,
-                            public_id=f"ecomparts/products/{product_ref}",
-                            overwrite=True,
-                            resource_type="image",
-                            transformation=[{
-                                "width": 800, "height": 800,
-                                "crop": "limit", "quality": "auto",
-                                "fetch_format": "auto"
-                            }]
-                        )
-                        image_url = upload_result.get('secure_url')
-                        image_cloudinary_id = upload_result.get('public_id')
-                        logger.info(f"✅ Imagen subida a Cloudinary: {image_url}")
-                    except Exception as img_err:
-                        logger.warning(f"⚠️ No se pudo subir imagen a Cloudinary: {img_err}")
+                product_ref = odoo_product.get('default_code') or str(odoo_product['id'])
+
+                # Imagen principal desde image_1920
+                image_url, image_cloudinary_id = upload_image(
+                    odoo_product.get('image_1920'),
+                    f"ecomparts/products/{product_ref}"
+                )
+
+                # Imágenes 2 y 3 desde la galería ecomparts_image_ids
+                tmpl = odoo_product.get('product_tmpl_id')
+                tmpl_id = tmpl[0] if isinstance(tmpl, list) else tmpl
+                gallery_imgs = gallery_by_tmpl.get(tmpl_id, [])
+
+                image_url_2, image_cloudinary_id_2 = upload_image(
+                    gallery_imgs[0].get('image') if len(gallery_imgs) > 0 else None,
+                    f"ecomparts/products/{product_ref}_gallery_1"
+                )
+                image_url_3, image_cloudinary_id_3 = upload_image(
+                    gallery_imgs[1].get('image') if len(gallery_imgs) > 1 else None,
+                    f"ecomparts/products/{product_ref}_gallery_2"
+                )
+
+                if image_url:
+                    logger.info(f"✅ Imagen principal subida para {product_ref} | galería: {len(gallery_imgs)} imgs")
 
                 # Buscar o crear producto en marketplace
                 product, created = Product.objects.update_or_create(
@@ -206,21 +239,25 @@ def sync_provider_products(provider_id):
                     odoo_product_id=odoo_product['id'],
                     defaults={
                         'name': odoo_product['name'],
-                        'reference': odoo_product.get('default_code', ''),
-                        'description': odoo_product.get('description_sale', ''),
+                        'reference': odoo_product.get('default_code') or str(odoo_product.get('id', '')),
+                        'description': odoo_product.get('description_sale') or '',
                         'price': odoo_product.get('list_price', 0),
                         'image_url': image_url,
                         'image_cloudinary_id': image_cloudinary_id,
+                        'image_url_2': image_url_2,
+                        'image_cloudinary_id_2': image_cloudinary_id_2,
+                        'image_url_3': image_url_3,
+                        'image_cloudinary_id_3': image_cloudinary_id_3,
                         'is_active': odoo_product.get('active', True),
                         'last_sync_at': timezone.now()
                     }
                 )
-                
+
                 if created:
                     stats['created'] += 1
                 else:
                     stats['updated'] += 1
-                    
+
             except Exception as e:
                 logger.error(f"Error al sincronizar producto {odoo_product['id']}: {e}")
                 stats['errors'] += 1

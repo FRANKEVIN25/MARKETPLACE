@@ -402,7 +402,8 @@ class OdooConnector:
                 'fields': [
                     'id', 'name', 'default_code', 'description_sale',
                     'list_price', 'standard_price', 'qty_available',
-                    'barcode', 'weight', 'active', 'image_1920'
+                    'barcode', 'weight', 'active', 'image_1920',
+                    'product_tmpl_id',
                 ]
             }
             if limit:
@@ -413,6 +414,37 @@ class OdooConnector:
         except Exception as e:
             logger.error(f"Error obteniendo productos: {e}")
             return []
+
+    def get_gallery_images(self, tmpl_ids):
+        """
+        Obtiene las imágenes de galería (ecomparts.product.image) para
+        una lista de product.template IDs.
+
+        Returns:
+            dict: {tmpl_id: [{'id', 'image', 'sequence', 'name'}, ...], ...}
+                  ordenado por sequence ascendente
+        """
+        try:
+            if not tmpl_ids:
+                return {}
+
+            records = self.execute_kw(
+                'ecomparts.product.image', 'search_read',
+                [[['product_tmpl_id', 'in', list(tmpl_ids)]]],
+                {'fields': ['id', 'sequence', 'name', 'image', 'product_tmpl_id'],
+                 'order': 'sequence asc, id asc'}
+            )
+
+            result = {}
+            for rec in records:
+                # product_tmpl_id viene como [id, name]
+                tid = rec['product_tmpl_id'][0] if isinstance(rec['product_tmpl_id'], list) else rec['product_tmpl_id']
+                result.setdefault(tid, []).append(rec)
+            return result
+
+        except Exception as e:
+            logger.error(f"Error obteniendo galería de imágenes: {e}")
+            return {}
 
     def get_product_stock(self, product_id):
         """

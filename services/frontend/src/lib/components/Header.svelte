@@ -11,14 +11,35 @@
   const isAuthenticated = auth.isAuthenticated;
 
   let userMenuOpen = false;
+  let mobileMenuOpen = false;
+  let vendorMenuOpen = false;
+
+  // Cerrar todos los menús al cambiar de ruta
+  $: $page.url.pathname, closeAll();
+
+  function closeAll() {
+    userMenuOpen = false;
+    vendorMenuOpen = false;
+    mobileMenuOpen = false;
+  }
 
   function toggleUserMenu() {
+    vendorMenuOpen = false;
     userMenuOpen = !userMenuOpen;
+  }
+
+  function toggleVendorMenu() {
+    userMenuOpen = false;
+    vendorMenuOpen = !vendorMenuOpen;
+  }
+
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
   }
 
   function logout() {
     auth.clearTokens();
-    userMenuOpen = false;
+    closeAll();
     window.location.href = '/';
   }
 
@@ -27,18 +48,9 @@
     { name: 'Productos', href: '/productos' },
     { name: 'Categorías', href: '/categorias' },
   ];
-  
-  let mobileMenuOpen = false;
-  let vendorMenuOpen = false;
-  
-  function toggleMobileMenu() {
-    mobileMenuOpen = !mobileMenuOpen;
-  }
-  
-  function toggleVendorMenu() {
-    vendorMenuOpen = !vendorMenuOpen;
-  }
 </script>
+
+<svelte:window on:click={closeAll} />
 
 <header class="bg-white shadow-sm sticky top-0 z-50">
   <nav class="container-responsive">
@@ -73,7 +85,7 @@
         </a>
 
         <!-- Icono usuario -->
-        <div class="relative">
+        <div class="relative" on:click|stopPropagation>
           {#if $isAuthenticated}
             <button on:click={toggleUserMenu} class="flex items-center gap-1.5 text-gray-700 hover:text-primary-600 transition-colors duration-200" aria-label="Mi cuenta">
               <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -112,7 +124,7 @@
           {/if}
         </div>
 
-        <div class="relative">
+        <div class="relative" on:click|stopPropagation>
           <button
             on:click={toggleVendorMenu}
             class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 font-medium flex items-center gap-2"

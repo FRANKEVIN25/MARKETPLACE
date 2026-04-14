@@ -107,6 +107,30 @@ class Product(models.Model):
         null=True,
         help_text="Public ID en Cloudinary para transformaciones"
     )
+    image_url_2 = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="Segunda imagen del producto (Cloudinary/CDN)"
+    )
+    image_cloudinary_id_2 = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Public ID en Cloudinary de la segunda imagen"
+    )
+    image_url_3 = models.URLField(
+        max_length=500,
+        blank=True,
+        null=True,
+        help_text="Tercera imagen del producto (Cloudinary/CDN)"
+    )
+    image_cloudinary_id_3 = models.CharField(
+        max_length=200,
+        blank=True,
+        null=True,
+        help_text="Public ID en Cloudinary de la tercera imagen"
+    )
 
     description = models.TextField(blank=True, null=True)
     

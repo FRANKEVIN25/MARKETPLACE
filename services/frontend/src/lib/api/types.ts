@@ -54,6 +54,13 @@ export interface StockItem {
 // PRODUCTO
 // ============================================
 // Un producto es lo que se vende en el marketplace
+export interface StockPorAlmacen {
+  warehouse_id: number;
+  warehouse_name: string;
+  warehouse_city: string;
+  quantity: number;
+}
+
 export interface Product {
   id: number;               // ID único
   name: string;             // Nombre del producto
@@ -64,18 +71,21 @@ export interface Product {
   product_type: 'consu' | 'service' | 'product'; // Tipo de producto
   manufacturer_code?: string; // Código del fabricante
   description?: string;     // Descripción del producto
-  image?: string;           // URL de la imagen
+  image_url?: string;       // URL de la imagen principal (Cloudinary)
+  image_url_2?: string;     // Segunda imagen (Cloudinary)
+  image_url_3?: string;     // Tercera imagen (Cloudinary)
   price: string;            // Precio (como texto: "150.00")
-  tax_percent: string; 
+  price_with_tax?: number;  // Precio con impuesto incluido
+  tax_percent: string;
   category?: number | string; // ID o nombre de la categoría (según endpoint)
   category_name?: string;   // Nombre de la categoría
-  es_universal: boolean;    // ¿Compatible con todos los vehículos?
+  es_universal?: boolean;   // ¿Compatible con todos los vehículos?
+  is_active?: boolean;      // ¿Está activo?
   total_stock: number;      // Stock total sumado de todos los almacenes
-  stock_items?: StockItem[]; // Detalle de stock por almacén (opcional en listados)
-  active: boolean;          // ¿Está activo?
+  stock_por_almacen?: StockPorAlmacen[]; // Detalle de stock por almacén (solo en detalle)
   is_synced: boolean;       // ¿Está sincronizado con Odoo?
   created_at: string;       // Fecha de creación
-  updated_at: string;       // Fecha de actualización
+  updated_at?: string;      // Fecha de actualización
 }
 
 // ============================================

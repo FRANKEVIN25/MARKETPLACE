@@ -61,6 +61,14 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     
     total_stock = serializers.IntegerField(read_only=True)
     stock_por_almacen = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+
+    def get_description(self, obj):
+        """Filtra False/None de Odoo y retorna string vacío"""
+        desc = obj.description
+        if not desc or desc is False or str(desc).lower() == 'false':
+            return ''
+        return str(desc)
 
     class Meta:
         model = Product
@@ -68,7 +76,7 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'id', 'name', 'reference', 'slug',
             'provider_group', 'provider_name',
             'product_type', 'manufacturer_code',
-            'description', 'image_url', 
+            'description', 'image_url', 'image_url_2', 'image_url_3',
             'price', 'tax_percent',
             'category', 'category_name',
             'is_active', 'is_synced',
@@ -120,7 +128,7 @@ class ProductListSerializer(serializers.ModelSerializer):
             'id', 'name', 'reference', 'slug',
             'provider_group', 'provider_name', 'product_type',
             'price', 'price_with_tax', 'tax_percent',
-            'category_name', 'image_url',
+            'category_name', 'image_url', 'image_url_2', 'image_url_3',
             'is_active', 'total_stock',
             'is_synced', 'created_at'
         ]
@@ -142,7 +150,9 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'manufacturer_code', 'description',
             'price', 'tax_percent',
             'category', 'is_active', 'es_universal',
-            'image_url', 'image_cloudinary_id'
+            'image_url', 'image_cloudinary_id',
+            'image_url_2', 'image_cloudinary_id_2',
+            'image_url_3', 'image_cloudinary_id_3'
         ]
     
     def validate_reference(self, value):

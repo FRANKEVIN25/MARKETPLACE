@@ -1,4 +1,6 @@
+# ============================================
 # Python
+# ============================================
 __pycache__/
 *.py[cod]
 *$py.class
@@ -9,61 +11,81 @@ dist/
 build/
 venv/
 env/
+.venv/
 
+# ============================================
 # Django
+# ============================================
 *.log
 db.sqlite3
 media/
 staticfiles/
+local_settings.py
 
-# Environment
+# ============================================
+# Environment & Secrets
+# ============================================
 .env
 .env.local
-*.backup
+.env.*.local
+*.secret
 
+# ============================================
+# Docker
+# ============================================
+*.pid
+docker-compose.yml.backup*
+docker-compose.yml.bak
+
+# ============================================
+# Docker build cache (capas temporales)
+# ============================================
+[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]
+Removed
+Running
+Using
+
+# ============================================
 # Backups
-*_backup/
+# ============================================
+backups/
+*.backup
 *.bak
+*_backup/
+*.sql
 
+# ============================================
 # IDE
+# ============================================
 .vscode/
 .idea/
 *.swp
 *.swo
+*.swn
 
-# Docker
-*.pid
-
+# ============================================
 # OS
+# ============================================
 .DS_Store
 Thumbs.db
+desktop.ini
 
-# Odoo backups
+# ============================================
+# Node / Frontend
+# ============================================
+node_modules/
+.svelte-kit/
+.output/
+.vercel/
+
+# ============================================
+# Odoo
+# ============================================
 services/odoo/addons_backup/
+services/odoo/filestore/
 
-# Backups SQL
-backups/
-*.sql
-
-# Docker layer cache files (generados por docker build)
-0c0e14b389d4
-1f924818776b
-3cc450332ae4
-65d4149f5324
-72de07dfa1b4
-807400352a38
-80c7cc305745
-b1b9b19a445f
-bdacbd1c7e58
-cf25db5c0237
-d2b2f5773cfe
-de69e3e663a4
-ed33ad67c63d
-f0bd6e4158d7
-f2d328be9981
-f6dc93498034
-Removed
-Running
-Using
-docker-compose.yml.backup-*
-start-worker.sh
+# ============================================
+# Logs
+# ============================================
+logs/
+*.log

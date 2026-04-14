@@ -2,17 +2,29 @@
 set -e
 cd ~/Escritorio/MARKETPLACE
 
-echo "🔧 Configurando reglas de red (iptables)..."
-sudo iptables -I DOCKER-USER -i br-45d67392cff6 -o br-45d67392cff6 -j ACCEPT 2>/dev/null || true
+echo "============================================"
+echo "  🚀 ECOMPARTS — Iniciando servicios"
+echo "============================================"
 
-echo "🧹 Eliminando contenedores anteriores..."
-docker rm -f ecomparts-celery-worker ecomparts-backend 2>/dev/null || true
+echo ""
+echo "🧹 Limpiando contenedores anteriores..."
+docker rm -f ecomparts-backend ecomparts-celery-worker 2>/dev/null || true
 
 echo "🚀 Levantando servicios base..."
 docker-compose up -d postgres redis odoo
 
-echo "⏳ Esperando que postgres esté listo..."
+echo "⏳ Esperando postgres (15s)..."
 sleep 15
+
+echo "🔧 Configurando red (detectando bridge automáticamente)..."
+NETWORK_ID=$(docker network ls --filter name=marketplace_ecomparts-net --format "{{.ID}}")
+if [ -n "$NETWORK_ID" ]; then
+    BRIDGE_ID=$(echo $NETWORK_ID | cut -c1-12)
+    sudo iptables -I DOCKER-USER -i br-$BRIDGE_ID -o br-$BRIDGE_ID -j ACCEPT 2>/dev/null || true
+    echo "   ✅ Red configurada (bridge: br-$BRIDGE_ID)"
+else
+    echo "   ⚠️ No se pudo detectar el bridge"
+fi
 
 echo "🐍 Levantando backend Django..."
 docker run -d \
@@ -40,12 +52,12 @@ docker run -d \
   -e 'CLOUDINARY_API_SECRET=JybzUdHjMy4xxQkU2PwB7A1CCjg' \
   -v "$(pwd)/services/backend:/app" \
   marketplace_backend \
-  /app/entrypoint.sh gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000
+  /app/entrypoint.sh gunicorn ecomparts.wsgi:application --bind 0.0.0.0:8000 --workers 2
 
-echo "⏳ Esperando que el backend esté listo..."
+echo "⏳ Esperando backend (20s)..."
 sleep 20
 
-echo "🔨 Construyendo y levantando Celery worker..."
+echo "⚙️  Levantando Celery worker..."
 docker build -t marketplace_celery_worker ./services/backend/ -q
 docker run -d \
   --name ecomparts-celery-worker \
@@ -73,10 +85,20 @@ docker run -d \
   marketplace_celery_worker \
   celery -A ecomparts worker --loglevel=info --concurrency=4
 
+echo "🎨 Levantando frontend SvelteKit..."
+pkill -f "vite dev" 2>/dev/null || true
+sleep 2
+cd services/frontend && npm run dev &
+cd ../..
+
 echo ""
-echo "✅ ECOMPARTS corriendo:"
+echo "============================================"
+echo "  ✅ ECOMPARTS corriendo"
+echo "============================================"
 echo "   Backend:  http://localhost:8000"
 echo "   Frontend: http://localhost:5173"
 echo "   Odoo:     http://localhost:8070"
 echo "   Admin:    http://localhost:8000/admin"
 echo "   Flower:   http://localhost:5555"
+echo "   API Docs: http://localhost:8000/api/docs/"
+echo "============================================"
