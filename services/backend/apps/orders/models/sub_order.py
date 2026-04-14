@@ -68,7 +68,21 @@ class SubOrder(models.Model):
         decimal_places=2,
         default=0
     )
-    
+
+    discount_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        verbose_name="Porcentaje de Descuento Aplicado"
+    )
+
+    discount = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0,
+        verbose_name="Monto Descuento"
+    )
+
     igv_rate = models.DecimalField(
         max_digits=5,
         decimal_places=2,
@@ -180,13 +194,21 @@ class SubOrder(models.Model):
     
     def save(self, *args, **kwargs):
         if not self.sub_order_number:
-            self.sub_order_number = self.generate_sub_order_number()
+            import string
+            from django.db import transaction
+            with transaction.atomic():
+                # Bloquear filas existentes de esta Order para serializar
+                # creaciones concurrentes de SubOrders (evita letras duplicadas).
+                # list() fuerza la evaluación del queryset dentro del lock.
+                existing = list(
+                    SubOrder.objects
+                    .select_for_update()
+                    .filter(order=self.order)
+                    .values_list('id', flat=True)
+                )
+                count = len(existing)
+                self.sub_order_number = f"{self.order.order_number}-{string.ascii_uppercase[count]}"
+                super().save(*args, **kwargs)
+            return
         super().save(*args, **kwargs)
-    
-    def generate_sub_order_number(self):
-        """Genera: ORD-2026-00001-A, ORD-2026-00001-B, etc."""
-        import string
-        existing_count = SubOrder.objects.filter(order=self.order).count()
-        letter = string.ascii_uppercase[existing_count]
-        return f"{self.order.order_number}-{letter}"
 

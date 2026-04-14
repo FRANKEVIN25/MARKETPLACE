@@ -1,12 +1,14 @@
 """
 Views para Orders - API REST y Lógica de Negocio
 """
+import hmac
 import logging
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.db import transaction
+from django.db.models import Count, Q
 from django.utils import timezone
 from datetime import timedelta
 from decimal import Decimal
@@ -24,7 +26,9 @@ from .serializers import (
     CreateOrderSerializer,
     UploadPaymentProofSerializer,
     ConfirmPaymentSerializer,
+    CheckoutPreviewSerializer,
 )
+from .pricing.customer_discount import calcular_descuento_suborder
 from apps.customer.models import Customer
 from apps.products.models import Product
 
@@ -39,17 +43,141 @@ class OrderViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Filtrar órdenes según el usuario"""
         user = self.request.user
-        
+
+        base_qs = Order.objects.select_related(
+            'customer__user', 'shipping_address',
+        ).prefetch_related(
+            'sub_orders__provider',
+            'sub_orders__items__product',
+            'sub_orders__items__provider',
+            'sub_orders__payments',
+            'items__product',
+            'items__provider',
+        )
+
         # Si es customer, solo sus órdenes
         if hasattr(user, 'customer_profile'):
-            return Order.objects.filter(customer=user.customer_profile)
-        
+            return base_qs.filter(customer=user.customer_profile)
+
         # Si es admin, todas las órdenes
         if user.is_staff:
-            return Order.objects.all()
-        
+            return base_qs
+
         return Order.objects.none()
     
+    @action(detail=False, methods=['post'], url_path='checkout-preview')
+    def checkout_preview(self, request):
+        """
+        Previsualización del checkout con descuentos aplicados.
+        No crea ninguna orden. Útil para el frontend antes de confirmar.
+
+        Request:
+            { "customer_id": 1, "items": [{"product_id": 5, "quantity": 2}, ...] }
+
+        Response:
+            {
+              "providers": [
+                {
+                  "provider_id": 1, "provider_name": "...",
+                  "igv_applicable": true,
+                  "subtotal": "250.00",
+                  "discount_percent": "5.00",
+                  "discount": "13.00",
+                  "igv_amount": "42.66",
+                  "total": "279.66",
+                  "items": [...]
+                }
+              ],
+              "summary": { "subtotal": ..., "discount": ..., "igv": ..., "total": ... }
+            }
+        """
+        serializer = CheckoutPreviewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+
+        customer = Customer.objects.get(id=data['customer_id'])
+
+        # Cargar todos los productos en una sola query para evitar N+1
+        product_ids = [item_data['product_id'] for item_data in data['items']]
+        products_map = {
+            p.id: p
+            for p in Product.objects.select_related('provider').filter(id__in=product_ids)
+        }
+
+        # Agrupar items por proveedor
+        items_by_provider = {}
+        for item_data in data['items']:
+            product = products_map[item_data['product_id']]
+            provider = product.provider
+            if provider.id not in items_by_provider:
+                items_by_provider[provider.id] = {'provider': provider, 'items': []}
+            items_by_provider[provider.id]['items'].append({
+                'product': product,
+                'quantity': item_data['quantity'],
+            })
+
+        providers_preview = []
+        summary_subtotal = Decimal('0.00')
+        summary_discount = Decimal('0.00')
+        summary_igv = Decimal('0.00')
+        summary_total = Decimal('0.00')
+
+        for provider_data in items_by_provider.values():
+            provider = provider_data['provider']
+            igv_rate = Decimal('18.00') if provider.igv_applicable else Decimal('0.00')
+
+            sub_subtotal = Decimal('0.00')
+            sub_igv = Decimal('0.00')
+            items_detail = []
+
+            for item_info in provider_data['items']:
+                product = item_info['product']
+                qty = item_info['quantity']
+                base = product.price * qty
+                igv_amount = (base * igv_rate / 100).quantize(Decimal('0.01')) if provider.igv_applicable else Decimal('0.00')
+
+                sub_subtotal += base
+                sub_igv += igv_amount
+                items_detail.append({
+                    'product_id': product.id,
+                    'product_name': product.name,
+                    'product_sku': product.reference,
+                    'quantity': qty,
+                    'unit_price': str(product.price),
+                    'igv_amount': str(igv_amount),
+                    'line_total': str(base + igv_amount),
+                })
+
+            discount_pct, discount_monto = calcular_descuento_suborder(customer, provider, sub_subtotal)
+            provider_total = sub_subtotal - discount_monto + sub_igv
+
+            providers_preview.append({
+                'provider_id': provider.id,
+                'provider_name': provider.name,
+                'igv_applicable': provider.igv_applicable,
+                'subtotal': str(sub_subtotal),
+                'discount_percent': str(discount_pct),
+                'discount': str(discount_monto),
+                'igv_amount': str(sub_igv),
+                'total': str(provider_total),
+                'items': items_detail,
+            })
+
+            summary_subtotal += sub_subtotal
+            summary_discount += discount_monto
+            summary_igv += sub_igv
+            summary_total += provider_total
+
+        return Response({
+            'providers': providers_preview,
+            'summary': {
+                'subtotal': str(summary_subtotal),
+                'discount': str(summary_discount),
+                'igv': str(summary_igv),
+                'total': str(summary_total),
+            },
+        })
+
     @transaction.atomic
     @action(detail=False, methods=['post'])
     def create_order(self, request):
@@ -83,17 +211,24 @@ class OrderViewSet(viewsets.ModelViewSet):
         )
         
         # 3. Agrupar items por proveedor
+        # Cargar todos los productos en una sola query para evitar N+1
+        product_ids = [item_data['product_id'] for item_data in data['items']]
+        products_map = {
+            p.id: p
+            for p in Product.objects.select_related('provider').filter(id__in=product_ids)
+        }
+
         items_by_provider = {}
         for item_data in data['items']:
-            product = Product.objects.select_related('provider').get(id=item_data['product_id'])
+            product = products_map[item_data['product_id']]
             provider = product.provider
-            
+
             if provider.id not in items_by_provider:
                 items_by_provider[provider.id] = {
                     'provider': provider,
                     'items': []
                 }
-            
+
             items_by_provider[provider.id]['items'].append({
                 'product': product,
                 'quantity': item_data['quantity']
@@ -101,6 +236,7 @@ class OrderViewSet(viewsets.ModelViewSet):
         
         # 4 y 5. Crear SubOrders y OrderItems
         order_subtotal = Decimal('0.00')
+        order_discount = Decimal('0.00')
         order_tax = Decimal('0.00')
         
         for provider_data in items_by_provider.values():
@@ -139,7 +275,6 @@ class OrderViewSet(viewsets.ModelViewSet):
                 
                 # Crear OrderItem
                 OrderItem.objects.create(
-                    order=order,
                     sub_order=sub_order,
                     product=product,
                     provider=provider,
@@ -157,9 +292,16 @@ class OrderViewSet(viewsets.ModelViewSet):
                 sub_order_igv += igv_amount
             
             # Actualizar SubOrder totales
+            # Calcular descuento cliente-proveedor sobre el subtotal (sin IGV)
+            descuento_pct, descuento_monto = calcular_descuento_suborder(
+                customer, provider, sub_order_subtotal
+            )
+
             sub_order.subtotal = sub_order_subtotal
+            sub_order.discount_percent = descuento_pct
+            sub_order.discount = descuento_monto
             sub_order.igv_amount = sub_order_igv
-            sub_order.total = sub_order_subtotal + sub_order_igv
+            sub_order.total = sub_order_subtotal - descuento_monto + sub_order_igv
             sub_order.save()
 
             # ✅ NO se encola ninguna tarea Celery hacia Odoo aquí (create_order).
@@ -167,11 +309,14 @@ class OrderViewSet(viewsets.ModelViewSet):
             # su comprobante (SubOrder.status → 'pago_en_revision').
 
             order_subtotal += sub_order_subtotal
+            order_discount += descuento_monto
+            order_tax += sub_order_igv
         
         # 6. Actualizar Order totales
         order.subtotal = order_subtotal
+        order.discount = order_discount
         order.tax = order_tax
-        order.total = order_subtotal + order_tax
+        order.total = order_subtotal - order_discount + order_tax
         order.save()
         
         # Retornar orden creada
@@ -287,16 +432,24 @@ class SubOrderViewSet(viewsets.ReadOnlyModelViewSet):
     def get_queryset(self):
         """Filtrar sub-órdenes según el usuario"""
         user = self.request.user
-        
+
+        base_qs = SubOrder.objects.select_related(
+            'order', 'provider',
+        ).prefetch_related(
+            'items__product',
+            'items__provider',
+            'payments',
+        )
+
         # Si es customer
         if hasattr(user, 'customer_profile'):
-            return SubOrder.objects.filter(order__customer=user.customer_profile)
-        
+            return base_qs.filter(order__customer=user.customer_profile)
+
         # Si es vendor (provider owner)
         if hasattr(user, 'owned_providers'):
             provider_ids = user.owned_providers.values_list('id', flat=True)
-            return SubOrder.objects.filter(provider_id__in=provider_ids)
-        
+            return base_qs.filter(provider_id__in=provider_ids)
+
         # Si es admin
         if user.is_staff:
             return SubOrder.objects.all()
@@ -454,24 +607,23 @@ class VendorOrderViewSet(viewsets.ReadOnlyModelViewSet):
     
     @action(detail=False, methods=['get'])
     def stats(self, request):
-        """Estadísticas de órdenes del vendor"""
-        queryset = self.get_queryset()
-        
-        stats = {
-            'total_orders':          queryset.count(),
-            'pendiente_pago':        queryset.filter(status='pendiente_pago').count(),
-            'pago_en_revision':      queryset.filter(status='pago_en_revision').count(),
-            'pago_rechazado':        queryset.filter(status='pago_rechazado').count(),  # v5
-            'confirmado':            queryset.filter(status='confirmado').count(),
-            'enviado':               queryset.filter(status='enviado').count(),
-            'entregado':             queryset.filter(status='entregado').count(),
-            'cancelado':             queryset.filter(status='cancelado').count(),
-            # Flags de auditoría
-            'con_rechazo_previo':    queryset.filter(payment_rejected=True).count(),
-            'error_odoo':            queryset.filter(odoo_sync_error=True).count(),
-        }
-        
-        return Response(stats)
+        """Estadísticas de órdenes del vendor (1 query agregada)"""
+        qs = self.get_queryset()
+
+        counts = qs.aggregate(
+            total_orders      =Count('id'),
+            pendiente_pago    =Count('id', filter=Q(status='pendiente_pago')),
+            pago_en_revision  =Count('id', filter=Q(status='pago_en_revision')),
+            pago_rechazado    =Count('id', filter=Q(status='pago_rechazado')),
+            confirmado        =Count('id', filter=Q(status='confirmado')),
+            enviado           =Count('id', filter=Q(status='enviado')),
+            entregado         =Count('id', filter=Q(status='entregado')),
+            cancelado         =Count('id', filter=Q(status='cancelado')),
+            con_rechazo_previo=Count('id', filter=Q(payment_rejected=True)),
+            error_odoo        =Count('id', filter=Q(odoo_sync_error=True)),
+        )
+
+        return Response(counts)
 
 
 
@@ -505,12 +657,12 @@ class OdooWebhookView(viewsets.ViewSet):
         
         logger = logging.getLogger(__name__)
         
-        # 1. Validar token de seguridad
-        token = request.data.get('token')
+        # 1. Validar token de seguridad (compare_digest evita timing attacks)
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
-        
-        if token != expected_token:
-            logger.warning(f"❌ Webhook recibido con token inválido")
+
+        if not hmac.compare_digest(token, expected_token):
+            logger.warning("❌ Webhook recibido con token inválido")
             return Response(
                 {'error': 'Invalid token'},
                 status=status.HTTP_401_UNAUTHORIZED
@@ -638,10 +790,10 @@ class OdooWebhookView(viewsets.ViewSet):
         """
         from django.conf import settings
 
-        token = request.data.get('token')
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
 
-        if token != expected_token:
+        if not hmac.compare_digest(token, expected_token):
             logger.warning("❌ delivery_update: token inválido desde Odoo")
             return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -766,10 +918,10 @@ class OdooWebhookView(viewsets.ViewSet):
         """
         from django.conf import settings
 
-        token = request.data.get('token')
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
 
-        if token != expected_token:
+        if not hmac.compare_digest(token, expected_token):
             logger.warning("❌ mark_received: token inválido desde Odoo")
             return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 
@@ -851,9 +1003,9 @@ class OdooWebhookView(viewsets.ViewSet):
         from django.conf import settings
 
         # 1. Validar token
-        token = request.data.get('token')
+        token = request.data.get('token') or ''
         expected_token = getattr(settings, 'ODOO_WEBHOOK_TOKEN', 'change-me-in-production')
-        if token != expected_token:
+        if not hmac.compare_digest(token, expected_token):
             logger.warning("❌ review_payment: token inválido desde Odoo")
             return Response({'error': 'Invalid token'}, status=status.HTTP_401_UNAUTHORIZED)
 

@@ -30,11 +30,9 @@ class TransmisionSerializer(serializers.ModelSerializer):
 
 
 class TraccionSerializer(serializers.ModelSerializer):
-    tipo_display = serializers.CharField(source='get_tipo_display', read_only=True)
-    
     class Meta:
         model = Traccion
-        fields = ['id', 'tipo', 'tipo_display']
+        fields = ['id', 'tipo']
 
 
 class MotorSerializer(serializers.ModelSerializer):
@@ -46,6 +44,7 @@ class MotorSerializer(serializers.ModelSerializer):
 
 
 class VariantVehiculoSerializer(serializers.ModelSerializer):
+    marca_nombre = serializers.CharField(source='modelo.marca.nombre', read_only=True)
     modelo_nombre = serializers.CharField(source='modelo.nombre', read_only=True)
     motor_display = serializers.CharField(source='motor.__str__', read_only=True)
     transmision_display = serializers.CharField(source='transmision.__str__', read_only=True)
@@ -54,8 +53,10 @@ class VariantVehiculoSerializer(serializers.ModelSerializer):
     class Meta:
         model = VariantVehiculo
         fields = [
-            'id', 'modelo', 'modelo_nombre', 'motor', 'motor_display',
-            'transmision', 'transmision_display', 'traccion', 'traccion_display',
+            'id', 'modelo', 'marca_nombre', 'modelo_nombre',
+            'motor', 'motor_display',
+            'transmision', 'transmision_display',
+            'traccion', 'traccion_display',
             'anio_desde', 'anio_hasta'
         ]
 

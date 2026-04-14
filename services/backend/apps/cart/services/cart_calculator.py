@@ -5,7 +5,7 @@ class CartCalculator:
 	@staticmethod
 	def calculate(cart):
 		summaries = {}
-		for line in cart.lines.select_related('provider'):
+		for line in cart.lines.all():
 			subtotal = line.price_unit * line.quantity
 			tax = subtotal * (line.tax_percent / Decimal('100'))
 			prov = line.provider

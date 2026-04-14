@@ -6,12 +6,14 @@ class MarcaAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'activo')
     list_filter = ('activo',)
     search_fields = ('nombre',)
+    readonly_fields = ('slug',)
 
 @admin.register(ModeloVehiculo)
 class ModeloVehiculoAdmin(admin.ModelAdmin):
     list_display = ('nombre', 'marca', 'activo')
     list_filter = ('marca', 'activo')
     search_fields = ('nombre', 'marca__nombre')
+    readonly_fields = ('slug',)
 
 @admin.register(Transmision)
 class TransmisionAdmin(admin.ModelAdmin):
@@ -25,40 +27,53 @@ class TraccionAdmin(admin.ModelAdmin):
 @admin.register(Motor)
 class MotorAdmin(admin.ModelAdmin):
     list_display = ('__str__', 'combustible', 'cilindrada_cc', 'codigo_motor', 'tecnologia')
-    list_filter = ('combustible', 'tecnologia')
+    list_filter = ('combustible',)
     search_fields = ('codigo_motor', 'tecnologia')
 
 @admin.register(VariantVehiculo)
 class VariantVehiculoAdmin(admin.ModelAdmin):
-    # Organiza las columnas en la lista principal
     list_display = (
-        'modelo', 
-        'get_marca', 
-        'motor', 
-        'transmision', 
-        'traccion', 
-        'anio_desde', 
-        'anio_hasta'
+        'modelo',
+        'get_marca',
+        'motor',
+        'transmision',
+        'traccion',
+        'anio_desde',
+        'anio_hasta',
+        'odoo_variante_id',
+        'get_providers_count',
     )
-    
-    # Agrega filtros laterales para encontrar variantes rápido
     list_filter = (
-        'modelo__marca', 
-        'transmision__tipo', 
-        'traccion__tipo', 
-        'anio_desde'
+        'modelo__marca',
+        'transmision__tipo',
+        'traccion__tipo',
+        'anio_desde',
     )
-    
-    # Permite buscar por nombre de modelo o marca
+    # Estos search_fields también son usados por el widget filter_horizontal
+    # de ProviderAdmin para buscar variantes al asignar el scope.
     search_fields = (
-        'modelo__nombre', 
-        'modelo__marca__nombre', 
-        'motor__codigo_motor'
+        'modelo__nombre',
+        'modelo__marca__nombre',
+        'motor__codigo_motor',
+        'motor__tecnologia',
+        'anio_desde',
+        'anio_hasta',
     )
+    readonly_fields = ('odoo_variante_id',)
 
-    # Método para mostrar la marca en la lista (ya que no está directo en VariantVehiculo)
+    def get_queryset(self, request):
+        from django.db.models import Count
+        return (
+            super().get_queryset(request)
+            .select_related('modelo__marca', 'motor', 'transmision', 'traccion')
+            .annotate(_providers_count=Count('providers_habilitados', distinct=True))
+        )
+
     @admin.display(ordering='modelo__marca', description='Marca')
     def get_marca(self, obj):
         return obj.modelo.marca
-    
+
+    @admin.display(description='Providers')
+    def get_providers_count(self, obj):
+        return obj._providers_count
 

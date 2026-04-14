@@ -4,12 +4,7 @@ OrderItem - Snapshot de producto en el momento de la compra.
 """
 
 from django.db import models
-from decimal import Decimal
 
-# Importaciones puntuales en lugar de la carpeta models para evitar
-# referencias circulares y asegurar que cada clase se tome desde el
-# módulo donde realmente se define.
-from .order import Order
 from .sub_order import SubOrder
 
 
@@ -18,12 +13,6 @@ class OrderItem(models.Model):
     Item individual de una orden (producto)
     """
     # Relaciones
-    order = models.ForeignKey(
-        Order,
-        on_delete=models.CASCADE,
-        related_name='items'
-    )
-    
     sub_order = models.ForeignKey(
         SubOrder,
         on_delete=models.CASCADE,
@@ -103,8 +92,7 @@ class OrderItem(models.Model):
         verbose_name_plural = 'Items de Orden'
         ordering = ['id']
         indexes = [
-            models.Index(fields=['order', 'product']),
-            models.Index(fields=['sub_order']),
+            models.Index(fields=['sub_order', 'product']),
             models.Index(fields=['provider']),
         ]
     

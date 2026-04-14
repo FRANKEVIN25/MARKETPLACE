@@ -5,7 +5,7 @@ ACTUALIZADO: Incluye serializer para registro de vendors con setup de Odoo
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
-from .models import Provider, Member
+from .models import Provider, Member, ProviderReview
 
 
 class ProviderSerializer(serializers.ModelSerializer):
@@ -13,14 +13,16 @@ class ProviderSerializer(serializers.ModelSerializer):
     members_count = serializers.IntegerField(source='get_members_count', read_only=True)
     products_count = serializers.IntegerField(source='get_products_count', read_only=True)
     has_odoo_setup = serializers.BooleanField(source='has_odoo_credentials', read_only=True)
+    logo_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Provider
         fields = [
-            'id', 'name', 'slug', 'ruc', 'email', 'phone',
+            'id', 'name', 'slug', 'ruc', 'logo', 'logo_url', 'short_description', 'long_description', 'email', 'phone',
             'tier', 'owner', 'owner_username',
             'is_active', 'is_approved',
             'odoo_company_id', 'odoo_user_id', 'odoo_username',
+            'rating_average', 'rating_count', 'rating_breakdown',
             'has_odoo_setup',
             'members_count', 'products_count',
             'created_at', 'updated_at'
@@ -29,6 +31,14 @@ class ProviderSerializer(serializers.ModelSerializer):
             'slug', 'created_at', 'updated_at', 
             'odoo_company_id', 'odoo_user_id', 'odoo_username'
         ]
+
+    def get_logo_url(self, obj):
+        if not obj.logo:
+            return None
+
+        request = self.context.get('request')
+        url = obj.logo.url
+        return request.build_absolute_uri(url) if request else url
 
 
 class MembershipSerializer(serializers.ModelSerializer):
@@ -203,14 +213,16 @@ class ProviderDetailSerializer(serializers.ModelSerializer):
     tier_limits = serializers.SerializerMethodField()
     usage_percentage = serializers.SerializerMethodField()
     connection_info = serializers.SerializerMethodField()
+    logo_url = serializers.SerializerMethodField()
     
     class Meta:
         model = Provider
         fields = [
-            'id', 'name', 'slug', 'ruc', 'email', 'phone',
+            'id', 'name', 'slug', 'ruc', 'logo', 'logo_url', 'short_description', 'long_description', 'email', 'phone',
             'tier', 'owner', 'owner_username', 'owner_email',
             'is_active', 'is_approved',
             'odoo_company_id', 'odoo_user_id', 'odoo_username',
+            'rating_average', 'rating_count', 'rating_breakdown',
             'has_odoo_setup',
             'monthly_orders', 'total_products', 'monthly_revenue',
             'tier_limits', 'usage_percentage', 'connection_info',
@@ -238,3 +250,145 @@ class ProviderDetailSerializer(serializers.ModelSerializer):
             'instance_type': info['instance_type'],
             'has_credentials': obj.has_odoo_credentials()
         }
+
+    def get_logo_url(self, obj):
+        if not obj.logo:
+            return None
+
+        request = self.context.get('request')
+        url = obj.logo.url
+        return request.build_absolute_uri(url) if request else url
+
+
+class PublicProviderDetailSerializer(serializers.ModelSerializer):
+    logo_url = serializers.SerializerMethodField()
+    tier_display = serializers.CharField(source='get_tier_display', read_only=True)
+    tax_regime_display = serializers.CharField(source='get_tax_regime_display', read_only=True)
+    emite_comprobante_display = serializers.CharField(source='get_emite_comprobante_display', read_only=True)
+    products_count = serializers.IntegerField(source='get_products_count', read_only=True)
+    members_count = serializers.IntegerField(source='get_members_count', read_only=True)
+    vehicle_scope_count = serializers.SerializerMethodField()
+    latest_reviews = serializers.SerializerMethodField()
+    headline = serializers.CharField(source='get_public_headline', read_only=True)
+
+    class Meta:
+        model = Provider
+        fields = [
+            'id',
+            'name',
+            'slug',
+            'logo_url',
+            'headline',
+            'short_description',
+            'long_description',
+            'email',
+            'phone',
+            'ruc',
+            'tier',
+            'tier_display',
+            'tax_regime',
+            'tax_regime_display',
+            'emite_comprobante',
+            'emite_comprobante_display',
+            'igv_applicable',
+            'rating_average',
+            'rating_count',
+            'rating_breakdown',
+            'products_count',
+            'members_count',
+            'monthly_orders',
+            'vehicle_scope_count',
+            'created_at',
+            'latest_reviews',
+        ]
+
+    def get_logo_url(self, obj):
+        if not obj.logo:
+            return None
+
+        request = self.context.get('request')
+        url = obj.logo.url
+        return request.build_absolute_uri(url) if request else url
+
+    def get_vehicle_scope_count(self, obj):
+        return obj.variantes_habilitadas.count()
+
+    def get_latest_reviews(self, obj):
+        queryset = obj.reviews.filter(
+            status='published',
+            is_visible=True,
+        ).select_related('customer__user', 'sub_order')[:6]
+        return ProviderReviewSerializer(queryset, many=True, context=self.context).data
+
+
+class ProviderReviewSerializer(serializers.ModelSerializer):
+    customer_name = serializers.CharField(source='customer.get_full_name', read_only=True)
+    provider_name = serializers.CharField(source='provider.name', read_only=True)
+    sub_order_number = serializers.CharField(source='sub_order.sub_order_number', read_only=True)
+    status_display = serializers.CharField(source='get_status_display', read_only=True)
+
+    class Meta:
+        model = ProviderReview
+        fields = [
+            'id',
+            'provider',
+            'provider_name',
+            'customer',
+            'customer_name',
+            'sub_order',
+            'sub_order_number',
+            'rating',
+            'comment',
+            'is_verified_purchase',
+            'is_visible',
+            'status',
+            'status_display',
+            'created_at',
+            'updated_at',
+        ]
+        read_only_fields = [
+            'provider',
+            'provider_name',
+            'customer',
+            'customer_name',
+            'is_verified_purchase',
+            'created_at',
+            'updated_at',
+            'status_display',
+        ]
+
+
+class ProviderReviewCreateSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ProviderReview
+        fields = ['sub_order', 'rating', 'comment']
+
+    def validate_sub_order(self, value):
+        request = self.context['request']
+        provider = self.context['provider']
+
+        if not hasattr(request.user, 'customer_profile'):
+            raise serializers.ValidationError('Solo un cliente puede dejar reseñas.')
+
+        customer = request.user.customer_profile
+
+        if value.provider_id != provider.id:
+            raise serializers.ValidationError('La suborden no pertenece a este proveedor.')
+
+        if value.order.customer_id != customer.id:
+            raise serializers.ValidationError('La suborden no pertenece al cliente autenticado.')
+
+        if value.status != 'entregado':
+            raise serializers.ValidationError('Solo puedes reseñar subórdenes entregadas.')
+
+        return value
+
+    def create(self, validated_data):
+        request = self.context['request']
+        provider = self.context['provider']
+
+        return ProviderReview.objects.create(
+            provider=provider,
+            customer=request.user.customer_profile,
+            **validated_data,
+        )

@@ -2,6 +2,7 @@
   import { page } from '$app/stores';
   import { cart } from '$lib/store/cart';
   import { auth } from '$lib/store/auth';
+  import { isWorkshopBusinessActivity } from '$lib/constants/customer';
   import { derived } from 'svelte/store';
 
   // Contador reactivo del carrito
@@ -9,48 +10,39 @@
 
   // Extraer isAuthenticated como store independiente para usar con $
   const isAuthenticated = auth.isAuthenticated;
+  const customer = auth.customer;
 
   let userMenuOpen = false;
-  let mobileMenuOpen = false;
-  let vendorMenuOpen = false;
-
-  // Cerrar todos los menús al cambiar de ruta
-  $: $page.url.pathname, closeAll();
-
-  function closeAll() {
-    userMenuOpen = false;
-    vendorMenuOpen = false;
-    mobileMenuOpen = false;
-  }
 
   function toggleUserMenu() {
-    vendorMenuOpen = false;
     userMenuOpen = !userMenuOpen;
-  }
-
-  function toggleVendorMenu() {
-    userMenuOpen = false;
-    vendorMenuOpen = !vendorMenuOpen;
-  }
-
-  function toggleMobileMenu() {
-    mobileMenuOpen = !mobileMenuOpen;
   }
 
   function logout() {
     auth.clearTokens();
-    closeAll();
+    userMenuOpen = false;
     window.location.href = '/';
   }
 
   const navigation = [
     { name: 'Inicio', href: '/' },
     { name: 'Productos', href: '/productos' },
-    { name: 'Categorías', href: '/categorias' },
+    { name: 'Servicios', href: '/servicios' },
   ];
-</script>
+  
+  let mobileMenuOpen = false;
+  let vendorMenuOpen = false;
+  
+  function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+  }
+  
+  function toggleVendorMenu() {
+    vendorMenuOpen = !vendorMenuOpen;
+  }
 
-<svelte:window on:click={closeAll} />
+  $: showWorkshopLinks = !!($customer?.is_workshop || isWorkshopBusinessActivity($customer?.business_activity));
+</script>
 
 <header class="bg-white shadow-sm sticky top-0 z-50">
   <nav class="container-responsive">
@@ -85,7 +77,7 @@
         </a>
 
         <!-- Icono usuario -->
-        <div class="relative" on:click|stopPropagation>
+        <div class="relative">
           {#if $isAuthenticated}
             <button on:click={toggleUserMenu} class="flex items-center gap-1.5 text-gray-700 hover:text-primary-600 transition-colors duration-200" aria-label="Mi cuenta">
               <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -109,6 +101,16 @@
                   on:click={() => userMenuOpen = false}>
                   📦 Mis Compras
                 </a>
+                {#if showWorkshopLinks}
+                  <a href="/taller/perfil" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                    on:click={() => userMenuOpen = false}>
+                    🔧 Mi Taller
+                  </a>
+                  <a href="/taller/servicios" class="block px-4 py-2 text-gray-700 hover:bg-gray-50 text-sm"
+                    on:click={() => userMenuOpen = false}>
+                    🧰 Mis Servicios
+                  </a>
+                {/if}
                 <div class="border-t border-gray-200 my-1"></div>
                 <button on:click={logout} class="w-full text-left block px-4 py-2 text-red-600 hover:bg-red-50 text-sm">
                   🚪 Cerrar Sesión
@@ -124,7 +126,7 @@
           {/if}
         </div>
 
-        <div class="relative" on:click|stopPropagation>
+        <div class="relative">
           <button
             on:click={toggleVendorMenu}
             class="px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors duration-200 font-medium flex items-center gap-2"

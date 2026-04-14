@@ -1,6 +1,9 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import type { StockItem } from '$lib/api/types';
+  import { goto } from '$app/navigation';
   import { cart } from '$lib/store/cart';
+  import { auth } from '$lib/store/auth';
 
   export let data: PageData;
 
@@ -9,11 +12,6 @@
   let cantidad = 1;
   let carritoAbiert = false;
   let productoEnCarrito = false;
-
-  // Galería de imágenes
-  $: imagenes = [product.image_url, product.image_url_2, product.image_url_3].filter(Boolean) as string[];
-  let imagenActiva: string = '';
-  $: if (imagenes.length > 0 && !imagenActiva) imagenActiva = imagenes[0];
 
   // Calcular precio con impuesto
   $: precioBase = parseFloat(product.price || '0');
@@ -27,18 +25,22 @@
   $: esStock = totalStock > 0 ? 'En Stock' : 'Sin Stock';
   $: clasesStock = totalStock > 0 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800';
 
-  // Agrupar stock por almacén (la API devuelve stock_por_almacen)
-  type StockEntry = { warehouse_id: number; warehouse_name: string; warehouse_city: string; quantity: number };
-  $: stockEntries = ((product as any).stock_por_almacen || []) as StockEntry[];
-  $: stockPorAlmacen = stockEntries.reduce((acc: Record<string, StockEntry[]>, item) => {
+  // Agrupar stock por almacén
+  $: stockItems = product.stock_items || product.stock_por_almacen || [];
+  $: providerUrl = product.provider_slug ? `/proveedores/${product.provider_slug}` : null;
+  $: stockPorAlmacen = stockItems.reduce((acc: Record<string, StockItem[]>, item: StockItem) => {
     const ciudad = item.warehouse_city || 'Sin ciudad';
     if (!acc[ciudad]) acc[ciudad] = [];
     acc[ciudad].push(item);
     return acc;
   }, {});
 
-  const agregarAlCarrito = () => {
-    cart.addItem(product, cantidad);
+  const agregarAlCarrito = async () => {
+    if (!auth.getAccessToken()) {
+      goto('/login');
+      return;
+    }
+    await cart.addItem(product.id, cantidad);
     productoEnCarrito = true;
     setTimeout(() => {
       productoEnCarrito = false;
@@ -91,11 +93,10 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-12">
       <!-- Imagen del Producto -->
       <div class="flex flex-col gap-4">
-        <!-- Imagen principal -->
         <div class="bg-white rounded-lg shadow-lg overflow-hidden flex items-center justify-center h-96">
-          {#if imagenActiva}
+          {#if product.image_url}
             <img
-              src={imagenActiva}
+              src={product.image_url}
               alt={product.name}
               class="w-full h-full object-cover"
             />
@@ -114,26 +115,9 @@
           {/if}
         </div>
 
-        <!-- Thumbnails (solo si hay más de una imagen) -->
-        {#if imagenes.length > 1}
-          <div class="flex gap-3">
-            {#each imagenes as img, i}
-              <button
-                on:click={() => imagenActiva = img}
-                class="w-24 h-24 rounded-lg overflow-hidden border-2 transition-all focus:outline-none"
-                class:border-blue-500={imagenActiva === img}
-                class:border-gray-200={imagenActiva !== img}
-                aria-label={`Imagen ${i + 1}`}
-              >
-                <img src={img} alt={`${product.name} - imagen ${i + 1}`} class="w-full h-full object-cover" />
-              </button>
-            {/each}
-          </div>
-        {/if}
-
         <!-- Información de Stock por Almacén -->
          
-        {#if stockEntries.length > 0}
+        {#if stockItems.length > 0}
           <div class="bg-white rounded-lg shadow p-6">
             <h3 class="text-lg font-semibold text-gray-900 mb-4">Disponibilidad por Almacén</h3>
             <div class="space-y-3">
@@ -146,10 +130,10 @@
                         <span class="text-gray-600">{item.warehouse_name}</span>
                         <span
                           class="px-3 py-1 rounded-full text-sm font-medium"
-                          class:bg-green-100={item.quantity > 0}
-                          class:text-green-800={item.quantity > 0}
-                          class:bg-red-100={item.quantity === 0}
-                          class:text-red-800={item.quantity === 0}
+                          class:bg-green-100={!item.is_out_of_stock}
+                          class:text-green-800={!item.is_out_of_stock}
+                          class:bg-red-100={item.is_out_of_stock}
+                          class:text-red-800={item.is_out_of_stock}
                         >
                           {item.quantity} {item.quantity === 1 ? 'unidad' : 'unidades'}
                         </span>
@@ -186,8 +170,21 @@
           <!-- Proveedor -->
           <div class="flex gap-2 items-center mb-2">
             <span class="text-gray-600">Proveedor:</span>
-            <p class="text-gray-900 font-medium">{product.provider_name}</p>
+            {#if providerUrl}
+              <a href={providerUrl} class="text-gray-900 font-medium hover:text-blue-700 transition-colors">
+                {product.provider_name}
+              </a>
+            {:else}
+              <p class="text-gray-900 font-medium">{product.provider_name}</p>
+            {/if}
           </div>
+          {#if providerUrl}
+            <div class="mb-2">
+              <a href={providerUrl} class="inline-flex items-center rounded-full bg-slate-100 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-200 transition-colors">
+                Ver perfil del proveedor
+              </a>
+            </div>
+          {/if}
         </div>
 
         <!-- Precios -->
@@ -250,7 +247,7 @@
     </div>
 
     <!-- Descripción del Producto -->
-    {#if product.description && product.description !== 'False' && product.description !== 'false'}
+    {#if product.description}
       <div class="mt-12 bg-white rounded-lg shadow p-8">
         <h2 class="text-2xl font-bold text-gray-900 mb-4">Descripción</h2>
         <p class="text-gray-700 text-lg leading-relaxed whitespace-pre-wrap">

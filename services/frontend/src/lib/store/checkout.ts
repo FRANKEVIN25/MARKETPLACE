@@ -193,7 +193,7 @@ export const checkoutSubtotal = derived(checkout, $c =>
 export const checkoutItemsByProvider = derived(checkout, $c => {
   const groups: Record<string, CartItem[]> = {};
   for (const item of $c.items) {
-    const key = item.product.provider_name || 'Sin proveedor';
+    const key = item.provider_name || 'Sin proveedor';
     if (!groups[key]) groups[key] = [];
     groups[key].push(item);
   }

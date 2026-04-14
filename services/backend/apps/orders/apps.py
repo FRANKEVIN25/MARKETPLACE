@@ -13,5 +13,6 @@ class OrdersConfig(AppConfig):
         # Se hace aquí (no con @receiver) para evitar importaciones circulares.
         from django.db.models.signals import post_save
         from .models import SubOrder
-        from .signals import recalculate_order_status
+        from .signals import recalculate_order_status, update_customer_provider_stats
         post_save.connect(recalculate_order_status, sender=SubOrder)
+        post_save.connect(update_customer_provider_stats, sender=SubOrder)

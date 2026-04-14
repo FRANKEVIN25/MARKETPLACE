@@ -2,9 +2,11 @@
 Signals de Marketplace
 Detecta cambios en el modelo Provider y dispara tasks automáticamente
 """
-from django.db.models.signals import pre_save, post_save
+from django.db.models.signals import pre_save, post_save, post_delete
 from django.dispatch import receiver
 import logging
+
+from .models import Provider, ProviderReview
 
 logger = logging.getLogger(__name__)
 
@@ -49,3 +51,42 @@ def provider_post_save(sender, instance, created, **kwargs):
             odoo_password=odoo_password,
         )
         logger.info(f"🚀 Task lanzada automáticamente para '{instance.name}': {task.id}")
+
+
+@receiver(pre_save, sender=ProviderReview)
+def provider_review_pre_save(sender, instance, **kwargs):
+    if not instance.pk:
+        instance._previous_provider_id = None
+        return
+
+    try:
+        previous = sender.objects.only('provider_id').get(pk=instance.pk)
+        instance._previous_provider_id = previous.provider_id
+    except sender.DoesNotExist:
+        instance._previous_provider_id = None
+
+
+def _recalculate_provider_rating(provider_id):
+    if not provider_id:
+        return
+
+    try:
+        provider = Provider.objects.get(pk=provider_id)
+    except Provider.DoesNotExist:
+        return
+
+    provider.recalculate_rating_summary()
+
+
+@receiver(post_save, sender=ProviderReview)
+def provider_review_post_save(sender, instance, **kwargs):
+    _recalculate_provider_rating(instance.provider_id)
+
+    previous_provider_id = getattr(instance, '_previous_provider_id', None)
+    if previous_provider_id and previous_provider_id != instance.provider_id:
+        _recalculate_provider_rating(previous_provider_id)
+
+
+@receiver(post_delete, sender=ProviderReview)
+def provider_review_post_delete(sender, instance, **kwargs):
+    _recalculate_provider_rating(instance.provider_id)

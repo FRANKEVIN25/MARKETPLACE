@@ -3,11 +3,20 @@ Configuración del Admin para Customer
 """
 from django.contrib import admin
 from django.utils.html import format_html
-from .models import Customer, Address, CustomerStats
+from django.db.models import Sum, Count
+from .models import Customer, Address, CustomerStats, CustomerProviderStats, CustomerVehicle
+
+
+class CustomerVehicleInline(admin.TabularInline):
+    model = CustomerVehicle
+    fields = ['variante', 'is_active', 'created_at']
+    readonly_fields = ['created_at']
+    extra = 0
 
 
 @admin.register(Customer)
 class CustomerAdmin(admin.ModelAdmin):
+    inlines = [CustomerVehicleInline]
     list_display = [
         'customer_id',
         'get_name',
@@ -230,78 +239,182 @@ class CustomerStatsAdmin(admin.ModelAdmin):
         'total_orders',
         'total_spent_display',
         'average_order_display',
-        'updated_at'
+        'updated_at',
     ]
-    
+
     search_fields = [
         'customer__customer_id',
         'customer__user__email',
         'customer__user__first_name',
-        'customer__user__last_name'
+        'customer__user__last_name',
     ]
-    
+
     readonly_fields = [
         'customer',
         'total_orders',
         'total_spent',
         'average_order_value',
+        'ver_historial_por_proveedor',
         'created_at',
-        'updated_at'
+        'updated_at',
     ]
-    
+
     fieldsets = (
         ('Cliente', {
-            'fields': ('customer',)
+            'fields': ('customer',),
         }),
-        ('Estadísticas', {
+        ('Estadísticas Globales', {
+            'description': 'Totales a través de todos los proveedores. '
+                           'Se actualizan automáticamente al confirmar un pedido.',
             'fields': (
                 'total_orders',
                 'total_spent',
-                'average_order_value'
-            )
+                'average_order_value',
+            ),
+        }),
+        ('Detalle por Proveedor', {
+            'fields': ('ver_historial_por_proveedor',),
         }),
         ('Información Adicional', {
-            'fields': (
-                'preferred_brands',
-                'notes'
-            )
+            'fields': ('preferred_models', 'notes'),
         }),
         ('Metadata', {
-            'fields': (
-                'created_at',
-                'updated_at'
-            ),
-            'classes': ('collapse',)
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',),
         }),
     )
-    
+
     def customer_name(self, obj):
-        """Nombre del cliente"""
         return obj.customer.get_full_name()
     customer_name.short_description = 'Cliente'
-    
+
     def total_spent_display(self, obj):
-        """Total gastado formateado"""
-        return f"S/ {obj.total_spent:,.2f}"
+        return f'S/ {obj.total_spent:,.2f}'
     total_spent_display.short_description = 'Total Gastado'
-    
+    total_spent_display.admin_order_field = 'total_spent'
+
     def average_order_display(self, obj):
-        """Valor promedio formateado"""
-        return f"S/ {obj.average_order_value:,.2f}"
+        return f'S/ {obj.average_order_value:,.2f}'
     average_order_display.short_description = 'Promedio por Orden'
-    
+
+    def ver_historial_por_proveedor(self, obj):
+        """Tabla desde CustomerProviderStats (ya calculada, sin queries extra)."""
+        rows = obj.customer.provider_stats.select_related('provider').order_by('-total_spent')
+        if not rows:
+            return '— Sin historial por proveedor. Se registra al confirmar un pedido. —'
+
+        header = (
+            '<table style="border-collapse:collapse;width:100%">'
+            '<thead><tr>'
+            '<th style="text-align:left;padding:4px 8px;border-bottom:1px solid #ccc">Proveedor</th>'
+            '<th style="text-align:right;padding:4px 8px;border-bottom:1px solid #ccc">Pedidos</th>'
+            '<th style="text-align:right;padding:4px 8px;border-bottom:1px solid #ccc">Total Gastado</th>'
+            '<th style="text-align:right;padding:4px 8px;border-bottom:1px solid #ccc">Historial Ponderado</th>'
+            '<th style="text-align:right;padding:4px 8px;border-bottom:1px solid #ccc">Descuento Actual</th>'
+            '<th style="text-align:right;padding:4px 8px;border-bottom:1px solid #ccc">Falta para Tier</th>'
+            '</tr></thead><tbody>'
+        )
+        body = ''
+        for r in rows:
+            next_tier = f'S/ {r.next_tier_amount:,.2f}' if r.next_tier_amount else '✓ Máximo'
+            discount = f'{r.current_discount_percent} %' if r.current_discount_percent else '—'
+            body += (
+                f'<tr>'
+                f'<td style="padding:4px 8px">{r.provider.name}</td>'
+                f'<td style="text-align:right;padding:4px 8px">{r.total_orders}</td>'
+                f'<td style="text-align:right;padding:4px 8px">S/ {r.total_spent:,.2f}</td>'
+                f'<td style="text-align:right;padding:4px 8px">S/ {r.weighted_history:,.2f}</td>'
+                f'<td style="text-align:right;padding:4px 8px;color:#16a34a;font-weight:bold">{discount}</td>'
+                f'<td style="text-align:right;padding:4px 8px">{next_tier}</td>'
+                f'</tr>'
+            )
+        return format_html(header + body + '</tbody></table>')
+    ver_historial_por_proveedor.short_description = 'Historial por Proveedor (con descuentos)'
+
     def has_add_permission(self, request):
-        """No permitir crear manualmente (se crea automático)"""
         return False
-    
+
     def has_delete_permission(self, request, obj=None):
-        """No permitir eliminar (se elimina con el cliente)"""
         return False
-    
+
     def get_queryset(self, request):
-        """Optimizar queries"""
-        qs = super().get_queryset(request)
-        return qs.select_related('customer', 'customer__user')
+        return super().get_queryset(request).select_related('customer', 'customer__user')
+
+
+@admin.register(CustomerProviderStats)
+class CustomerProviderStatsAdmin(admin.ModelAdmin):
+    list_display = [
+        'customer_display',
+        'provider_display',
+        'total_orders',
+        'total_spent_display',
+        'weighted_history_display',
+        'current_discount_display',
+        'next_tier_display',
+        'last_recalculated',
+    ]
+    list_filter = ['provider', 'current_discount_percent']
+    search_fields = [
+        'customer__user__email',
+        'customer__user__first_name',
+        'customer__user__last_name',
+        'customer__company_name',
+        'provider__name',
+    ]
+    readonly_fields = [
+        'customer', 'provider',
+        'total_spent', 'total_orders',
+        'weighted_history', 'current_discount_percent',
+        'next_tier_amount', 'last_recalculated',
+    ]
+    ordering = ['-total_spent']
+
+    def customer_display(self, obj):
+        return obj.customer.get_full_name()
+    customer_display.short_description = 'Cliente'
+    customer_display.admin_order_field = 'customer__user__first_name'
+
+    def provider_display(self, obj):
+        return obj.provider.name
+    provider_display.short_description = 'Proveedor'
+    provider_display.admin_order_field = 'provider__name'
+
+    def total_spent_display(self, obj):
+        return f'S/ {obj.total_spent:,.2f}'
+    total_spent_display.short_description = 'Total Gastado'
+    total_spent_display.admin_order_field = 'total_spent'
+
+    def weighted_history_display(self, obj):
+        return f'S/ {obj.weighted_history:,.2f}'
+    weighted_history_display.short_description = 'Historial Ponderado'
+    weighted_history_display.admin_order_field = 'weighted_history'
+
+    def current_discount_display(self, obj):
+        if obj.current_discount_percent > 0:
+            return format_html(
+                '<span style="color:#16a34a;font-weight:bold">{} %</span>',
+                obj.current_discount_percent,
+            )
+        return '—'
+    current_discount_display.short_description = 'Descuento Actual'
+    current_discount_display.admin_order_field = 'current_discount_percent'
+
+    def next_tier_display(self, obj):
+        if obj.next_tier_amount == 0:
+            return format_html('<span style="color:#16a34a">Tier máximo ✓</span>')
+        return f'Faltan S/ {obj.next_tier_amount:,.2f}'
+    next_tier_display.short_description = 'Siguiente Tier'
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related(
+            'customer', 'customer__user', 'provider'
+        )
 
 
 # Personalización del Admin Site

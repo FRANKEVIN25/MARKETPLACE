@@ -402,8 +402,11 @@ class OdooConnector:
                 'fields': [
                     'id', 'name', 'default_code', 'description_sale',
                     'list_price', 'standard_price', 'qty_available',
-                    'barcode', 'weight', 'active', 'image_1920',
-                    'product_tmpl_id',
+                    'barcode', 'weight', 'active', 'image_1920'
+                    # campos necesarios para categorías y tipo
+                    'categ_id',        # (id, nombre) de la categoría en Odoo
+                    'type',            # consu | service | product
+                    'product_tmpl_id', # ID de la plantilla (para stock.quant)
                 ]
             }
             if limit:
@@ -414,37 +417,6 @@ class OdooConnector:
         except Exception as e:
             logger.error(f"Error obteniendo productos: {e}")
             return []
-
-    def get_gallery_images(self, tmpl_ids):
-        """
-        Obtiene las imágenes de galería (ecomparts.product.image) para
-        una lista de product.template IDs.
-
-        Returns:
-            dict: {tmpl_id: [{'id', 'image', 'sequence', 'name'}, ...], ...}
-                  ordenado por sequence ascendente
-        """
-        try:
-            if not tmpl_ids:
-                return {}
-
-            records = self.execute_kw(
-                'ecomparts.product.image', 'search_read',
-                [[['product_tmpl_id', 'in', list(tmpl_ids)]]],
-                {'fields': ['id', 'sequence', 'name', 'image', 'product_tmpl_id'],
-                 'order': 'sequence asc, id asc'}
-            )
-
-            result = {}
-            for rec in records:
-                # product_tmpl_id viene como [id, name]
-                tid = rec['product_tmpl_id'][0] if isinstance(rec['product_tmpl_id'], list) else rec['product_tmpl_id']
-                result.setdefault(tid, []).append(rec)
-            return result
-
-        except Exception as e:
-            logger.error(f"Error obteniendo galería de imágenes: {e}")
-            return {}
 
     def get_product_stock(self, product_id):
         """
@@ -499,7 +471,475 @@ class OdooConnector:
             logger.error(f"Error creando producto: {e}")
             return None
 
+    # ====== CATEGORÍAS ======
+
+    def get_categories(self, company_id=None):
+        """
+        Obtiene las categorías de productos de Odoo (product.category).
+
+        Odoo usa categorías jerárquicas. Las categorías son globales (no por
+        company), por lo que company_id no filtra aquí, pero se acepta para
+        mantener una interfaz consistente.
+
+        Returns:
+            list: Lista de dicts con 'id', 'name', 'parent_id', 'complete_name'
+        """
+        try:
+            return self.execute_kw(
+                'product.category', 'search_read',
+                [[]],
+                {'fields': ['id', 'name', 'parent_id', 'complete_name']}
+            )
+        except Exception as e:
+            logger.error(f"Error obteniendo categorías de Odoo: {e}")
+            return []
+
+    # ====== ALMACENES Y STOCK ======
+
+    def get_warehouses(self, company_id):
+        """
+        Obtiene los almacenes de una company en Odoo (stock.warehouse).
+
+        Incluye `lot_stock_id` que es la ubicación principal de stock del
+        almacén — necesaria para consultar stock.quant.
+
+        Args:
+            company_id (int): ID de la Company en Odoo
+
+        Returns:
+            list: Lista de dicts con 'id', 'name', 'lot_stock_id'
+        """
+        try:
+            return self.execute_kw(
+                'stock.warehouse', 'search_read',
+                [[['company_id', '=', company_id]]],
+                {'fields': ['id', 'name', 'lot_stock_id']}
+            )
+        except Exception as e:
+            logger.error(f"Error obteniendo almacenes de Odoo (company {company_id}): {e}")
+            return []
+
+    def get_stock_quants_for_warehouse(self, product_tmpl_ids, location_id):
+        """
+        Obtiene las cantidades de stock de varios productos en una ubicación.
+
+        Usa stock.quant filtrando por `product_id.product_tmpl_id` para soportar
+        tanto product.template como product.product, y por `location_id` que
+        corresponde al `lot_stock_id` del almacén.
+
+        Retorna un dict {product_tmpl_id: cantidad_disponible} para uso eficiente
+        en la sincronización en lote (evita N+1 queries).
+
+        Args:
+            product_tmpl_ids (list[int]): Lista de IDs de product.template
+            location_id (int): ID de la ubicación (lot_stock_id del warehouse)
+
+        Returns:
+            dict: {product_tmpl_id: int} — cantidad disponible por template
+        """
+        if not product_tmpl_ids or not location_id:
+            return {}
+        try:
+            quants = self.execute_kw(
+                'stock.quant', 'search_read',
+                [[
+                    ['product_id.product_tmpl_id', 'in', product_tmpl_ids],
+                    ['location_id', '=', location_id],
+                ]],
+                {'fields': ['product_id', 'quantity', 'reserved_quantity']}
+            )
+            # Agregar por template (puede haber múltiples variantes)
+            result = {}
+            for q in quants:
+                # product_id aquí es (id_product_product, nombre) — necesitamos
+                # mapear a product_tmpl_id. Lo hacemos con una segunda consulta
+                # solo si hay quants, para no desperdiciar.
+                pass
+
+            # Estrategia más directa: traer product_id.product_tmpl_id explícito
+            quants_with_tmpl = self.execute_kw(
+                'stock.quant', 'search_read',
+                [[
+                    ['product_id.product_tmpl_id', 'in', product_tmpl_ids],
+                    ['location_id', '=', location_id],
+                ]],
+                {'fields': ['quantity', 'reserved_quantity'],
+                 'context': {}}
+            )
+            # Como Odoo no devuelve product_tmpl_id directamente en stock.quant,
+            # usamos la consulta agrupada por template:
+            grouped = self.execute_kw(
+                'stock.quant', 'read_group',
+                [[
+                    ['product_id.product_tmpl_id', 'in', product_tmpl_ids],
+                    ['location_id', '=', location_id],
+                ]],
+                {
+                    'fields': ['product_id', 'quantity', 'reserved_quantity'],
+                    'groupby': ['product_id'],
+                }
+            )
+            # grouped es una lista de {product_id: (id, nombre), quantity: N, ...}
+            # Necesitamos mapear product.product → product.template
+            pp_ids = [g['product_id'][0] for g in grouped if g.get('product_id')]
+            if not pp_ids:
+                return {}
+
+            pp_records = self.execute_kw(
+                'product.product', 'search_read',
+                [[['id', 'in', pp_ids]]],
+                {'fields': ['id', 'product_tmpl_id']}
+            )
+            pp_to_tmpl = {r['id']: r['product_tmpl_id'][0] for r in pp_records}
+
+            for g in grouped:
+                if not g.get('product_id'):
+                    continue
+                pp_id = g['product_id'][0]
+                tmpl_id = pp_to_tmpl.get(pp_id)
+                if tmpl_id:
+                    qty = max(
+                        (g.get('quantity') or 0) - (g.get('reserved_quantity') or 0),
+                        0
+                    )
+                    result[tmpl_id] = result.get(tmpl_id, 0) + int(qty)
+
+            return result
+
+        except Exception as e:
+            logger.error(f"Error obteniendo stock.quant (location {location_id}): {e}")
+            return {}
+
+    # ====== COMPATIBILIDAD DE VEHÍCULOS ======
+
+    def get_compatibilities(self, product_tmpl_ids):
+        """
+        Obtiene los registros de autopart.compatibility para una lista de
+        product.template IDs de Odoo.
+
+        Retorna una lista de dicts con los campos necesarios para resolver
+        la compatibilidad en Django:
+          - product_tmpl_id: (id, nombre) del product.template
+          - variant_id: (id, nombre) de vehiculo.variante
+          - fitment_notes: notas de montaje (puede ser False)
+          - active: bool
+
+        Args:
+            product_tmpl_ids (list[int]): IDs de product.template a consultar
+
+        Returns:
+            list[dict]
+        """
+        if not product_tmpl_ids:
+            return []
+        try:
+            return self.execute_kw(
+                'autopart.compatibility', 'search_read',
+                [[
+                    ['product_tmpl_id', 'in', product_tmpl_ids],
+                    ['active', '=', True],
+                ]],
+                {
+                    'fields': [
+                        'id',
+                        'product_tmpl_id',
+                        'variant_id',
+                        'fitment_notes',
+                        'active',
+                    ]
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error obteniendo autopart.compatibility: {e}")
+            return []
+
+    def get_vehicle_variants(self, variant_ids):
+        """
+        Obtiene los registros de vehiculo.variante por IDs de Odoo.
+
+        Incluye django_external_id para poder resolver el PK de Django sin
+        queries adicionales.
+
+        Args:
+            variant_ids (list[int]): IDs de vehiculo.variante en Odoo
+
+        Returns:
+            dict: {odoo_variant_id: record} donde record incluye
+                  'id', 'nombre', 'django_external_id', 'anio_desde', 'anio_hasta'
+                  y los many2one de modelo/motor/transmision/traccion como (id, nombre)
+        """
+        if not variant_ids:
+            return {}
+        try:
+            records = self.execute_kw(
+                'vehiculo.variante', 'search_read',
+                [[['id', 'in', variant_ids]]],
+                {
+                    'fields': [
+                        'id',
+                        'nombre',
+                        'django_external_id',
+                        'modelo_id',
+                        'motor_id',
+                        'transmision_id',
+                        'traccion_id',
+                        'anio_desde',
+                        'anio_hasta',
+                    ]
+                }
+            )
+            return {r['id']: r for r in records}
+        except Exception as e:
+            logger.error(f"Error obteniendo vehiculo.variante: {e}")
+            return {}
+
+
+    # ====== PUSH VEHÍCULOS: DJANGO → ODOO =====================================
+    # Cada método sigue la misma lógica de 3 vías:
+    #   1. Buscar por django_external_id  → ya vinculado, retornar odoo_id
+    #   2. Buscar por clave natural       → existe sin vincular, vincular y retornar
+    #   3. Crear en Odoo                  → nuevo registro, vincular y retornar
+    # =========================================================================
+
+    def _push_or_link(self, model, domain_by_ext_id, domain_by_natural_key, create_vals, django_id):
+        """
+        Lógica común de push para cualquier modelo de vehículo.
+
+        Returns:
+            int: ID del registro en Odoo
+        """
+        str_django_id = str(django_id)
+
+        # 1. Buscar por django_external_id
+        existing = self.execute_kw(model, 'search_read',
+            [domain_by_ext_id],
+            {'fields': ['id'], 'limit': 1}
+        )
+        if existing:
+            return existing[0]['id']
+
+        # 2. Buscar por clave natural
+        existing = self.execute_kw(model, 'search_read',
+            [domain_by_natural_key],
+            {'fields': ['id', 'django_external_id'], 'limit': 1}
+        )
+        if existing:
+            odoo_id = existing[0]['id']
+            # Vincular si aún no tiene django_external_id
+            if not existing[0].get('django_external_id'):
+                self.execute_kw(model, 'write', [[odoo_id], {'django_external_id': str_django_id}])
+            return odoo_id
+
+        # 3. Crear
+        create_vals['django_external_id'] = str_django_id
+        return self.execute_kw(model, 'create', [create_vals])
+
+    def push_marca(self, nombre, slug, django_id):
+        """Empuja o vincula una Marca. Retorna el odoo_id."""
+        from django.utils.text import slugify
+        return self._push_or_link(
+            'vehiculo.marca',
+            [['django_external_id', '=', str(django_id)]],
+            [['nombre', '=', nombre]],
+            {'nombre': nombre, 'slug': slug or slugify(nombre), 'activo': True},
+            django_id,
+        )
+
+    def push_modelo(self, nombre, slug, marca_odoo_id, django_id):
+        """Empuja o vincula un ModeloVehiculo. Retorna el odoo_id."""
+        from django.utils.text import slugify
+        return self._push_or_link(
+            'vehiculo.modelo',
+            [['django_external_id', '=', str(django_id)]],
+            [['nombre', '=', nombre], ['marca_id', '=', marca_odoo_id]],
+            {'nombre': nombre, 'slug': slug or slugify(f"{marca_odoo_id}-{nombre}"),
+             'marca_id': marca_odoo_id, 'activo': True},
+            django_id,
+        )
+
+    def push_transmision(self, tipo, velocidades, django_id):
+        """Empuja o vincula una Transmision. Retorna el odoo_id."""
+        domain_natural = [['tipo', '=', tipo]]
+        if velocidades:
+            domain_natural.append(['velocidades', '=', velocidades])
+        else:
+            domain_natural.append(['velocidades', '=', False])
+        return self._push_or_link(
+            'vehiculo.transmision',
+            [['django_external_id', '=', str(django_id)]],
+            domain_natural,
+            {'tipo': tipo, 'velocidades': velocidades or False},
+            django_id,
+        )
+
+    def push_traccion(self, tipo, django_id):
+        """Empuja o vincula una Traccion. Retorna el odoo_id."""
+        return self._push_or_link(
+            'vehiculo.traccion',
+            [['django_external_id', '=', str(django_id)]],
+            [['tipo', '=', tipo]],
+            {'tipo': tipo},
+            django_id,
+        )
+
+    def push_motor(self, combustible, cilindrada_cc, codigo_motor, tecnologia, django_id):
+        """Empuja o vincula un Motor. Retorna el odoo_id."""
+        domain_natural = []
+        if combustible:
+            domain_natural.append(['combustible', '=', combustible])
+        if cilindrada_cc:
+            domain_natural.append(['cilindrada_cc', '=', cilindrada_cc])
+        if codigo_motor:
+            domain_natural.append(['codigo_motor', '=', codigo_motor])
+        if tecnologia:
+            domain_natural.append(['tecnologia', '=', tecnologia])
+        if not domain_natural:
+            domain_natural = [['id', '!=', 0]]  # fallback seguro
+
+        return self._push_or_link(
+            'vehiculo.motor',
+            [['django_external_id', '=', str(django_id)]],
+            domain_natural,
+            {
+                'combustible': combustible or False,
+                'cilindrada_cc': cilindrada_cc or False,
+                'codigo_motor': codigo_motor or False,
+                'tecnologia': tecnologia or False,
+            },
+            django_id,
+        )
+
+    def push_variante(self, modelo_odoo_id, motor_odoo_id, trans_odoo_id,
+                      trac_odoo_id, anio_desde, anio_hasta, django_id):
+        """
+        Empuja o vincula una VariantVehiculo completa.
+
+        Retorna:
+            int: odoo_id de vehiculo.variante
+        """
+        domain_natural = [
+            ['modelo_id', '=', modelo_odoo_id],
+            ['anio_desde', '=', anio_desde],
+        ]
+        if anio_hasta:
+            domain_natural.append(['anio_hasta', '=', anio_hasta])
+        if motor_odoo_id:
+            domain_natural.append(['motor_id', '=', motor_odoo_id])
+        if trans_odoo_id:
+            domain_natural.append(['transmision_id', '=', trans_odoo_id])
+        if trac_odoo_id:
+            domain_natural.append(['traccion_id', '=', trac_odoo_id])
+
+        return self._push_or_link(
+            'vehiculo.variante',
+            [['django_external_id', '=', str(django_id)]],
+            domain_natural,
+            {
+                'modelo_id': modelo_odoo_id,
+                'motor_id': motor_odoo_id or False,
+                'transmision_id': trans_odoo_id or False,
+                'traccion_id': trac_odoo_id or False,
+                'anio_desde': anio_desde,
+                'anio_hasta': anio_hasta or False,
+            },
+            django_id,
+        )
+
+    # ====== VEHICLE SCOPE POR PROVEEDOR ======
+
+    def scope_variante_for_company(self, odoo_variante_id: int, company_id: int) -> None:
+        """
+        Añade company_id al campo company_ids de vehiculo.variante en Odoo,
+        otorgando visibilidad de esa variante al tenant del proveedor.
+
+        Usa el ORM command (4, id) = 'link if not already linked' → idempotente.
+        El admin Odoo bypasea las record rules, así que este write siempre funciona.
+
+        Args:
+            odoo_variante_id: ID de vehiculo.variante en Odoo.
+            company_id: ID de res.company del proveedor (provider.odoo_company_id).
+        """
+        self.execute_kw(
+            'vehiculo.variante', 'write',
+            [[odoo_variante_id], {'company_ids': [(4, company_id)]}],
+            {'context': {'active_test': False}},
+        )
+        logger.debug(
+            f"scope_variante_for_company: variante={odoo_variante_id} → company={company_id}"
+        )
+
+    def unscope_variante_from_company(self, odoo_variante_id: int, company_id: int) -> None:
+        """
+        Quita company_id de company_ids en vehiculo.variante, revocando la
+        visibilidad de esa variante para el tenant del proveedor.
+
+        Usa el ORM command (3, id) = 'unlink'. Si ya no estaba vinculado, Odoo lo ignora.
+
+        Args:
+            odoo_variante_id: ID de vehiculo.variante en Odoo.
+            company_id: ID de res.company del proveedor (provider.odoo_company_id).
+        """
+        self.execute_kw(
+            'vehiculo.variante', 'write',
+            [[odoo_variante_id], {'company_ids': [(3, company_id)]}],
+            {'context': {'active_test': False}},
+        )
+        logger.debug(
+            f"unscope_variante_from_company: variante={odoo_variante_id} → company={company_id}"
+        )
+
+    def sync_full_scope_for_company(
+        self,
+        odoo_variante_ids: list[int],
+        company_id: int,
+    ) -> dict:
+        """
+        Sincroniza el scope completo de un proveedor en una sola pasada:
+        - Agrega company_id a todas las variantes del scope (odoo_variante_ids).
+        - Quita company_id de las variantes que Odoo ya tiene para esa company
+          pero que ya no están en el scope de Django.
+
+        Uso interno de push_vehicles --provider-id, garantiza consistencia total.
+
+        Returns:
+            dict: {'added': int, 'removed': int}
+        """
+        # 1. Leer qué variantes ya tienen esta company en Odoo
+        existing_ids = self.execute_kw(
+            'vehiculo.variante', 'search',
+            [[['company_ids', 'in', [company_id]]]],
+            {'context': {'active_test': False}, 'limit': 0},
+        ) or []
+
+        scope_set    = set(odoo_variante_ids)
+        existing_set = set(existing_ids)
+
+        to_add    = list(scope_set - existing_set)
+        to_remove = list(existing_set - scope_set)
+
+        # 2. Batch-write en un solo llamado por dirección
+        if to_add:
+            self.execute_kw(
+                'vehiculo.variante', 'write',
+                [to_add, {'company_ids': [(4, company_id)]}],
+                {'context': {'active_test': False}},
+            )
+
+        if to_remove:
+            self.execute_kw(
+                'vehiculo.variante', 'write',
+                [to_remove, {'company_ids': [(3, company_id)]}],
+                {'context': {'active_test': False}},
+            )
+
+        logger.info(
+            f"sync_full_scope_for_company company={company_id}: "
+            f"+{len(to_add)} variantes, -{len(to_remove)} variantes"
+        )
+        return {'added': len(to_add), 'removed': len(to_remove)}
+
     # ====== HEALTH CHECK ======
+
 
     def ping(self):
         """

@@ -7,14 +7,21 @@ from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password, check_password
 from django.utils.text import slugify
 from django.core.exceptions import ValidationError
-import secrets
-
+from django.db.models import Avg, Count, Q
+from cryptography.fernet import Fernet
+from django.conf import settings
 
 class TierChoices(models.TextChoices):
     """Niveles de servicio para providers"""
     STARTER = 'starter', 'Starter (Compartido)'
     PRO = 'pro', 'Pro (Compartido Optimizado)'  
     PREMIUM = 'premium', 'Premium (Instancia Dedicada)'
+
+
+class ProviderReviewStatusChoices(models.TextChoices):
+    PUBLISHED = 'published', 'Publicado'
+    PENDING = 'pending', 'Pendiente de revisión'
+    HIDDEN = 'hidden', 'Oculto'
 
 
 class Provider(models.Model):
@@ -40,6 +47,23 @@ class Provider(models.Model):
         null=True, 
         help_text="RUC del proveedor (Perú)"
     )
+
+    logo = models.ImageField(
+        upload_to='providers/logos/',
+        blank=True,
+        null=True,
+        help_text='Logo público del proveedor'
+    )
+    short_description = models.CharField(
+        max_length=180,
+        blank=True,
+        help_text='Resumen corto visible en cards y cabeceras del proveedor'
+    )
+    long_description = models.TextField(
+        blank=True,
+        help_text='Descripción editorial extendida para la página pública del proveedor'
+    )
+    
     email = models.EmailField(blank=True, null=True)
     phone = models.CharField(max_length=20, blank=True, null=True)
 
@@ -216,9 +240,39 @@ class Provider(models.Model):
         verbose_name="Número Plin"
     )
     
+    # ====== SCOPE DE VEHÍCULOS ======
+    variantes_habilitadas = models.ManyToManyField(
+        'vehicles.VariantVehiculo',
+        blank=True,
+        related_name='providers_habilitados',
+        verbose_name='Variantes de vehículos habilitadas',
+        help_text=(
+            "Variantes con las que trabaja este proveedor. "
+            "push_vehicles --provider-id solo empuja estas variantes al tenant "
+            "Odoo del proveedor y gestiona automáticamente la visibilidad."
+        )
+    )
+
     # ====== METADATA ======
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+
+    # ====== REPUTACIÓN ======
+    rating_average = models.DecimalField(
+        max_digits=3,
+        decimal_places=2,
+        default=0,
+        help_text="Calificación promedio visible del proveedor (0.00 - 5.00)"
+    )
+    rating_count = models.PositiveIntegerField(
+        default=0,
+        help_text="Cantidad total de reseñas visibles del proveedor"
+    )
+    rating_breakdown = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Distribución de calificaciones visibles por estrella"
+    )
 
     # ====== LÍMITES POR TIER ======
     TIER_LIMITS = {
@@ -270,8 +324,6 @@ class Provider(models.Model):
     
     def set_odoo_password_temp(self, raw_password):
         """Guarda la contraseña Odoo encriptada reversiblemente hasta que se apruebe"""
-        from cryptography.fernet import Fernet
-        from django.conf import settings
         import base64, hashlib
         key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
         f = Fernet(key)
@@ -281,8 +333,6 @@ class Provider(models.Model):
         """Recupera la contraseña Odoo encriptada temporalmente"""
         if not self.odoo_password_temp:
             return None
-        from cryptography.fernet import Fernet
-        from django.conf import settings
         import base64, hashlib
         key = base64.urlsafe_b64encode(hashlib.sha256(settings.SECRET_KEY.encode()).digest())
         f = Fernet(key)
@@ -479,6 +529,45 @@ class Provider(models.Model):
         """Cantidad de productos de este proveedor"""
         return self.products.count()
 
+    def get_public_headline(self):
+        """Texto corto para hero y enlaces públicos."""
+        if self.short_description:
+            return self.short_description
+        return f"Proveedor de autopartes con operación {self.get_tier_display().lower()} en el marketplace"
+
+    def recalculate_rating_summary(self, save=True):
+        """Recalcula los agregados visibles de reputación del proveedor."""
+        visible_reviews = self.reviews.filter(
+            status=ProviderReviewStatusChoices.PUBLISHED,
+            is_visible=True,
+        )
+
+        summary = visible_reviews.aggregate(
+            average=Avg('rating'),
+            total=Count('id'),
+        )
+        breakdown_queryset = (
+            visible_reviews.values('rating')
+            .annotate(total=Count('id'))
+            .order_by('rating')
+        )
+        breakdown = {str(star): 0 for star in range(1, 6)}
+        for item in breakdown_queryset:
+            breakdown[str(item['rating'])] = item['total']
+
+        self.rating_average = summary['average'] or 0
+        self.rating_count = summary['total'] or 0
+        self.rating_breakdown = breakdown
+
+        if save:
+            self.save(update_fields=['rating_average', 'rating_count', 'rating_breakdown', 'updated_at'])
+
+        return {
+            'rating_average': self.rating_average,
+            'rating_count': self.rating_count,
+            'rating_breakdown': self.rating_breakdown,
+        }
+
 
 class Member(models.Model):
     """
@@ -547,3 +636,153 @@ class Member(models.Model):
         super().save(*args, **kwargs)
 
 
+class ProviderReview(models.Model):
+    """Reseña de un cliente para una suborden/proveedor ya entregado."""
+
+    provider = models.ForeignKey(
+        Provider,
+        on_delete=models.CASCADE,
+        related_name='reviews',
+    )
+    customer = models.ForeignKey(
+        'customer.Customer',
+        on_delete=models.CASCADE,
+        related_name='provider_reviews',
+    )
+    sub_order = models.ForeignKey(
+        'orders.SubOrder',
+        on_delete=models.CASCADE,
+        related_name='provider_reviews',
+        help_text='Suborden entregada asociada a esta reseña',
+    )
+    rating = models.PositiveSmallIntegerField(
+        choices=[(i, i) for i in range(1, 6)],
+        help_text='Calificación del 1 al 5',
+    )
+    comment = models.TextField(
+        blank=True,
+        help_text='Comentario opcional del cliente sobre el proveedor',
+    )
+    is_verified_purchase = models.BooleanField(
+        default=True,
+        help_text='True cuando la reseña está asociada a una suborden del cliente',
+    )
+    is_visible = models.BooleanField(
+        default=True,
+        help_text='Permite ocultar la reseña sin eliminarla',
+    )
+    status = models.CharField(
+        max_length=20,
+        choices=ProviderReviewStatusChoices.choices,
+        default=ProviderReviewStatusChoices.PUBLISHED,
+        help_text='Estado de moderación de la reseña',
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = 'marketplace_provider_review'
+        verbose_name = 'Reseña de Proveedor'
+        verbose_name_plural = 'Reseñas de Proveedores'
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['customer', 'sub_order'],
+                name='unique_provider_review_per_customer_suborder',
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['provider', 'status', 'is_visible']),
+            models.Index(fields=['customer', 'created_at']),
+            models.Index(fields=['sub_order']),
+        ]
+
+    def __str__(self):
+        return f"{self.provider.name} - {self.customer} ({self.rating})"
+
+    def clean(self):
+        if self.sub_order_id and self.provider_id and self.sub_order.provider_id != self.provider_id:
+            raise ValidationError({'sub_order': 'La suborden no pertenece a este proveedor.'})
+
+        if self.sub_order_id and self.customer_id and self.sub_order.order.customer_id != self.customer_id:
+            raise ValidationError({'sub_order': 'La suborden no pertenece a este cliente.'})
+
+        if self.sub_order_id and self.sub_order.status != 'entregado':
+            raise ValidationError({'sub_order': 'Solo se puede reseñar una suborden entregada.'})
+
+    def save(self, *args, **kwargs):
+        if self.sub_order_id:
+            self.provider_id = self.sub_order.provider_id
+            self.customer_id = self.sub_order.order.customer_id
+            self.is_verified_purchase = True
+
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+
+# ─────────────────────────────────────────────
+# Signal: sincronizar scope de Odoo cuando cambia variantes_habilitadas
+# ─────────────────────────────────────────────
+
+from django.db.models.signals import m2m_changed
+from django.dispatch import receiver
+
+
+@receiver(m2m_changed, sender=Provider.variantes_habilitadas.through)
+def sync_variante_scope_on_change(sender, instance, action, pk_set, **kwargs):
+    """
+    Cuando el admin agrega o quita variantes del scope de un Provider,
+    refleja el cambio en Odoo (company_ids de vehiculo.variante).
+
+    - post_add    → scope_variante_for_company   (añade visibilidad)
+    - post_remove → unscope_variante_from_company (quita visibilidad)
+
+    Solo actúa si el Provider ya tiene odoo_company_id (está configurado en Odoo).
+    Las variantes sin odoo_variante_id son ignoradas; se vinculan con push_vehicles.
+    """
+    if action not in ('post_add', 'post_remove'):
+        return
+
+    if not isinstance(instance, Provider):
+        return
+
+    company_id = instance.odoo_company_id
+    if not company_id:
+        return  # Proveedor aún no configurado en Odoo
+
+    if not pk_set:
+        return
+
+    try:
+        from apps.vehicles.models import VariantVehiculo
+        from apps.sync.odoo_connector import OdooConnector
+
+        variantes = VariantVehiculo.objects.filter(
+            pk__in=pk_set,
+            odoo_variante_id__isnull=False,
+        ).values_list('odoo_variante_id', flat=True)
+
+        if not variantes:
+            return
+
+        odoo = OdooConnector()
+        if not odoo._authenticate():
+            import logging
+            logging.getLogger(__name__).error(
+                "sync_variante_scope_on_change: no se pudo conectar a Odoo"
+            )
+            return
+
+        for odoo_variante_id in variantes:
+            if action == 'post_add':
+                odoo.scope_variante_for_company(odoo_variante_id, company_id)
+            else:
+                odoo.unscope_variante_from_company(odoo_variante_id, company_id)
+
+    except Exception as exc:
+        import logging
+        logging.getLogger(__name__).error(
+            f"sync_variante_scope_on_change error ({action}) "
+            f"provider={instance.pk}: {exc}",
+            exc_info=True,
+        )

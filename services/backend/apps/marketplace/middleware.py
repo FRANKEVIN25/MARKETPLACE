@@ -24,17 +24,21 @@ class TenantScopeMiddleware:
             try:
                 # Buscar membresía del usuario
                 membership = Member.objects.select_related('provider').filter(
-                user=request.user,
-                provider__is_active=True
+                    user=request.user,
+                    provider__is_active=True
                 ).first()
                 if membership:
                     request.current_provider = membership.provider
                     request.current_membership = membership
                     logger.debug(
-                    f"Usuario {request.user.username} → Grupo{membership.group.name}")
+                        "Usuario %s -> Proveedor %s",
+                        request.user.username,
+                        membership.provider.name,
+                    )
                 else:
                     logger.debug(
-                    f"Usuario {request.user.username} sin proveedor asignado"
+                        "Usuario %s sin proveedor asignado",
+                        request.user.username,
                     )
             except Exception as e:
                 logger.error(f"Error en TenantScopeMiddleware: {e}")

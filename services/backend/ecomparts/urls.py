@@ -60,10 +60,11 @@ urlpatterns = [
     #path('api/v1/core/', include('apps.core.urls')),
     path('api/v1/marketplace/', include('apps.marketplace.urls')),
     path('api/v1/products/', include('apps.products.urls')),
+    path('api/v1/services/', include('apps.services.urls')),
     path('api/v1/orders/', include('apps.orders.urls')),
     path('api/v1/customer/', include('apps.customer.urls')),
     path('api/v1/vehicles/', include('apps.vehicles.urls')),
-    path('api/v1/orders/', include('apps.orders.urls')), 
+    path('api/v1/cart/', include('apps.cart.urls')),
 ]
 
 # Static and media files in development

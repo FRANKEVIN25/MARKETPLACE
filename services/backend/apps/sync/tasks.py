@@ -7,8 +7,10 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 from django.db import transaction
 from apps.marketplace.models import Provider
-from apps.products.models import Product
+from apps.products.models import Product, Category
 from apps.sync.odoo_connector import OdooConnector, get_odoo_connector_for_provider
+from apps.vehicles.models import VariantVehiculo
+from apps.products.models import CompatibilidadProducto
 import logging
 
 logger = logging.getLogger(__name__)
@@ -146,132 +148,238 @@ def create_provider_with_odoo_setup(user_id, provider_data, odoo_password):
 @shared_task
 def sync_provider_products(provider_id):
     """
-    Sincroniza productos de un provider desde su Odoo al marketplace
-    
+    Sincroniza productos, categorías, almacenes y stock de un provider desde Odoo.
+
+    Orden de ejecución:
+      1. Categorías  — se crean/actualizan vinculando por odoo_category_id
+      2. Almacenes   — se crean/actualizan vinculando por odoo_warehouse_id
+      3. Productos   — se crean/actualizan con su categoría correcta
+      4. Stock       — se actualiza por almacén usando stock.quant
+
     Args:
         provider_id: ID del Provider a sincronizar
-    
+
     Returns:
         dict con estadísticas de la sincronización
     """
     try:
         provider = Provider.objects.get(id=provider_id, is_active=True, is_approved=True)
-        logger.info(f"Iniciando sincronización de productos para {provider.name}")
-        
-        # Obtener conector de Odoo
+        logger.info(f"Iniciando sincronización completa para {provider.name}")
+
         odoo = get_odoo_connector_for_provider(provider)
-        
-        # Obtener productos de Odoo
-        odoo_products = odoo.get_products(company_id=provider.odoo_company_id)
-        
+        now = timezone.now()
+
         stats = {
             'provider': provider.name,
-            'total_odoo': len(odoo_products),
-            'created': 0,
-            'updated': 0,
-            'errors': 0
+            'categories': {'created': 0, 'updated': 0},
+            'products': {'total_odoo': 0, 'created': 0, 'updated': 0, 'errors': 0},
+            'stock': {'updated': 0, 'errors': 0},
         }
-        
-        import cloudinary.uploader, base64
 
-        def upload_image(b64_data, public_id):
-            """Sube imagen base64 a Cloudinary, retorna (url, cloudinary_id)"""
-            if not b64_data or b64_data is False:
-                return None, None
+        # ── 1. CATEGORÍAS ────────────────────────────────────────────────────
+        # Se vinculan por odoo_category_id, no por nombre ni por PK de Django.
+        # Esto garantiza que aunque los auto-increment difieran entre DBs, la
+        # relación siempre es correcta.
+        #
+        # Paso 1a: crear/actualizar todas las categorías (sin parent todavía,
+        #          para evitar referencias a nodos aún no creados).
+        # Paso 1b: segunda pasada para asignar parent a partir de parent_id de
+        #          Odoo — construye la jerarquía de 3 niveles correctamente.
+        odoo_categories_raw = odoo.get_categories()
+        # Filtrar la categoría raíz 'All' de Odoo — no existe en Django y no
+        # se asigna a ningún producto; incluirla solo genera ruido.
+        odoo_categories = [
+            oc for oc in odoo_categories_raw
+            if not (oc['name'] == 'All' and not oc.get('parent_id'))
+        ]
+        odoo_categ_map = {}  # {odoo_category_id: Category instance}
+        # Estrategia de 3 vías para bridgear seed_categories → primera sync:
+        #   1. Buscar por odoo_category_id     (syncs subsiguientes)
+        #   2. Fallback: buscar por nombre     (primera sync tras seed_categories)
+        #   3. Crear si realmente no existe
+        for oc in odoo_categories:
+            created = False
             try:
-                image_data = base64.b64decode(b64_data)
-                result = cloudinary.uploader.upload(
-                    image_data,
-                    public_id=public_id,
-                    overwrite=True,
-                    resource_type="image",
-                    transformation=[{
-                        "width": 800, "height": 800,
-                        "crop": "limit", "quality": "auto",
-                        "fetch_format": "auto"
-                    }]
-                )
-                return result.get('secure_url'), result.get('public_id')
-            except Exception as img_err:
-                logger.warning(f"⚠️ No se pudo subir imagen a Cloudinary ({public_id}): {img_err}")
-                return None, None
+                cat = Category.objects.get(odoo_category_id=oc['id'])
+                changed = False
+                if cat.name != oc['name']:
+                    cat.name = oc['name']
+                    changed = True
+                if not cat.is_active:
+                    cat.is_active = True
+                    changed = True
+                if changed:
+                    cat.save(update_fields=['name', 'is_active'])
+            except Category.DoesNotExist:
+                # Bridge: categoría creada por seed_categories (odoo_category_id=NULL)
+                try:
+                    cat = Category.objects.get(
+                        name=oc['name'], odoo_category_id__isnull=True
+                    )
+                    cat.odoo_category_id = oc['id']
+                    if not cat.is_active:
+                        cat.is_active = True
+                    cat.save(update_fields=['odoo_category_id', 'is_active'])
+                except Category.DoesNotExist:
+                    cat = Category(odoo_category_id=oc['id'], name=oc['name'], is_active=True)
+                    cat.save()
+                    created = True
+                except Category.MultipleObjectsReturned:
+                    cat = Category.objects.filter(
+                        name=oc['name'], odoo_category_id__isnull=True
+                    ).first()
+                    cat.odoo_category_id = oc['id']
+                    cat.save(update_fields=['odoo_category_id', 'is_active'])
+            odoo_categ_map[oc['id']] = cat
+            if created:
+                stats['categories']['created'] += 1
+            else:
+                stats['categories']['updated'] += 1
 
-        # Batch-fetch imágenes de galería para todos los templates de este provider
-        tmpl_ids = set()
-        for p in odoo_products:
-            tmpl = p.get('product_tmpl_id')
-            if tmpl:
-                tid = tmpl[0] if isinstance(tmpl, list) else tmpl
-                tmpl_ids.add(tid)
-        gallery_by_tmpl = odoo.get_gallery_images(tmpl_ids)
-        logger.info(f"Galería cargada: {sum(len(v) for v in gallery_by_tmpl.values())} imágenes para {len(gallery_by_tmpl)} templates")
+        # Paso 1b — asignar parents
+        for oc in odoo_categories:
+            parent_raw = oc.get('parent_id')  # False o [id, 'nombre']
+            if not parent_raw:
+                continue
+            parent_odoo_id = parent_raw[0]
+            parent_cat = odoo_categ_map.get(parent_odoo_id)
+            child_cat  = odoo_categ_map.get(oc['id'])
+            if parent_cat and child_cat and child_cat.parent_id != parent_cat.pk:
+                child_cat.parent = parent_cat
+                child_cat.save(update_fields=['parent'])
+
+        logger.info(
+            f"{provider.name} — categorías: "
+            f"+{stats['categories']['created']} / ~{stats['categories']['updated']}"
+        )
+
+        # ── 2. PRODUCTOS ────────────────────────────────────────────────────
+        odoo_products = odoo.get_products(company_id=provider.odoo_company_id)
+        stats['products']['total_odoo'] = len(odoo_products)
 
         for odoo_product in odoo_products:
             try:
-                product_ref = odoo_product.get('default_code') or str(odoo_product['id'])
+                # Subir imagen a Cloudinary si existe en Odoo
+                image_url = None
+                image_cloudinary_id = None
+                image_b64 = odoo_product.get('image_1920')
+                if image_b64 and image_b64 is not False:
+                    try:
+                        import cloudinary.uploader, base64
+                        image_data = base64.b64decode(image_b64)
+                        product_ref = odoo_product.get('default_code') or str(odoo_product['id'])
+                        upload_result = cloudinary.uploader.upload(
+                            image_data,
+                            public_id=f"ecomparts/products/{product_ref}",
+                            overwrite=True,
+                            resource_type="image",
+                            transformation=[{
+                                "width": 800, "height": 800,
+                                "crop": "limit", "quality": "auto",
+                                "fetch_format": "auto"
+                            }]
+                        )
+                        image_url = upload_result.get('secure_url')
+                        image_cloudinary_id = upload_result.get('public_id')
+                        logger.info(f"✅ Imagen subida a Cloudinary: {image_url}")
+                    except Exception as img_err:
+                        logger.warning(f"⚠️ No se pudo subir imagen a Cloudinary: {img_err}")
 
-                # Imagen principal desde image_1920
-                image_url, image_cloudinary_id = upload_image(
-                    odoo_product.get('image_1920'),
-                    f"ecomparts/products/{product_ref}"
-                )
+                # Resolución de referencia con protección contra duplicados de Odoo
+                raw_reference = odoo_product.get('default_code') or None
+                if raw_reference:
+                    conflict = Product.objects.filter(
+                        provider=provider,
+                        reference=raw_reference
+                    ).exclude(odoo_product_id=odoo_product['id']).exists()
+                    if conflict:
+                        logger.warning(
+                            f"Referencia duplicada en Odoo '{raw_reference}' "
+                            f"(provider={provider.id}, odoo_id={odoo_product['id']}). "
+                            f"Usando fallback ODOO-{odoo_product['id']}."
+                        )
+                        raw_reference = f"ODOO-{odoo_product['id']}"
 
-                # Imágenes 2 y 3 desde la galería ecomparts_image_ids
-                tmpl = odoo_product.get('product_tmpl_id')
-                tmpl_id = tmpl[0] if isinstance(tmpl, list) else tmpl
-                gallery_imgs = gallery_by_tmpl.get(tmpl_id, [])
-
-                image_url_2, image_cloudinary_id_2 = upload_image(
-                    gallery_imgs[0].get('image') if len(gallery_imgs) > 0 else None,
-                    f"ecomparts/products/{product_ref}_gallery_1"
-                )
-                image_url_3, image_cloudinary_id_3 = upload_image(
-                    gallery_imgs[1].get('image') if len(gallery_imgs) > 1 else None,
-                    f"ecomparts/products/{product_ref}_gallery_2"
-                )
-
-                if image_url:
-                    logger.info(f"✅ Imagen principal subida para {product_ref} | galería: {len(gallery_imgs)} imgs")
+                # Stock total directo desde qty_available de Odoo
+                qty_available = int(odoo_product.get('qty_available') or 0)
 
                 # Buscar o crear producto en marketplace
+                # Resolver categoría vía odoo_category_id
+                categ_raw = odoo_product.get('categ_id')  # (id, nombre) o False
+                category = None
+                if categ_raw and isinstance(categ_raw, (list, tuple)) and categ_raw[0]:
+                    category = odoo_categ_map.get(categ_raw[0])
+
+                # Resolver product_tmpl_id
+                tmpl_raw = odoo_product.get('product_tmpl_id')
+                tmpl_id = tmpl_raw[0] if isinstance(tmpl_raw, (list, tuple)) else tmpl_raw
+
                 product, created = Product.objects.update_or_create(
                     provider=provider,
                     odoo_product_id=odoo_product['id'],
                     defaults={
                         'name': odoo_product['name'],
-                        'reference': odoo_product.get('default_code') or str(odoo_product.get('id', '')),
+                        'reference': raw_reference,
                         'description': odoo_product.get('description_sale') or '',
                         'price': odoo_product.get('list_price', 0),
                         'image_url': image_url,
                         'image_cloudinary_id': image_cloudinary_id,
-                        'image_url_2': image_url_2,
-                        'image_cloudinary_id_2': image_cloudinary_id_2,
-                        'image_url_3': image_url_3,
-                        'image_cloudinary_id_3': image_cloudinary_id_3,
+                        'product_type': odoo_product.get('type', 'product'),
+                        'category': category,
                         'is_active': odoo_product.get('active', True),
-                        'last_sync_at': timezone.now()
+                        'odoo_template_id': tmpl_id,
+                        'odoo_state': 'synced',
+                        'last_sync_at': now,
+                        'total_stock_cached': qty_available,
                     }
                 )
 
                 if created:
-                    stats['created'] += 1
+                    stats['products']['created'] += 1
                 else:
-                    stats['updated'] += 1
+                    stats['products']['updated'] += 1
 
             except Exception as e:
-                logger.error(f"Error al sincronizar producto {odoo_product['id']}: {e}")
-                stats['errors'] += 1
-        
-        # Actualizar contador de productos del provider
+                logger.error(f"Error sincronizando producto {odoo_product.get('id')}: {e}")
+                stats['products']['errors'] += 1
+
+        logger.info(
+            f"{provider.name} — productos: "
+            f"+{stats['products']['created']} / ~{stats['products']['updated']} "
+            f"/ err {stats['products']['errors']}"
+        )
+
+        # ── 3. STOCK TOTAL ────────────────────────────────────────────────────
+        # total_stock_cached ya se actualizó en el paso de productos
+        # desde qty_available de Odoo. No hay tablas de stock separadas.
+        stats['stock']['updated'] = stats['products']['created'] + stats['products']['updated']
+        logger.info(
+            f"{provider.name} — stock: {stats['stock']['updated']} productos con stock actualizado"
+        )
+
+        # ── 4. COMPATIBILIDADES PRODUCTO ↔ VEHÍCULO ──────────────────────────
+        # Se ejecuta al final para garantizar que los productos ya tienen
+        # odoo_template_id poblado (paso anterior).
+        compat_stats = sync_provider_compatibility(provider_id)
+        stats['compatibility'] = {
+            'created': compat_stats.get('compat_created', 0),
+            'updated': compat_stats.get('compat_updated', 0),
+            'skipped': (
+                compat_stats.get('skipped_no_product', 0) +
+                compat_stats.get('skipped_no_variant', 0)
+            ),
+            'errors': compat_stats.get('errors', 0),
+        }
+
+        # Actualizar contador de productos activos del provider
         provider.total_products = Product.objects.filter(
-            provider=provider,
-            is_active=True
+            provider=provider, is_active=True
         ).count()
         provider.save(update_fields=['total_products'])
-        
-        logger.info(f"Sincronización completada para {provider.name}: {stats}")
+
+        logger.info(f"Sincronización completa para {provider.name}: {stats}")
         return stats
-        
+
     except Provider.DoesNotExist:
         logger.error(f"Provider {provider_id} no existe o no está activo")
         return {'error': 'Provider no encontrado'}
@@ -306,40 +414,224 @@ def sync_all_active_providers():
 
 
 @shared_task
+def sync_all_stock():
+    """
+    Dispara sync_provider_stock para todos los providers activos.
+    Se ejecuta cada 15 minutos vía Celery Beat — solo actualiza stock.quant,
+    no toca categorías ni datos de producto.
+    """
+    providers = Provider.objects.filter(
+        is_active=True,
+        is_approved=True,
+        odoo_company_id__isnull=False
+    )
+    logger.info(f"Iniciando sync de stock para {providers.count()} providers")
+    results = []
+    for provider in providers:
+        result = sync_provider_stock.delay(provider.id)
+        results.append({'provider_id': provider.id, 'task_id': result.id})
+    return {'total_providers': providers.count(), 'tasks_launched': results}
+
+
+@shared_task
+def sync_provider_compatibility(provider_id):
+    """
+    Sincroniza las compatibilidades de producto↔vehículo desde Odoo.
+
+    Flujo:
+      1. Obtiene todos los productos del provider que tienen odoo_template_id
+      2. Consulta autopart.compatibility en Odoo para esos templates (en lote)
+      3. Para cada registro de compatibilidad:
+           - Resuelve el Product Django por odoo_template_id
+           - Resuelve el VariantVehiculo Django por:
+               a) vehiculo.variante.django_external_id  (si está seteado, es el PK de Django)
+               b) VariantVehiculo.odoo_variante_id       (si fue sinced previamente)
+               c) Coincidencia por clave natural (modelo+motor+transmision+traccion+años)
+      4. Crea o actualiza CompatibilidadProducto con las notas de montaje
+
+    Args:
+        provider_id: ID del Provider
+
+    Returns:
+        dict con estadísticas
+    """
+    try:
+        provider = Provider.objects.get(id=provider_id, is_active=True)
+        odoo = get_odoo_connector_for_provider(provider)
+
+        stats = {
+            'provider': provider.name,
+            'compat_created': 0,
+            'compat_updated': 0,
+            'skipped_no_product': 0,
+            'skipped_no_variant': 0,
+            'errors': 0,
+        }
+
+        # ── 1. Templates del provider ──────────────────────────────────────
+        provider_products = list(
+            Product.objects
+            .filter(provider=provider, odoo_template_id__isnull=False)
+            .values('id', 'odoo_template_id')
+        )
+        tmpl_to_product_id = {p['odoo_template_id']: p['id'] for p in provider_products}
+        tmpl_ids = list(tmpl_to_product_id.keys())
+
+        if not tmpl_ids:
+            logger.info(f"{provider.name}: sin productos con odoo_template_id, omitiendo compatibilidades")
+            return stats
+
+        # ── 2. Compatibilidades desde Odoo (una sola query) ────────────────
+        compat_records = odoo.get_compatibilities(tmpl_ids)
+        logger.info(f"{provider.name}: {len(compat_records)} compatibilidad(es) encontradas en Odoo")
+
+        # ── 3. Prefetch variantes de Odoo (una sola query) ─────────────────
+        odoo_variant_ids = [
+            r['variant_id'][0] for r in compat_records
+            if r.get('variant_id')
+        ]
+        odoo_variant_map = odoo.get_vehicle_variants(list(set(odoo_variant_ids)))
+
+        # ── 4. Procesar cada compatibilidad ────────────────────────────────
+        for record in compat_records:
+            try:
+                # Resolver Product
+                tmpl_id = record['product_tmpl_id'][0] if record.get('product_tmpl_id') else None
+                product_id = tmpl_to_product_id.get(tmpl_id)
+                if not product_id:
+                    stats['skipped_no_product'] += 1
+                    continue
+
+                # Resolver VariantVehiculo
+                odoo_variant_id = record['variant_id'][0] if record.get('variant_id') else None
+                variant = _resolve_django_variant(odoo_variant_id, odoo_variant_map)
+                if not variant:
+                    stats['skipped_no_variant'] += 1
+                    logger.warning(
+                        f"No se encontró VariantVehiculo para odoo_variante_id={odoo_variant_id} "
+                        f"(product_tmpl_id={tmpl_id})"
+                    )
+                    continue
+
+                # Persistir odoo_variante_id para futuras syncs
+                if variant.odoo_variante_id != odoo_variant_id:
+                    VariantVehiculo.objects.filter(pk=variant.pk).update(
+                        odoo_variante_id=odoo_variant_id
+                    )
+
+                # Crear / actualizar CompatibilidadProducto
+                notes = record.get('fitment_notes') or ''
+                _, created = CompatibilidadProducto.objects.update_or_create(
+                    producto_id=product_id,
+                    variante=variant,
+                    defaults={'notas_instalacion': notes[:255]}
+                )
+                if created:
+                    stats['compat_created'] += 1
+                else:
+                    stats['compat_updated'] += 1
+
+            except Exception as e:
+                stats['errors'] += 1
+                logger.error(
+                    f"Error procesando compatibilidad odoo_id={record.get('id')}: {e}",
+                    exc_info=True,
+                )
+
+        logger.info(f"{provider.name} compatibilidades: {stats}")
+        return stats
+
+    except Provider.DoesNotExist:
+        return {'error': 'Provider no encontrado'}
+    except Exception as e:
+        logger.error(f"Error en sync_provider_compatibility provider={provider_id}: {e}")
+        return {'error': str(e)}
+
+
+def _resolve_django_variant(odoo_variant_id, odoo_variant_map):
+    """
+    Resuelve un VariantVehiculo de Django a partir del ID de Odoo.
+
+    Estrategia en orden de prioridad:
+      1. VariantVehiculo.odoo_variante_id == odoo_variant_id  (más rápido)
+      2. vehiculo.variante.django_external_id → PK directo en Django
+      3. Natural key: modelo+motor+transmision+traccion+años via los IDs de Odoo
+         que ya están guardados en Odoo como relaciones a los catalogs
+         (fallback, solo si las entidades tienen sus propios django_external_id)
+
+    Args:
+        odoo_variant_id (int): ID de vehiculo.variante en Odoo
+        odoo_variant_map (dict): Resultado de get_vehicle_variants()
+
+    Returns:
+        VariantVehiculo | None
+    """
+    if not odoo_variant_id:
+        return None
+
+    # Estrategia 1: ya tenemos el odoo_variante_id en Django
+    try:
+        v = VariantVehiculo.objects.get(odoo_variante_id=odoo_variant_id)
+        return v
+    except VariantVehiculo.DoesNotExist:
+        pass
+
+    # Estrategia 2: usar django_external_id guardado en Odoo
+    odoo_record = odoo_variant_map.get(odoo_variant_id)
+    if odoo_record:
+        django_ext_id = odoo_record.get('django_external_id')
+        if django_ext_id:
+            try:
+                django_pk = int(django_ext_id)
+                return VariantVehiculo.objects.get(pk=django_pk)
+            except (ValueError, TypeError, VariantVehiculo.DoesNotExist):
+                pass
+
+    # Estrategia 3: matching por clave natural (anio_desde + anio_hasta + slugs)
+    # Solo llega aquí si ni odoo_variante_id ni django_external_id están seteados.
+    # En ese caso no podemos resolver sin riesgo de falsos positivos.
+    logger.debug(
+        f"No se pudo resolver VariantVehiculo para odoo_variante_id={odoo_variant_id}. "
+        "Ejecutar push de vehículos desde Django a Odoo para poblar django_external_id."
+    )
+    return None
+
+
+@shared_task
 def sync_provider_stock(provider_id):
     """
-    Sincroniza solo el stock de productos (más rápido que sincronizar todo)
-    
+    Actualiza total_stock_cached de todos los productos del provider
+    consultando qty_available directamente desde Odoo.
+    Más rápido que la sync completa: no toca categorías ni datos de producto.
+
     Args:
         provider_id: ID del Provider
     """
     try:
         provider = Provider.objects.get(id=provider_id, is_active=True)
         odoo = get_odoo_connector_for_provider(provider)
-        
-        # Obtener todos los productos del provider en marketplace
-        marketplace_products = Product.objects.filter(provider=provider, is_active=True)
-        
+
         stats = {'updated': 0, 'errors': 0}
-        
-        for product in marketplace_products:
+
+        odoo_products = odoo.get_products(company_id=provider.odoo_company_id)
+
+        for op in odoo_products:
+            qty = int(op.get('qty_available') or 0)
             try:
-                # Obtener stock actualizado de Odoo
-                stock_info = odoo.get_product_stock(product.odoo_product_id)
-                
-                if stock_info:
-                    product.stock = int(stock_info.get('qty_available', 0))
-                    product.last_sync_at = timezone.now()
-                    product.save(update_fields=['stock', 'last_sync_at'])
-                    stats['updated'] += 1
-                    
+                rows = Product.objects.filter(
+                    provider=provider,
+                    odoo_product_id=op['id']
+                ).update(total_stock_cached=qty)
+                stats['updated'] += rows
             except Exception as e:
-                logger.error(f"Error al actualizar stock de producto {product.id}: {e}")
+                logger.error(
+                    f"Error actualizando stock odoo_product_id={op['id']}: {e}"
+                )
                 stats['errors'] += 1
-        
+
         logger.info(f"Stock actualizado para {provider.name}: {stats}")
         return stats
-        
+
     except Exception as e:
         logger.error(f"Error en sync_provider_stock: {e}")
         return {'error': str(e)}

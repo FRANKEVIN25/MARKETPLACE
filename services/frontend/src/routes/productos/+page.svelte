@@ -3,7 +3,10 @@
   import ProductCard from '$lib/components/ProductCard.svelte';
   import { goto } from '$app/navigation';
   import { onMount } from 'svelte';
+  import { get } from 'svelte/store';
   import { api } from '$lib/api/client';
+  import { auth } from '$lib/store/auth';
+  import type { Customer, CustomerSelectedVehicle } from '$lib/api/types';
 
   export let data: PageData;
 
@@ -26,11 +29,11 @@
 
   let cargandoModelos = false;
   let cargandoVariantes = false;
+  let sincronizandoVehiculo = false;
+  let persistenciaVehiculoInicializada = false;
+  let ultimaClavePersistidaVehiculo = '';
 
-  // Proveedores disponibles en la página actual (derivados de los productos cargados)
-  $: proveedores = Array.from(
-    new Map(data.products.map((p) => [p.provider_group, p.provider_name])).entries()
-  ).map(([id, name]) => ({ id, name }));
+  const isAuthenticated = auth.isAuthenticated;
 
   // Categorías cargadas desde el load (tipadas de forma flexible)
   const categorias: any[] = (data as any).categories ?? [];
@@ -66,6 +69,89 @@
     }
   }
 
+  function obtenerPayloadVehiculo() {
+    return {
+      selected_vehicle_variante_id: filtros.variante_id ? Number(filtros.variante_id) : null,
+    };
+  }
+
+  function obtenerClaveVehiculo(payload = obtenerPayloadVehiculo()) {
+    return JSON.stringify(payload);
+  }
+
+  async function cargarCustomerActual(): Promise<Customer | null> {
+    const token = auth.getAccessToken();
+    if (!token) return null;
+
+    const customerActual = get(auth.customer);
+    if (customerActual) return customerActual;
+
+    try {
+      const customer = await api.customer.getProfile(token);
+      auth.customer.set(customer);
+      return customer;
+    } catch (error) {
+      console.error('Error cargando customer actual', error);
+      return null;
+    }
+  }
+
+  async function persistirSeleccionVehiculo(force = false) {
+    if (!persistenciaVehiculoInicializada) return;
+
+    const token = auth.getAccessToken();
+    if (!token) return;
+
+    const payload = obtenerPayloadVehiculo();
+    const clave = obtenerClaveVehiculo(payload);
+    if (!force && clave === ultimaClavePersistidaVehiculo) return;
+
+    sincronizandoVehiculo = true;
+    try {
+      const customerActualizado = await api.customer.updateProfile(token, payload);
+      auth.customer.set(customerActualizado);
+      ultimaClavePersistidaVehiculo = clave;
+    } catch (error) {
+      console.error('Error persistiendo selección de vehículo', error);
+    } finally {
+      sincronizandoVehiculo = false;
+    }
+  }
+
+  async function aplicarVehiculoGuardado(selectedVehicle: CustomerSelectedVehicle) {
+    filtros.marca_id = selectedVehicle.marca_id ? String(selectedVehicle.marca_id) : '';
+    filtros.modelo_id = selectedVehicle.modelo_id ? String(selectedVehicle.modelo_id) : '';
+    filtros.variante_id = selectedVehicle.variante_id ? String(selectedVehicle.variante_id) : '';
+    filtros.page = 1;
+
+    if (filtros.marca_id) {
+      await cargarModelos(filtros.marca_id);
+    }
+    if (filtros.modelo_id) {
+      await cargarVariantes(filtros.modelo_id);
+    }
+  }
+
+  async function hidratarVehiculoDesdePerfil() {
+    if (filtros.marca_id || filtros.modelo_id || filtros.variante_id) {
+      persistenciaVehiculoInicializada = true;
+      ultimaClavePersistidaVehiculo = obtenerClaveVehiculo();
+      return;
+    }
+
+    const customer = await cargarCustomerActual();
+    if (!customer?.selected_vehicle) {
+      persistenciaVehiculoInicializada = true;
+      ultimaClavePersistidaVehiculo = obtenerClaveVehiculo();
+      return;
+    }
+
+    await aplicarVehiculoGuardado(customer.selected_vehicle);
+    persistenciaVehiculoInicializada = true;
+    ultimaClavePersistidaVehiculo = obtenerClaveVehiculo();
+    actualizarURL();
+  }
+
   // Helper para actualizar la URL con los filtros actuales
   function actualizarURL() {
     const params = new URLSearchParams();
@@ -75,7 +161,6 @@
     if (filtros.variante_id) params.set('variante_id', String(filtros.variante_id));
     if (filtros.q) params.set('q', filtros.q);
     if (filtros.category_id) params.set('category_id', String(filtros.category_id));
-    if (filtros.provider_id) params.set('provider_id', String(filtros.provider_id));
     if (filtros.es_universal !== null && filtros.es_universal !== undefined) {
       params.set('es_universal', filtros.es_universal ? 'true' : 'false');
     }
@@ -97,6 +182,8 @@
     if (filtros.modelo_id) {
       await cargarVariantes(filtros.modelo_id);
     }
+
+    await hidratarVehiculoDesdePerfil();
   });
 
   $: marcaSeleccionada = data.marcas.find(
@@ -184,6 +271,7 @@
               filtros.variante_id = '';
               filtros.page = 1;
               await cargarModelos(filtros.marca_id || null);
+              await persistirSeleccionVehiculo();
               actualizarURL();
             }}
           >
@@ -208,6 +296,7 @@
               filtros.variante_id = '';
               filtros.page = 1;
               await cargarVariantes(filtros.modelo_id || null);
+              await persistirSeleccionVehiculo();
               actualizarURL();
             }}
           >
@@ -228,8 +317,9 @@
             bind:value={filtros.variante_id}
             class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
             disabled={!filtros.modelo_id}
-            on:change={() => {
+            on:change={async () => {
               filtros.page = 1;
+              await persistirSeleccionVehiculo();
               actualizarURL();
             }}
           >
@@ -241,31 +331,20 @@
         </div>
       </div>
 
-      <!-- Filtros adicionales: Proveedor y Universales -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-        <!-- Proveedor -->
-        <div>
-          <label for="filtro-proveedor" class="block text-sm font-medium text-gray-700 mb-2">
-            Proveedor
-          </label>
-          <select
-            id="filtro-proveedor"
-            bind:value={filtros.provider_id}
-            class="w-full mb-6 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            on:change={() => {
-              filtros.page = 1;
-              actualizarURL();
-            }}
-          >
-            <option value="">Todos los proveedores</option>
-            {#each proveedores as prov}
-              <option value={prov.id}>{prov.name}</option>
-            {/each}
-          </select>
-        </div>
+      <div class="flex flex-wrap items-center gap-3 text-sm text-gray-600">
+        <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-2 text-blue-800">
+          El vehículo activo filtra el catálogo y se conserva en tu cuenta.
+        </span>
+        {#if $isAuthenticated}
+          <span class={`inline-flex items-center rounded-full px-3 py-2 ${sincronizandoVehiculo ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>
+            {sincronizandoVehiculo ? 'Guardando vehículo activo...' : 'Vehículo activo sincronizado'}
+          </span>
+        {/if}
+      </div>
 
-        <!-- Productos universales -->
-        <div class="flex items-center space-x-4 mt-6 md:mt-0">
+      <!-- Filtros adicionales: Universales -->
+      <div class="mt-4">
+        <div class="flex items-center space-x-4">
           <button
             type="button"
             class={`inline-flex items-center px-3 py-2 rounded-full text-sm border ${
@@ -301,19 +380,20 @@
     </div>
 
     <!-- Filtros aplicados (chips) -->
-    {#if marcaSeleccionada || modeloSeleccionado || varianteSeleccionada || filtros.category_id || filtros.provider_id || (filtros.es_universal !== null && filtros.es_universal !== undefined)}
+    {#if marcaSeleccionada || modeloSeleccionado || varianteSeleccionada || filtros.category_id || (filtros.es_universal !== null && filtros.es_universal !== undefined)}
       <div class="flex flex-wrap items-center gap-2 mb-6">
         {#if marcaSeleccionada}
           <button
             type="button"
             class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 hover:bg-blue-200"
-            on:click={() => {
+            on:click={async () => {
               filtros.marca_id = '';
               filtros.modelo_id = '';
               filtros.variante_id = '';
               filtros.page = 1;
               modelos = [];
               variantes = [];
+              await persistirSeleccionVehiculo();
               actualizarURL();
             }}
           >
@@ -326,11 +406,12 @@
           <button
             type="button"
             class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 hover:bg-blue-200"
-            on:click={() => {
+            on:click={async () => {
               filtros.modelo_id = '';
               filtros.variante_id = '';
               filtros.page = 1;
               variantes = [];
+              await persistirSeleccionVehiculo();
               actualizarURL();
             }}
           >
@@ -343,9 +424,10 @@
           <button
             type="button"
             class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 hover:bg-blue-200"
-            on:click={() => {
+            on:click={async () => {
               filtros.variante_id = '';
               filtros.page = 1;
+              await persistirSeleccionVehiculo();
               actualizarURL();
             }}
           >
@@ -367,27 +449,6 @@
                   }}
                 >
                   Categoría: {category.name}
-                  <span class="ml-2 text-xs">✕</span>
-                </button>
-              {/if}
-            {/each}
-          {/if}
-        {/if}
-
-        {#if filtros.provider_id}
-          {#if proveedores.length}
-            {#each proveedores as prov}
-              {#if String(prov.id) === String(filtros.provider_id)}
-                <button
-                  type="button"
-                  class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-indigo-100 text-indigo-800 hover:bg-indigo-200"
-                  on:click={() => {
-                    filtros.provider_id = '';
-                    filtros.page = 1;
-                    actualizarURL();
-                  }}
-                >
-                  Proveedor: {prov.name}
                   <span class="ml-2 text-xs">✕</span>
                 </button>
               {/if}
@@ -417,7 +478,7 @@
         <button
           type="button"
           class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 ml-auto"
-          on:click={() => {
+          on:click={async () => {
             filtros.marca_id = '';
             filtros.modelo_id = '';
             filtros.variante_id = '';
@@ -427,6 +488,7 @@
             filtros.page = 1;
             modelos = [];
             variantes = [];
+            await persistirSeleccionVehiculo();
             actualizarURL();
           }}
         >

@@ -2,7 +2,7 @@
 Serializers de Products - APIs para Svelte
 """
 from rest_framework import serializers
-from .models import Category, Product, Warehouse, StockItem, CompatibilidadProducto
+from .models import Category, Product, Store, CompatibilidadProducto
 
 
 class CategorySerializer(serializers.ModelSerializer):
@@ -12,99 +12,59 @@ class CategorySerializer(serializers.ModelSerializer):
         model = Category
         fields = [
             'id', 'name', 'slug', 'parent',
-            'description', 'image_url',
+            'description',
             'is_active', 'children_count',
             'created_at', 'updated_at'
         ]
         read_only_fields = ['slug', 'created_at', 'updated_at']
 
 
-class StockItemSerializer(serializers.ModelSerializer):
-    """Serializer para stock - mostrar disponibilidad por almacén"""
-    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
-    warehouse_city = serializers.CharField(source='warehouse.city', read_only=True)
-    is_low_stock = serializers.BooleanField(read_only=True)
-    is_out_of_stock = serializers.BooleanField(read_only=True)
-    
-    class Meta:
-        model = StockItem
-        fields = [
-            'id', 'warehouse', 'warehouse_name', 'warehouse_city',
-            'quantity', 'is_low_stock', 'is_out_of_stock',
-            'updated_at'
-        ]
-        read_only_fields = ['warehouse', 'warehouse_name', 'warehouse_city', 'updated_at']
-
-
-class WarehouseSerializer(serializers.ModelSerializer):
-    """Serializer para almacenes"""
+class StoreSerializer(serializers.ModelSerializer):
+    """Tiendas físicas del proveedor (puntos de retiro)."""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
-    total_stock = serializers.IntegerField(read_only=True)
-    
+
     class Meta:
-        model = Warehouse
+        model = Store
         fields = [
             'id', 'provider', 'provider_name',
-            'name', 'city', 'address',
-            'is_active', 'total_stock',
+            'name', 'city', 'address', 'phone',
+            'is_active',
             'created_at', 'updated_at'
         ]
-        read_only_fields = ['provider_name', 'total_stock', 'created_at', 'updated_at']
+        read_only_fields = ['provider', 'provider_name', 'created_at', 'updated_at']
 
 
 class ProductDetailSerializer(serializers.ModelSerializer):
-    """Serializer detallado de producto con stock por almacén"""
+    """Serializer detallado de producto."""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
+    provider_slug = serializers.CharField(source='provider.slug', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
     is_synced = serializers.BooleanField(read_only=True)
     provider_group = serializers.IntegerField(source='provider.id', read_only=True)
-    
-    total_stock = serializers.IntegerField(read_only=True)
-    stock_por_almacen = serializers.SerializerMethodField()
-    description = serializers.SerializerMethodField()
-
-    def get_description(self, obj):
-        """Filtra False/None de Odoo y retorna string vacío"""
-        desc = obj.description
-        if not desc or desc is False or str(desc).lower() == 'false':
-            return ''
-        return str(desc)
+    total_stock = serializers.IntegerField(source='total_stock_cached', read_only=True)
 
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider_group', 'provider_name',
+            'provider_group', 'provider_name', 'provider_slug',
             'product_type', 'manufacturer_code',
-            'description', 'image_url', 'image_url_2', 'image_url_3',
+            'description', 'image_url',
             'price', 'tax_percent',
             'category', 'category_name',
             'is_active', 'is_synced',
-            'total_stock', 'stock_por_almacen',
+            'total_stock',
+            'autopart_side', 'autopart_quality', 'es_universal',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
-            'slug', 'is_synced', 'provider_group', 'provider_name',
+            'slug', 'is_synced', 'provider_group', 'provider_name', 'provider_slug',
             'odoo_product_id', 'odoo_template_id',
-            'last_synced_at', 'created_at', 'updated_at',
-            'total_stock', 'stock_por_almacen'
+            'last_sync_at', 'created_at', 'updated_at',
+            'total_stock'
         ]
 
-    def get_stock_por_almacen(self, obj):
-        # Devuelve lista de almacenes con stock para este producto
-        stock_items = obj.stock_items.select_related('warehouse')
-        return [
-            {
-                'warehouse_id': item.warehouse.id,
-                'warehouse_name': item.warehouse.name,
-                'warehouse_city': item.warehouse.city,
-                'quantity': item.quantity
-            }
-            for item in stock_items
-        ]
-    
     def validate(self, data):
-        """Validar que el producto pertenezca al proveedor del usuario"""
         request = self.context.get('request')
         if request and hasattr(request, 'current_provider'):
             data['provider'] = request.current_provider
@@ -112,37 +72,31 @@ class ProductDetailSerializer(serializers.ModelSerializer):
 
 
 class ProductListSerializer(serializers.ModelSerializer):
-    """Serializer simplificado para listados (mejor rendimiento)"""
+    """Serializer simplificado para listados (mejor rendimiento)."""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
+    provider_slug = serializers.CharField(source='provider.slug', read_only=True)
     provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
-    total_stock = serializers.IntegerField(read_only=True)
+    total_stock = serializers.IntegerField(source='total_stock_cached', read_only=True)
     is_synced = serializers.BooleanField(read_only=True)
-    
-    # Precio con impuesto
-    price_with_tax = serializers.SerializerMethodField()
-    
+    price_with_tax = serializers.FloatField(read_only=True)
+
     class Meta:
         model = Product
         fields = [
             'id', 'name', 'reference', 'slug',
-            'provider_group', 'provider_name', 'product_type',
+            'provider_group', 'provider_name', 'provider_slug', 'product_type',
             'price', 'price_with_tax', 'tax_percent',
-            'category_name', 'image_url', 'image_url_2', 'image_url_3',
-            'is_active', 'total_stock',
+            'category_name', 'image_url',
+            'is_active', 'is_published', 'total_stock',
             'is_synced', 'created_at'
         ]
         read_only_fields = fields
-    
-    def get_price_with_tax(self, obj):
-        """Calcular precio con impuesto"""
-        tax_amount = obj.price * (obj.tax_percent / 100)
-        return float(obj.price + tax_amount)
 
 
 class ProductCreateUpdateSerializer(serializers.ModelSerializer):
-    """Serializer para crear/actualizar productos"""
-    
+    """Serializer para crear/actualizar productos."""
+
     class Meta:
         model = Product
         fields = [
@@ -150,70 +104,39 @@ class ProductCreateUpdateSerializer(serializers.ModelSerializer):
             'manufacturer_code', 'description',
             'price', 'tax_percent',
             'category', 'is_active', 'es_universal',
-            'image_url', 'image_cloudinary_id',
-            'image_url_2', 'image_cloudinary_id_2',
-            'image_url_3', 'image_cloudinary_id_3'
+            'autopart_side', 'autopart_quality',
+            'image_url', 'image_cloudinary_id'
         ]
-    
+
     def validate_reference(self, value):
-        """Validar que la referencia sea única dentro del proveedor"""
         request = self.context.get('request')
         provider = getattr(request, 'current_provider', None)
-        
         if not provider:
             raise serializers.ValidationError("No provider found")
-        
-        # Si es edición, excluir el producto actual
+        qs = Product.objects.filter(provider=provider, reference=value)
         if self.instance:
-            if Product.objects.filter(
-                provider=provider,
-                reference=value
-            ).exclude(id=self.instance.id).exists():
-                raise serializers.ValidationError(
-                    "Un producto con esta referencia ya existe en tu catálogo"
-                )
-        else:
-            if Product.objects.filter(provider=provider, reference=value).exists():
-                raise serializers.ValidationError(
-                    "Un producto con esta referencia ya existe en tu catálogo"
-                )
-        
+            qs = qs.exclude(id=self.instance.id)
+        if qs.exists():
+            raise serializers.ValidationError(
+                "Un producto con esta referencia ya existe en tu catálogo"
+            )
         return value
-    
+
     def validate_price(self, value):
-        """Validar que el precio sea positivo"""
         if value <= 0:
             raise serializers.ValidationError("El precio debe ser mayor a 0")
         return value
-    
+
     def create(self, validated_data):
-        """Crear producto asignando automáticamente el proveedor"""
         request = self.context.get('request')
         validated_data['provider'] = request.current_provider
         return super().create(validated_data)
 
 
-class StockUpdateSerializer(serializers.ModelSerializer):
-    """Serializer para actualizar stock"""
-    warehouse_name = serializers.CharField(source='warehouse.name', read_only=True)
-    
-    class Meta:
-        model = StockItem
-        fields = ['id', 'quantity', 'warehouse_name']
-        read_only_fields = ['id', 'warehouse_name']
-    
-    def validate_quantity(self, value):
-        """Validar que la cantidad sea no negativa"""
-        if value < 0:
-            raise serializers.ValidationError("La cantidad no puede ser negativa")
-        return value
-
-
 class CompatibilidadProductoSerializer(serializers.ModelSerializer):
-    """Serializer para compatibilidades de productos"""
     variante_nombre = serializers.CharField(source='variante', read_only=True)
     producto_nombre = serializers.CharField(source='producto.name', read_only=True)
-    
+
     class Meta:
         model = CompatibilidadProducto
         fields = [

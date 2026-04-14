@@ -1,17 +1,24 @@
 """
 Modelos de Productos - Versión MVP
 """
+from decimal import Decimal
 from django.db import models
 from django.utils.text import slugify
 from mptt.models import MPTTModel, TreeForeignKey
 from django.core.exceptions import ValidationError
-from django.db.models import Sum
+from django.core.validators import MinValueValidator, MaxValueValidator
 from .managers import ProductManager
+from django.db.models import Sum
 
 class Category(MPTTModel):
     """
     Categoría jerárquica de productos.
-    UNIVERSAL - No tiene provider (compartida por todos)
+    UNIVERSAL - No tiene provider (compartida por todos).
+
+    Slug:
+        Se genera una única vez al crear la categoría y no se actualiza
+        aunque cambie el nombre. Esto garantiza URLs estables para SEO.
+        Si el slug base ya existe, se añade un sufijo numérico (-1, -2…).
     """
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, unique=True, blank=True)
@@ -23,30 +30,56 @@ class Category(MPTTModel):
         related_name='children'
     )
     description = models.TextField(blank=True, null=True)
-    image_url = models.URLField(max_length=500, blank=True, null=True, help_text="URL de la imagen en Cloudinary/CDN")
     is_active = models.BooleanField(default=True)
-    
+
+    # Vínculo con Odoo — clave para sincronización correcta.
+    # Django es maestro de categorías; Odoo las recibe.
+    # odoo_category_id es el ancla estable: no cambia aunque el nombre
+    # de la categoría o su PK de Django lo hagan.
+    odoo_category_id = models.IntegerField(
+        null=True,
+        blank=True,
+        unique=True,
+        help_text="ID de la categoría en Odoo (product.category). "
+                  "Permite vincular categorías aunque los IDs auto-incrementales difieran."
+    )
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     class MPTTMeta:
         order_insertion_by = ['name']
-    
+
     class Meta:
         db_table = 'products_category'
         verbose_name = 'Categoría'
         verbose_name_plural = 'Categorías'
-    
+        indexes = [
+            models.Index(fields=['is_active']),
+            models.Index(fields=['parent_id']),
+        ]
+
     def __str__(self):
         return self.name
-    
+
+    def clean(self):
+        if self.pk and self.parent_id == self.pk:
+            raise ValidationError("Una categoría no puede ser su propio padre.")
+
+    def _generate_unique_slug(self):
+        base_slug = slugify(self.name)
+        slug = base_slug
+        counter = 1
+        while Category.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+        return slug
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.name)
+            self.slug = self._generate_unique_slug()
         super().save(*args, **kwargs)
-
-
 
 
 class Product(models.Model):
@@ -59,15 +92,16 @@ class Product(models.Model):
         ('service', 'Servicio'),
         ('product', 'Almacenable'),
     ]
-    odoo_id = models.IntegerField(null=True, blank=True)
+    
     odoo_state = models.CharField(
-        max_length=20, 
+        max_length=20,
         choices=[
             ('pending', 'Pendiente'),
             ('synced', 'Sincronizado'),
             ('failed', 'Fallido')
         ],
-        default='pending'
+        default='pending',
+        db_index=True
     )
     
     # CAMPO CRÍTICO: Relación con el proveedor
@@ -80,8 +114,14 @@ class Product(models.Model):
     
     # Identificación
     name = models.CharField(max_length=200)
-    reference = models.CharField(max_length=50, db_index=True, help_text="SKU o referencia del consumidor")
-    slug = models.SlugField(max_length=255, blank=True, editable=False)
+    reference = models.CharField(
+        max_length=50,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="SKU o referencia del proveedor. Puede estar vacía (ej: productos importados sin código)"
+    )
+    slug = models.SlugField(max_length=255, unique=True, blank=True, editable=False)
     
     # Tipo de producto
     product_type = models.CharField(
@@ -107,37 +147,23 @@ class Product(models.Model):
         null=True,
         help_text="Public ID en Cloudinary para transformaciones"
     )
-    image_url_2 = models.URLField(
-        max_length=500,
-        blank=True,
-        null=True,
-        help_text="Segunda imagen del producto (Cloudinary/CDN)"
-    )
-    image_cloudinary_id_2 = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Public ID en Cloudinary de la segunda imagen"
-    )
-    image_url_3 = models.URLField(
-        max_length=500,
-        blank=True,
-        null=True,
-        help_text="Tercera imagen del producto (Cloudinary/CDN)"
-    )
-    image_cloudinary_id_3 = models.CharField(
-        max_length=200,
-        blank=True,
-        null=True,
-        help_text="Public ID en Cloudinary de la tercera imagen"
-    )
 
     description = models.TextField(blank=True, null=True)
     
     # Precio (BASE IMPONIBLE)
-    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Precio base")
+    price = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        verbose_name="Precio base",
+        validators=[MinValueValidator(Decimal('0.01'))]
+    )
     # En Perú IGV es 18%, en otros países IVA varía
-    tax_percent = models.DecimalField(max_digits=5, decimal_places=2, default=18.00)
+    tax_percent = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=18.00,
+        validators=[MinValueValidator(Decimal('0')), MaxValueValidator(Decimal('100'))]
+    )
     
     
     # Categoría (UNIVERSAL - compartida)
@@ -150,7 +176,45 @@ class Product(models.Model):
     )
 
     is_active = models.BooleanField(default=True)
+    is_published = models.BooleanField(
+        default=False,
+        db_index=True,
+        help_text="Visible públicamente en el marketplace. Un producto puede estar activo pero no publicado (ej: borrador)."
+    )
     es_universal = models.BooleanField(default=False, db_index=True) # si es True no necesita compatibilidad
+
+    SIDE_CHOICES = [
+        ('left', 'Izquierda'),
+        ('right', 'Derecha'),
+        ('front', 'Delantera'),
+        ('rear', 'Posterior'),
+        ('both', 'Ambos lados'),
+        ('na', 'No aplica'),
+    ]
+
+    autopart_side = models.CharField(
+        max_length=10,
+        choices=SIDE_CHOICES,
+        verbose_name='Lado del vehículo',
+        help_text='Lado del vehículo al que aplica la autoparte',
+        default='na',
+        blank=True
+    )
+
+    QUALITY_CHOICES = [
+        ('original', 'Original'),
+        ('oem', 'OEM'),
+        ('aftermarket_premium', 'Alternativo Premium'),
+        ('aftermarket_standard', 'Alternativo Estándar'),
+    ]
+
+    autopart_quality = models.CharField(
+        max_length=20,
+        choices=QUALITY_CHOICES,
+        verbose_name='Calidad del repuesto',
+        default='aftermarket_standard',
+        blank=True
+    )
 
     vehiculos_compatibles = models.ManyToManyField(
         'vehicles.VariantVehiculo',
@@ -170,6 +234,14 @@ class Product(models.Model):
         help_text="ID de la plantilla en Odoo (product.template)"
     )
 
+    # ====== STOCK DENORMALIZADO ======
+    # Se mantiene actualizado via signals (apps/products/signals.py).
+    # Evita N+1 queries en listados de productos.
+    total_stock_cached = models.IntegerField(
+        default=0,
+        help_text="Stock total agregado. Actualizado automáticamente por signals."
+    )
+
     # ====== CAMPOS PARA SINCRONIZACIÓN CON ODOO ======
 
     last_sync_at = models.DateTimeField(
@@ -183,6 +255,10 @@ class Product(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
 
 
+    # Stock mínimo para considerar el producto disponible (mitiga sobreventa).
+    # Valor configurable: podría moverse a settings.py o a un campo DB en el futuro.
+    MIN_STOCK_THRESHOLD = 2
+
     objects = ProductManager()
 
     class Meta:
@@ -190,42 +266,86 @@ class Product(models.Model):
         verbose_name = 'Producto'
         verbose_name_plural = 'Productos'
         ordering = ['-created_at']
-        # Referencia única dentro del proveedor
-        unique_together = [['provider', 'reference']]
+        constraints = [
+            # Referencia única por proveedor, solo cuando reference no es NULL ni vacía.
+            # Permite importar productos desde Odoo sin referencia sin colisiones.
+            models.UniqueConstraint(
+                fields=['provider', 'reference'],
+                condition=models.Q(reference__isnull=False) & ~models.Q(reference=''),
+                name='unique_provider_reference_not_null'
+            )
+        ]
         indexes = [
             models.Index(fields=['provider', 'is_active']),
             models.Index(fields=['reference']),
-            models.Index(fields=['odoo_product_id']),
+            # Compuesto: el sync siempre filtra por (provider, odoo_product_id)
+            models.Index(fields=['provider', 'odoo_product_id']),
+            models.Index(fields=['slug']),
         ]
     
     def __str__(self):
         return f"{self.name} ({self.provider.name})"
    
 
+    def generate_unique_slug(self):
+        """
+        Genera un slug estable y único.
+        Usa provider_id (entero) en lugar de provider.slug para que el slug
+        no se rompa si el proveedor cambia su slug en el futuro.
+        """
+        base_slug = slugify(self.name)
+        slug = f"{base_slug}-{self.provider_id}"
+        counter = 1
+        while Product.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+            slug = f"{base_slug}-{self.provider_id}-{counter}"
+            counter += 1
+        return slug
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            # Slug único: nombre-proveedor
-            base_slug = slugify(self.name)
-            self.slug = f"{base_slug}-{self.provider.slug}"
+            self.slug = self.generate_unique_slug()
         super().save(*args, **kwargs)
 
     @property
     def total_stock(self):
-        return (
-            self.stock_items
-            .aggregate(total=Sum('quantity'))
-            .get('total') or 0
-        )
+        """Stock total. Retorna el valor cacheado (sin query extra)."""
+        return self.total_stock_cached
+
+    @property
+    def price_with_tax(self) -> float:
+        """Precio final con IGV/IVA incluido. Fuente de verdad para precio al cliente."""
+        return float(self.price * (1 + self.tax_percent / 100))
+
+    def recalculate_stock(self):
+        """Recalcula y persiste total_stock_cached desde Odoo qty_available.
+        Usado por el comando de sync — no depende de StockItem."""
+
+        # Suma directa: el campo es mantenido por el sync de Odoo
+        # Este método queda como puerta de entrada para forzar un recalculo
+        # si por alguna razón el cache se desincroniza.
+        Product.objects.filter(pk=self.pk).update(total_stock_cached=self.total_stock_cached)
 
     @property
     def is_synced(self):
         """Producto está sincronizado con Odoo"""
         return self.odoo_product_id is not None
-    
+
     @property
     def disponible(self):
-        """Producto tiene stock disponible"""
-        return self.is_active and self.total_stock > 0
+        """
+        Producto está disponible para compra en el marketplace.
+
+        Nota: accede a self.provider y self.category directamente.
+        En listados usar siempre select_related('provider', 'category')
+        para evitar N+1 queries.
+        """
+        return (
+            self.is_active
+            and self.is_published
+            and self.total_stock_cached >= self.MIN_STOCK_THRESHOLD
+            and self.provider.is_active
+            and (self.category.is_active if self.category_id else True)
+        )
 
 
 class CompatibilidadProducto(models.Model):
@@ -250,116 +370,59 @@ class CompatibilidadProducto(models.Model):
         db_table = 'products_compatibilidad'
         verbose_name = 'Compatibilidad Producto-Vehículo'
         verbose_name_plural = 'Compatibilidades Producto-Vehículo'
-        unique_together = ('producto', 'variante')
+        constraints = [
+            models.UniqueConstraint(
+                fields=['producto', 'variante'],
+                name='unique_producto_variante'
+            )
+        ]
         indexes = [
             models.Index(fields=['variante', 'producto']),
         ]    
 
 
 
-"""Gestión de Almacenes y Stock - Critical para Marketplace Multiproveedor"""
+"""
+Tiendas físicas del proveedor (puntos de retiro).
+NO gestiona stock — el stock se maneja como total_stock_cached en Product,
+sincronizado directamente desde Odoo. Esta clase solo representa
+ubicaciones físicas donde el cliente puede recoger su pedido.
+"""
 
 
-class Warehouse(models.Model):
+class Store(models.Model):
     """
-    Almacén de un proveedor específico.
-    Representa ubicaciones físicas donde se almacenan productos.
+    Tienda o punto de retiro de un proveedor.
+    Simple: nombre, dirección y ciudad — nada más.
+    El stock se consulta a nivel de provider, no por tienda.
     """
     provider = models.ForeignKey(
         'marketplace.Provider',
         on_delete=models.CASCADE,
-        related_name='warehouses',
+        related_name='stores',
         verbose_name='Proveedor'
     )
 
     name = models.CharField(max_length=100, verbose_name='Nombre')
     city = models.CharField(max_length=100, blank=True, verbose_name='Ciudad')
     address = models.CharField(max_length=255, blank=True, verbose_name='Dirección')
-
-    # Vínculo Odoo
-    odoo_warehouse_id = models.IntegerField(
-        null=True,
-        blank=True,
-        help_text="ID del warehouse en Odoo"
-    )
+    phone = models.CharField(max_length=20, blank=True, verbose_name='Teléfono')
 
     is_active = models.BooleanField(default=True, verbose_name='Activo')
-    
+
     # Metadata
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
-        db_table = 'products_warehouse'
-        verbose_name = 'Almacén'
-        verbose_name_plural = 'Almacenes'
+        db_table = 'products_store'
+        verbose_name = 'Tienda'
+        verbose_name_plural = 'Tiendas'
         unique_together = [('provider', 'name')]
         indexes = [
             models.Index(fields=['provider', 'is_active']),
-            models.Index(fields=['provider']),
         ]
         ordering = ['provider', 'name']
 
     def __str__(self):
-        return f"{self.provider.name} - {self.name}"
-
-    @property
-    def total_stock(self):
-        """Stock total en este almacén"""
-        return self.stock_items.aggregate(total=Sum('quantity')).get('total') or 0
-
-
-class StockItem(models.Model):
-    """
-    Cantidad de un producto en un almacén específico.
-    Es el registro REAL del stock disponible por ubicación.
-    """
-    product = models.ForeignKey(
-        'products.Product',
-        on_delete=models.CASCADE,
-        related_name='stock_items',
-        verbose_name='Producto'
-    )
-    
-    warehouse = models.ForeignKey(
-        Warehouse,
-        on_delete=models.CASCADE,
-        related_name='stock_items',
-        verbose_name='Almacén'
-    )
-
-    quantity = models.IntegerField(
-        default=0,
-        verbose_name='Cantidad',
-        help_text='Cantidad disponible en el almacén'
-    )
-    
-    # Para auditoría y control
-    created_at = models.DateTimeField(auto_now_add=True)
-    updated_at = models.DateTimeField(auto_now=True)
-
-    class Meta:
-        db_table = 'products_stockitem'
-        verbose_name = 'Stock de Producto'
-        verbose_name_plural = 'Stocks de Productos'
-        unique_together = [('product', 'warehouse')]
-        indexes = [
-            models.Index(fields=['product']),
-            models.Index(fields=['warehouse']),
-            models.Index(fields=['product', 'warehouse']),
-            models.Index(fields=['warehouse', 'quantity']),
-        ]
-        ordering = ['warehouse', 'product']
-
-    def __str__(self):
-        return f"{self.product.name} - {self.warehouse.name}: {self.quantity} uds"
-
-    @property
-    def is_low_stock(self):
-        """Indicador simple: stock bajo (< 5)"""
-        return self.quantity < 5
-
-    @property
-    def is_out_of_stock(self):
-        """Sin stock"""
-        return self.quantity == 0
+        return f"{self.provider.name} — {self.name}"

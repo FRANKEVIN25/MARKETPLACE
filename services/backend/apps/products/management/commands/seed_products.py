@@ -5,36 +5,58 @@ from apps.vehicles.models import VariantVehiculo
 import random
 
 
+# Mapeo: alias usado en products_data → nombre canónico en la jerarquía de 3 niveles.
+# Los nombres canónicos coinciden exactamente con los definidos en:
+#   - seed_categories.py                              (Django)
+#   - ecomparts_integration/data/categories_seed.xml  (Odoo)
+#
+# Se usan categorías de nivel 2 para que los productos tengan un nivel de
+# especificidad razonable sin llegar al nivel de hoja.
+CATEGORY_ALIASES = {
+    'Filtros de Mantenimiento': 'Filtros de Mantenimiento',
+    'Pastillas de Freno':       'Pastillas de Freno',
+    'Aceite de Motor':          'Aceite de Motor',
+    'Suspensión':               'Suspensión',
+    'Bujías y Bobinas':         'Bujías y Bobinas',
+    'Distribución':             'Distribución',
+    'Discos de Freno':          'Discos de Freno',
+    'Silenciadores y Tubos':    'Silenciadores y Tubos',
+    'Filtros de Combustible':   'Filtros de Combustible',
+    'Baterías y Alternador':    'Baterías y Alternador',
+}
+
+
 class Command(BaseCommand):
-    help = 'Carga datos de prueba para Categorías, Productos, Almacenes y Stock'
+    help = (
+        'Carga datos de prueba para Productos, Almacenes y Stock.\n'
+        'Requiere que las categorías ya existan — ejecuta primero:\n'
+        '  python manage.py seed_categories'
+    )
 
     def handle(self, *args, **options):
         self.stdout.write(self.style.SUCCESS('▶ Iniciando carga de datos de productos...'))
 
-        # 1. Crear Categorías de Autopartes
-        self.stdout.write('\n📁 Creando categorías...')
-        categories_data = [
-            {'name': 'Motor y Transmisión', 'description': 'Componentes del motor, transmisión y sistemas relacionados'},
-            {'name': 'Suspensión', 'description': 'Amortiguadores, resortes, brazos y componentes de suspensión'},
-            {'name': 'Frenos', 'description': 'Pastillas, discos, cilindros y sistemas de frenado'},
-            {'name': 'Neumáticos y Ruedas', 'description': 'Neumáticos, llantas y accesorios de ruedas'},
-            {'name': 'Electrónica y Electricidad', 'description': 'Baterías, alternadores, motores eléctricos y componentes'},
-            {'name': 'Filtros', 'description': 'Filtros de aire, aceite, combustible y otros filtros'},
-            {'name': 'Sistema de Escape', 'description': 'Silenciadores, tubos y componentes de escape'},
-            {'name': 'Accesorios Interiores', 'description': 'Tapicería, volantes, alfombrillas y accesorios internos'},
-            {'name': 'Accesorios Exteriores', 'description': 'Espejo, manillas, molduras y accesorios externos'},
-            {'name': 'Lubricantes y Fluidos', 'description': 'Aceites, refrigerantes y otros fluidos automotrices'},
-        ]
-
+        # 1. Resolver Categorías (no las crea — eso es responsabilidad de seed_categories)
+        self.stdout.write('\n📁 Resolviendo categorías...')
         categories = {}
-        for cat_data in categories_data:
-            cat, created = Category.objects.get_or_create(
-                name=cat_data['name'],
-                defaults={'description': cat_data['description']}
+        missing = []
+        for alias, canonical_name in CATEGORY_ALIASES.items():
+            try:
+                categories[alias] = Category.objects.get(name=canonical_name)
+                self.stdout.write(f'  ✓ {canonical_name}')
+            except Category.DoesNotExist:
+                missing.append(canonical_name)
+
+        if missing:
+            self.stdout.write(
+                self.style.ERROR(
+                    '\n✗ Faltan categorías. Ejecuta primero:\n'
+                    '  python manage.py seed_categories\n\n'
+                    'Categorías no encontradas:\n' +
+                    ''.join(f'  · {n}\n' for n in missing)
+                )
             )
-            categories[cat_data['name']] = cat
-            status = '✓ Creada' if created else '✓ Existente'
-            self.stdout.write(f'{status}: {cat.name}')
+            return
 
         # 2. Obtener proveedores
         self.stdout.write('\n🏭 Obteniendo proveedores...')
@@ -70,7 +92,7 @@ class Command(BaseCommand):
             {
                 'name': 'Filtro de Aire Premium',
                 'reference': 'AIR-FILTER-001',
-                'category': 'Filtros',
+                'category': 'Filtros de Mantenimiento',
                 'price': 45.00,
                 'description': 'Filtro de aire de alta calidad para motores',
                 'manufacturer_code': 'AFM-2024-001',
@@ -78,7 +100,7 @@ class Command(BaseCommand):
             {
                 'name': 'Pastilla de Freno Frontal',
                 'reference': 'BRAKE-PAD-001',
-                'category': 'Frenos',
+                'category': 'Pastillas de Freno',
                 'price': 85.00,
                 'description': 'Pastillas de freno frontal con material cerámico',
                 'manufacturer_code': 'BPF-2024-001',
@@ -86,7 +108,7 @@ class Command(BaseCommand):
             {
                 'name': 'Aceite Motor 5W-40 1L',
                 'reference': 'OIL-MOTOR-001',
-                'category': 'Lubricantes y Fluidos',
+                'category': 'Aceite de Motor',
                 'price': 35.00,
                 'description': 'Aceite sintético premium 5W-40',
                 'manufacturer_code': 'OIL-5W40-001',
@@ -102,7 +124,7 @@ class Command(BaseCommand):
             {
                 'name': 'Batería Automotriz 12V 60Ah',
                 'reference': 'BATTERY-60AH',
-                'category': 'Electrónica y Electricidad',
+                'category': 'Baterías y Alternador',
                 'price': 350.00,
                 'description': 'Batería automotriz de 60 amperios',
                 'manufacturer_code': 'BAT-60AH-001',
@@ -110,7 +132,7 @@ class Command(BaseCommand):
             {
                 'name': 'Correa de Distribución',
                 'reference': 'TIMING-BELT-001',
-                'category': 'Motor y Transmisión',
+                'category': 'Distribución',
                 'price': 120.00,
                 'description': 'Correa de distribución para motores',
                 'manufacturer_code': 'TIM-BELT-001',
@@ -118,7 +140,7 @@ class Command(BaseCommand):
             {
                 'name': 'Disco de Freno 260mm',
                 'reference': 'BRAKE-DISC-260',
-                'category': 'Frenos',
+                'category': 'Discos de Freno',
                 'price': 95.00,
                 'description': 'Disco de freno ventilado 260mm',
                 'manufacturer_code': 'BRK-DISC-260',
@@ -126,7 +148,7 @@ class Command(BaseCommand):
             {
                 'name': 'Tubo de Escape Inoxidable',
                 'reference': 'EXHAUST-PIPE-001',
-                'category': 'Sistema de Escape',
+                'category': 'Silenciadores y Tubos',
                 'price': 180.00,
                 'description': 'Tubo de escape en acero inoxidable',
                 'manufacturer_code': 'EXH-PIPE-001',
@@ -134,7 +156,7 @@ class Command(BaseCommand):
             {
                 'name': 'Filtro de Combustible',
                 'reference': 'FUEL-FILTER-001',
-                'category': 'Filtros',
+                'category': 'Filtros de Combustible',
                 'price': 55.00,
                 'description': 'Filtro de combustible para inyección',
                 'manufacturer_code': 'FUL-FILTER-001',
@@ -142,7 +164,7 @@ class Command(BaseCommand):
             {
                 'name': 'Bujía Iridio',
                 'reference': 'SPARK-PLUG-IRID',
-                'category': 'Electrónica y Electricidad',
+                'category': 'Bujías y Bobinas',
                 'price': 28.00,
                 'description': 'Bujía de iridio de larga duración',
                 'manufacturer_code': 'SPK-IRID-001',
@@ -218,7 +240,7 @@ class Command(BaseCommand):
                     self.stdout.write(f'✓ {product.name} → {warehouse.name}: {quantity} uds')
 
         self.stdout.write(self.style.SUCCESS(f'\n✓ Carga completada:'))
-        self.stdout.write(f'  • {len(categories)} categorías')
+        self.stdout.write(f'  • {len(categories)} categorías referenciadas (creadas por seed_categories)')
         self.stdout.write(f'  • {len(warehouses)} almacenes')
         self.stdout.write(f'  • {len(products)} productos')
         self.stdout.write(f'  • {stock_created} registros de stock')

@@ -17,6 +17,7 @@ django-redis==5.4.0
 # Authentication & Security
 djangorestframework-simplejwt==5.3.1
 django-filter==23.5
+cryptography==43.0.1
 
 # Server
 gunicorn==22.0.0
