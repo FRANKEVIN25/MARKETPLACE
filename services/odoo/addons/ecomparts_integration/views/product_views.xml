@@ -26,7 +26,15 @@
                 <page string="Compatibilidades">
                     <field name="compatibility_ids">
                         <list string="Compatibilidades de vehículos" editable="bottom">
-                            <field name="variant_id" string="Variante de Vehículo"/>
+                            <!--
+                                El domain en variant_id no es estrictamente necesario:
+                                la Record Rule 'rule_vehiculo_variante_by_company' ya
+                                filtra vehiculo.variante al nivel del ORM, devolviendo
+                                solo las variantes del scope del proveedor actual.
+                                Lo conservamos como documentación explícita de la intención.
+                            -->
+                            <field name="variant_id" string="Variante de Vehículo"
+                                   options="{'no_create': True, 'no_quick_create': True}"/>
                             <field name="marca_id" string="Marca" readonly="1"/>
                             <field name="modelo_id" string="Modelo" readonly="1"/>
                             <field name="motor_id" string="Motor" optional="show" readonly="1"/>
@@ -36,7 +44,8 @@
                             <sheet>
                                 <group>
                                     <group>
-                                        <field name="variant_id" options="{'no_create': True}"/>
+                                        <field name="variant_id"
+                                               options="{'no_create': True, 'no_quick_create': True}"/>
                                         <field name="product_tmpl_id" readonly="1" invisible="1"/>
                                     </group>
                                     <group>

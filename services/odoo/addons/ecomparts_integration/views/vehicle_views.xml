@@ -182,6 +182,7 @@
                 <field name="anio_desde"/>
                 <field name="anio_hasta"/>
                 <field name="nombre"/>
+                <field name="django_external_id" readonly="1"/>
             </list>
         </field>
     </record>
@@ -206,6 +207,9 @@
                     </group>
                     <group>
                         <field name="nombre" readonly="1"/>
+                    </group>
+                    <group>
+                        <field name="django_external_id" readonly="1"/>
                     </group>
                 </sheet>
             </form>

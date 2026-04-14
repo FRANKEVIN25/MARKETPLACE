@@ -1,0 +1,504 @@
+<?xml version="1.0" encoding="utf-8"?>
+<odoo>
+    <data noupdate="1">
+        <!--
+            CATEGORÍAS DE AUTOPARTES — EcomParts Marketplace
+            3 niveles: Principal → Subcategoría → Hoja
+            noupdate="1" → no sobreescribe renombres manuales al reinstalar.
+
+            12 categorías principales, ~30 subcategorías, ~60 hojas.
+            External IDs formato: categ_{nivel1}_{nivel2}_{nivel3}
+        -->
+
+        <!-- ================================================================
+             1. MOTOR Y COMPONENTES INTERNOS
+             ================================================================ -->
+        <record id="categ_motor" model="product.category">
+            <field name="name">Motor y Componentes Internos</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <!-- Nivel 2 -->
+        <record id="categ_motor_componentes" model="product.category">
+            <field name="name">Componentes Internos</field>
+            <field name="parent_id" ref="categ_motor"/>
+        </record>
+        <record id="categ_motor_distribucion" model="product.category">
+            <field name="name">Distribución</field>
+            <field name="parent_id" ref="categ_motor"/>
+        </record>
+        <record id="categ_motor_admision" model="product.category">
+            <field name="name">Admisión</field>
+            <field name="parent_id" ref="categ_motor"/>
+        </record>
+
+        <!-- Nivel 3 -->
+        <record id="categ_motor_componentes_pistones" model="product.category">
+            <field name="name">Pistones, Empaques y Juntas</field>
+            <field name="parent_id" ref="categ_motor_componentes"/>
+        </record>
+        <record id="categ_motor_distribucion_correas" model="product.category">
+            <field name="name">Correas y Cadenas</field>
+            <field name="parent_id" ref="categ_motor_distribucion"/>
+        </record>
+        <record id="categ_motor_distribucion_tensores" model="product.category">
+            <field name="name">Tensores y Poleas</field>
+            <field name="parent_id" ref="categ_motor_distribucion"/>
+        </record>
+        <record id="categ_motor_admision_filtros" model="product.category">
+            <field name="name">Filtros de Aire</field>
+            <field name="parent_id" ref="categ_motor_admision"/>
+        </record>
+        <record id="categ_motor_admision_mangueras" model="product.category">
+            <field name="name">Mangueras de Admisión</field>
+            <field name="parent_id" ref="categ_motor_admision"/>
+        </record>
+        <record id="categ_motor_admision_sensores" model="product.category">
+            <field name="name">Sensores MAF y MAP</field>
+            <field name="parent_id" ref="categ_motor_admision"/>
+        </record>
+
+        <!-- ================================================================
+             2. SISTEMA DE FRENOS
+             ================================================================ -->
+        <record id="categ_frenos" model="product.category">
+            <field name="name">Sistema de Frenos</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_frenos_friccion" model="product.category">
+            <field name="name">Fricción</field>
+            <field name="parent_id" ref="categ_frenos"/>
+        </record>
+        <record id="categ_frenos_discos" model="product.category">
+            <field name="name">Discos y Tambores</field>
+            <field name="parent_id" ref="categ_frenos"/>
+        </record>
+        <record id="categ_frenos_hidraulico" model="product.category">
+            <field name="name">Hidráulico y ABS</field>
+            <field name="parent_id" ref="categ_frenos"/>
+        </record>
+
+        <record id="categ_frenos_friccion_pastillas" model="product.category">
+            <field name="name">Pastillas de Freno</field>
+            <field name="parent_id" ref="categ_frenos_friccion"/>
+        </record>
+        <record id="categ_frenos_friccion_zapatas" model="product.category">
+            <field name="name">Zapatas de Freno</field>
+            <field name="parent_id" ref="categ_frenos_friccion"/>
+        </record>
+        <record id="categ_frenos_discos_discos" model="product.category">
+            <field name="name">Discos de Freno</field>
+            <field name="parent_id" ref="categ_frenos_discos"/>
+        </record>
+        <record id="categ_frenos_discos_tambores" model="product.category">
+            <field name="name">Tambores de Freno</field>
+            <field name="parent_id" ref="categ_frenos_discos"/>
+        </record>
+        <record id="categ_frenos_hidraulico_bombas" model="product.category">
+            <field name="name">Bombas de Freno</field>
+            <field name="parent_id" ref="categ_frenos_hidraulico"/>
+        </record>
+        <record id="categ_frenos_hidraulico_abs" model="product.category">
+            <field name="name">Sensores ABS y Módulos</field>
+            <field name="parent_id" ref="categ_frenos_hidraulico"/>
+        </record>
+
+        <!-- ================================================================
+             3. SUSPENSIÓN Y DIRECCIÓN
+             ================================================================ -->
+        <record id="categ_suspension" model="product.category">
+            <field name="name">Suspensión y Dirección</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_suspension_suspension" model="product.category">
+            <field name="name">Suspensión</field>
+            <field name="parent_id" ref="categ_suspension"/>
+        </record>
+        <record id="categ_suspension_direccion" model="product.category">
+            <field name="name">Dirección</field>
+            <field name="parent_id" ref="categ_suspension"/>
+        </record>
+        <record id="categ_suspension_tren" model="product.category">
+            <field name="name">Tren Delantero</field>
+            <field name="parent_id" ref="categ_suspension"/>
+        </record>
+
+        <record id="categ_suspension_suspension_amortiguadores" model="product.category">
+            <field name="name">Amortiguadores y Resortes</field>
+            <field name="parent_id" ref="categ_suspension_suspension"/>
+        </record>
+        <record id="categ_suspension_suspension_bases" model="product.category">
+            <field name="name">Bases de Amortiguador</field>
+            <field name="parent_id" ref="categ_suspension_suspension"/>
+        </record>
+        <record id="categ_suspension_direccion_cremalleras" model="product.category">
+            <field name="name">Cremalleras y Bombas</field>
+            <field name="parent_id" ref="categ_suspension_direccion"/>
+        </record>
+        <record id="categ_suspension_direccion_terminales" model="product.category">
+            <field name="name">Terminales de Dirección</field>
+            <field name="parent_id" ref="categ_suspension_direccion"/>
+        </record>
+        <record id="categ_suspension_tren_rotulas" model="product.category">
+            <field name="name">Rótulas y Bujes</field>
+            <field name="parent_id" ref="categ_suspension_tren"/>
+        </record>
+        <record id="categ_suspension_tren_brazos" model="product.category">
+            <field name="name">Brazos de Suspensión</field>
+            <field name="parent_id" ref="categ_suspension_tren"/>
+        </record>
+
+        <!-- ================================================================
+             4. TRANSMISIÓN
+             ================================================================ -->
+        <record id="categ_transmision" model="product.category">
+            <field name="name">Transmisión</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_transmision_embrague" model="product.category">
+            <field name="name">Embrague</field>
+            <field name="parent_id" ref="categ_transmision"/>
+        </record>
+        <record id="categ_transmision_traccion" model="product.category">
+            <field name="name">Tracción</field>
+            <field name="parent_id" ref="categ_transmision"/>
+        </record>
+
+        <record id="categ_transmision_embrague_kit" model="product.category">
+            <field name="name">Kit de Embrague</field>
+            <field name="parent_id" ref="categ_transmision_embrague"/>
+        </record>
+        <record id="categ_transmision_embrague_disco" model="product.category">
+            <field name="name">Disco y Prensa</field>
+            <field name="parent_id" ref="categ_transmision_embrague"/>
+        </record>
+        <record id="categ_transmision_traccion_ejes" model="product.category">
+            <field name="name">Ejes y Homocinéticas</field>
+            <field name="parent_id" ref="categ_transmision_traccion"/>
+        </record>
+        <record id="categ_transmision_traccion_diferencial" model="product.category">
+            <field name="name">Diferencial</field>
+            <field name="parent_id" ref="categ_transmision_traccion"/>
+        </record>
+
+        <!-- ================================================================
+             5. SISTEMA ELÉCTRICO Y ELECTRÓNICA
+             ================================================================ -->
+        <record id="categ_electrico" model="product.category">
+            <field name="name">Sistema Eléctrico y Electrónica</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_electrico_encendido" model="product.category">
+            <field name="name">Encendido y Carga</field>
+            <field name="parent_id" ref="categ_electrico"/>
+        </record>
+        <record id="categ_electrico_sensores" model="product.category">
+            <field name="name">Sensores y Control</field>
+            <field name="parent_id" ref="categ_electrico"/>
+        </record>
+
+        <record id="categ_electrico_encendido_bujias" model="product.category">
+            <field name="name">Bujías y Bobinas</field>
+            <field name="parent_id" ref="categ_electrico_encendido"/>
+        </record>
+        <record id="categ_electrico_encendido_baterias" model="product.category">
+            <field name="name">Baterías y Alternador</field>
+            <field name="parent_id" ref="categ_electrico_encendido"/>
+        </record>
+        <record id="categ_electrico_sensores_motor" model="product.category">
+            <field name="name">Sensores de Motor</field>
+            <field name="parent_id" ref="categ_electrico_sensores"/>
+        </record>
+        <record id="categ_electrico_sensores_ecu" model="product.category">
+            <field name="name">ECU y Módulos de Control</field>
+            <field name="parent_id" ref="categ_electrico_sensores"/>
+        </record>
+
+        <!-- ================================================================
+             6. ILUMINACIÓN
+             ================================================================ -->
+        <record id="categ_iluminacion" model="product.category">
+            <field name="name">Iluminación</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_iluminacion_faros" model="product.category">
+            <field name="name">Faros</field>
+            <field name="parent_id" ref="categ_iluminacion"/>
+        </record>
+        <record id="categ_iluminacion_bombillas" model="product.category">
+            <field name="name">Bombillas</field>
+            <field name="parent_id" ref="categ_iluminacion"/>
+        </record>
+
+        <record id="categ_iluminacion_faros_delanteros" model="product.category">
+            <field name="name">Faros Delanteros</field>
+            <field name="parent_id" ref="categ_iluminacion_faros"/>
+        </record>
+        <record id="categ_iluminacion_faros_traseros" model="product.category">
+            <field name="name">Faros Traseros y Neblineros</field>
+            <field name="parent_id" ref="categ_iluminacion_faros"/>
+        </record>
+        <record id="categ_iluminacion_bombillas_led" model="product.category">
+            <field name="name">LED y Halógenos</field>
+            <field name="parent_id" ref="categ_iluminacion_bombillas"/>
+        </record>
+        <record id="categ_iluminacion_bombillas_xenon" model="product.category">
+            <field name="name">Xenón</field>
+            <field name="parent_id" ref="categ_iluminacion_bombillas"/>
+        </record>
+
+        <!-- ================================================================
+             7. CARROCERÍA Y EXTERIOR
+             ================================================================ -->
+        <record id="categ_carroceria" model="product.category">
+            <field name="name">Carrocería y Exterior</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_carroceria_exterior" model="product.category">
+            <field name="name">Exterior</field>
+            <field name="parent_id" ref="categ_carroceria"/>
+        </record>
+        <record id="categ_carroceria_espejos" model="product.category">
+            <field name="name">Espejos y Accesorios</field>
+            <field name="parent_id" ref="categ_carroceria"/>
+        </record>
+        <record id="categ_carroceria_limpieza" model="product.category">
+            <field name="name">Limpieza de Parabrisas</field>
+            <field name="parent_id" ref="categ_carroceria"/>
+        </record>
+
+        <record id="categ_carroceria_exterior_parachoques" model="product.category">
+            <field name="name">Parachoques y Capó</field>
+            <field name="parent_id" ref="categ_carroceria_exterior"/>
+        </record>
+        <record id="categ_carroceria_exterior_puertas" model="product.category">
+            <field name="name">Puertas y Paneles</field>
+            <field name="parent_id" ref="categ_carroceria_exterior"/>
+        </record>
+        <record id="categ_carroceria_espejos_espejos" model="product.category">
+            <field name="name">Espejos Retrovisores</field>
+            <field name="parent_id" ref="categ_carroceria_espejos"/>
+        </record>
+        <record id="categ_carroceria_espejos_molduras" model="product.category">
+            <field name="name">Molduras y Embellecedores</field>
+            <field name="parent_id" ref="categ_carroceria_espejos"/>
+        </record>
+        <record id="categ_carroceria_limpieza_plumillas" model="product.category">
+            <field name="name">Plumillas Limpiaparabrisas</field>
+            <field name="parent_id" ref="categ_carroceria_limpieza"/>
+        </record>
+        <record id="categ_carroceria_limpieza_motores" model="product.category">
+            <field name="name">Motores Limpiaparabrisas</field>
+            <field name="parent_id" ref="categ_carroceria_limpieza"/>
+        </record>
+
+        <!-- ================================================================
+             8. RUEDAS Y NEUMÁTICOS
+             ================================================================ -->
+        <record id="categ_ruedas" model="product.category">
+            <field name="name">Ruedas y Neumáticos</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_ruedas_llantas" model="product.category">
+            <field name="name">Llantas</field>
+            <field name="parent_id" ref="categ_ruedas"/>
+        </record>
+        <record id="categ_ruedas_aros" model="product.category">
+            <field name="name">Aros</field>
+            <field name="parent_id" ref="categ_ruedas"/>
+        </record>
+        <record id="categ_ruedas_accesorios" model="product.category">
+            <field name="name">Accesorios de Rueda</field>
+            <field name="parent_id" ref="categ_ruedas"/>
+        </record>
+
+        <record id="categ_ruedas_llantas_neumaticos" model="product.category">
+            <field name="name">Neumáticos</field>
+            <field name="parent_id" ref="categ_ruedas_llantas"/>
+        </record>
+        <record id="categ_ruedas_aros_rines" model="product.category">
+            <field name="name">Rines de Aluminio y Acero</field>
+            <field name="parent_id" ref="categ_ruedas_aros"/>
+        </record>
+        <record id="categ_ruedas_accesorios_pernos" model="product.category">
+            <field name="name">Pernos y Tuercas</field>
+            <field name="parent_id" ref="categ_ruedas_accesorios"/>
+        </record>
+        <record id="categ_ruedas_accesorios_valvulas" model="product.category">
+            <field name="name">Válvulas de Inflado</field>
+            <field name="parent_id" ref="categ_ruedas_accesorios"/>
+        </record>
+
+        <!-- ================================================================
+             9. REFRIGERACIÓN Y CLIMATIZACIÓN
+             ================================================================ -->
+        <record id="categ_refrigeracion" model="product.category">
+            <field name="name">Refrigeración y Climatización</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_refrigeracion_motor" model="product.category">
+            <field name="name">Enfriamiento Motor</field>
+            <field name="parent_id" ref="categ_refrigeracion"/>
+        </record>
+        <record id="categ_refrigeracion_ac" model="product.category">
+            <field name="name">Aire Acondicionado</field>
+            <field name="parent_id" ref="categ_refrigeracion"/>
+        </record>
+
+        <record id="categ_refrigeracion_motor_radiadores" model="product.category">
+            <field name="name">Radiadores y Termostatos</field>
+            <field name="parent_id" ref="categ_refrigeracion_motor"/>
+        </record>
+        <record id="categ_refrigeracion_motor_bombas" model="product.category">
+            <field name="name">Bombas de Agua</field>
+            <field name="parent_id" ref="categ_refrigeracion_motor"/>
+        </record>
+        <record id="categ_refrigeracion_ac_compresores" model="product.category">
+            <field name="name">Compresores de AC</field>
+            <field name="parent_id" ref="categ_refrigeracion_ac"/>
+        </record>
+        <record id="categ_refrigeracion_ac_filtro_cabina" model="product.category">
+            <field name="name">Filtro de Habitáculo</field>
+            <field name="parent_id" ref="categ_refrigeracion_ac"/>
+        </record>
+
+        <!-- ================================================================
+             10. COMBUSTIBLE Y ESCAPE
+             ================================================================ -->
+        <record id="categ_combustible" model="product.category">
+            <field name="name">Combustible y Escape</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_combustible_combustible" model="product.category">
+            <field name="name">Combustible</field>
+            <field name="parent_id" ref="categ_combustible"/>
+        </record>
+        <record id="categ_combustible_escape" model="product.category">
+            <field name="name">Escape</field>
+            <field name="parent_id" ref="categ_combustible"/>
+        </record>
+
+        <record id="categ_combustible_combustible_bombas" model="product.category">
+            <field name="name">Bombas de Combustible</field>
+            <field name="parent_id" ref="categ_combustible_combustible"/>
+        </record>
+        <record id="categ_combustible_combustible_filtros" model="product.category">
+            <field name="name">Filtros de Combustible</field>
+            <field name="parent_id" ref="categ_combustible_combustible"/>
+        </record>
+        <record id="categ_combustible_combustible_inyectores" model="product.category">
+            <field name="name">Inyectores</field>
+            <field name="parent_id" ref="categ_combustible_combustible"/>
+        </record>
+        <record id="categ_combustible_escape_silenciadores" model="product.category">
+            <field name="name">Silenciadores y Tubos</field>
+            <field name="parent_id" ref="categ_combustible_escape"/>
+        </record>
+        <record id="categ_combustible_escape_catalizadores" model="product.category">
+            <field name="name">Catalizadores</field>
+            <field name="parent_id" ref="categ_combustible_escape"/>
+        </record>
+
+        <!-- ================================================================
+             11. MANTENIMIENTO Y FLUIDOS
+             ================================================================ -->
+        <record id="categ_mantenimiento" model="product.category">
+            <field name="name">Mantenimiento y Fluidos</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_mantenimiento_aceites" model="product.category">
+            <field name="name">Aceites</field>
+            <field name="parent_id" ref="categ_mantenimiento"/>
+        </record>
+        <record id="categ_mantenimiento_fluidos" model="product.category">
+            <field name="name">Fluidos</field>
+            <field name="parent_id" ref="categ_mantenimiento"/>
+        </record>
+        <record id="categ_mantenimiento_filtros" model="product.category">
+            <field name="name">Filtros de Mantenimiento</field>
+            <field name="parent_id" ref="categ_mantenimiento"/>
+        </record>
+
+        <record id="categ_mantenimiento_aceites_motor" model="product.category">
+            <field name="name">Aceite de Motor</field>
+            <field name="parent_id" ref="categ_mantenimiento_aceites"/>
+        </record>
+        <record id="categ_mantenimiento_aceites_transmision" model="product.category">
+            <field name="name">Aceite de Transmisión</field>
+            <field name="parent_id" ref="categ_mantenimiento_aceites"/>
+        </record>
+        <record id="categ_mantenimiento_fluidos_refrigerante" model="product.category">
+            <field name="name">Refrigerante</field>
+            <field name="parent_id" ref="categ_mantenimiento_fluidos"/>
+        </record>
+        <record id="categ_mantenimiento_fluidos_frenos" model="product.category">
+            <field name="name">Líquido de Frenos</field>
+            <field name="parent_id" ref="categ_mantenimiento_fluidos"/>
+        </record>
+        <record id="categ_mantenimiento_filtros_aire" model="product.category">
+            <field name="name">Filtro de Aire</field>
+            <field name="parent_id" ref="categ_mantenimiento_filtros"/>
+        </record>
+        <record id="categ_mantenimiento_filtros_aceite" model="product.category">
+            <field name="name">Filtro de Aceite</field>
+            <field name="parent_id" ref="categ_mantenimiento_filtros"/>
+        </record>
+        <record id="categ_mantenimiento_filtros_combustible" model="product.category">
+            <field name="name">Filtro de Combustible</field>
+            <field name="parent_id" ref="categ_mantenimiento_filtros"/>
+        </record>
+
+        <!-- ================================================================
+             12. HERRAMIENTAS, EQUIPOS Y ACCESORIOS
+             ================================================================ -->
+        <record id="categ_herramientas" model="product.category">
+            <field name="name">Herramientas, Equipos y Accesorios</field>
+            <field name="parent_id" ref="product.product_category_all"/>
+        </record>
+
+        <record id="categ_herramientas_herramientas" model="product.category">
+            <field name="name">Herramientas</field>
+            <field name="parent_id" ref="categ_herramientas"/>
+        </record>
+        <record id="categ_herramientas_equipos" model="product.category">
+            <field name="name">Equipos de Diagnóstico</field>
+            <field name="parent_id" ref="categ_herramientas"/>
+        </record>
+        <record id="categ_herramientas_accesorios" model="product.category">
+            <field name="name">Accesorios para Vehículo</field>
+            <field name="parent_id" ref="categ_herramientas"/>
+        </record>
+
+        <record id="categ_herramientas_herramientas_llaves" model="product.category">
+            <field name="name">Llaves y Dados</field>
+            <field name="parent_id" ref="categ_herramientas_herramientas"/>
+        </record>
+        <record id="categ_herramientas_equipos_obd2" model="product.category">
+            <field name="name">Escáner OBD2</field>
+            <field name="parent_id" ref="categ_herramientas_equipos"/>
+        </record>
+        <record id="categ_herramientas_equipos_gatas" model="product.category">
+            <field name="name">Gatas y Elevadores</field>
+            <field name="parent_id" ref="categ_herramientas_equipos"/>
+        </record>
+        <record id="categ_herramientas_accesorios_alarmas" model="product.category">
+            <field name="name">Alarmas y Cámaras</field>
+            <field name="parent_id" ref="categ_herramientas_accesorios"/>
+        </record>
+        <record id="categ_herramientas_accesorios_fundas" model="product.category">
+            <field name="name">Fundas y Protectores</field>
+            <field name="parent_id" ref="categ_herramientas_accesorios"/>
+        </record>
+
+    </data>
+</odoo>

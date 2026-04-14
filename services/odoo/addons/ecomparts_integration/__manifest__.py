@@ -33,9 +33,12 @@
     'data': [
         # Security
         'security/ir.model.access.csv',
+        'security/ir_rules.xml',
         
-        # Data
-        'data/vehicle_variants_seed.xml',
+        # Data — categorías primero (productos las referencian),
+        # luego variantes de vehículos
+        'data/categories_seed.xml',
+        #'data/vehicle_variants_seed.xml',
         
         # Views
         'views/actions.xml',
