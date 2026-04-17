@@ -37,7 +37,7 @@
         
         # Data — categorías primero (productos las referencian),
         # luego variantes de vehículos
-        'data/categories_seed.xml',
+        #'data/categories_seed.xml',
         #'data/vehicle_variants_seed.xml',
         
         # Views

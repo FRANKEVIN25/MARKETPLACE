@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q
 from decimal import Decimal
 
 
@@ -51,7 +52,36 @@ class DiscountRule(models.Model):
     class Meta:
         ordering = ['customer_type', 'provider', 'min_amount']
         indexes = [
-            models.Index(fields=['customer_type', 'provider', 'min_amount', 'is_active']),
+            # Equality filters first (customer_type, provider, is_active), range/sort last (min_amount DESC).
+            # El motor filtra con min_amount__lte y ordena por -min_amount, por lo que
+            # el índice debe tener los campos de igualdad antes del campo de rango.
+            models.Index(fields=['customer_type', 'provider', 'is_active', '-min_amount']),
+        ]
+        constraints = [
+            # Unicidad para reglas de proveedor específico (provider NOT NULL).
+            # Dos constraints separadas porque PostgreSQL trata NULL != NULL,
+            # por lo que una sola UniqueConstraint no cubre las reglas globales.
+            models.UniqueConstraint(
+                fields=['customer_type', 'provider', 'min_amount'],
+                condition=Q(provider__isnull=False),
+                name='unique_discount_tier_per_provider',
+            ),
+            # Unicidad para reglas globales (provider NULL).
+            models.UniqueConstraint(
+                fields=['customer_type', 'min_amount'],
+                condition=Q(provider__isnull=True),
+                name='unique_discount_tier_global',
+            ),
+            # El descuento debe estar entre 0 % y 100 %.
+            models.CheckConstraint(
+                check=Q(discount_percent__gte=0) & Q(discount_percent__lte=100),
+                name='valid_discount_range',
+            ),
+            # El monto mínimo no puede ser negativo.
+            models.CheckConstraint(
+                check=Q(min_amount__gte=0),
+                name='min_amount_non_negative',
+            ),
         ]
 
     def __str__(self):

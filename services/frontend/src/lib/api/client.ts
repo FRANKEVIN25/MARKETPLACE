@@ -29,7 +29,7 @@ import type {
   BackendCartLine,
 } from './types';
 
-type RawServiceListing = Omit<ServiceListing, 'district' | 'province' | 'department' | 'totalJobs' | 'successRate' | 'repeatFailureRate' | 'avgRating'> & {
+type RawServiceListing = Omit<ServiceListing, 'district' | 'province' | 'department' | 'totalJobs' | 'successRate' | 'repeatFailureRate' | 'avgRating' | 'workshopScore'> & {
   mainLocation?: {
     id: number;
     name: string;
@@ -43,6 +43,7 @@ type RawServiceListing = Omit<ServiceListing, 'district' | 'province' | 'departm
   } | null;
   totalDemand?: number;
   avgRating?: number;
+  workshopScore?: number | string;
 };
 
 function normalizeServiceListing(listing: RawServiceListing): ServiceListing {
@@ -61,6 +62,7 @@ function normalizeServiceListing(listing: RawServiceListing): ServiceListing {
     // a labels más precisos basados en rating/demanda reales del backend.
     successRate: avgRating * 20,
     repeatFailureRate: 0,
+    workshopScore: Number(listing.workshopScore ?? 0),
   };
 }
 

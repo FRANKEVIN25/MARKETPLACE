@@ -18,9 +18,9 @@ USO:
 NOTAS:
     - Es idempotente: get_or_create por nombre dentro de cada nivel.
     - Solo crea; no elimina categorías existentes (a menos que use --reset).
-    - odoo_category_id queda en NULL; la sync con Odoo lo rellena después.
-      Tras la primera sync, el campo queda poblado y las syncs futuras son
-      inmediatas (lookup por odoo_category_id, no por nombre).
+        - Cada categoría recibe un sync_key estable al crearse en Django.
+        - odoo_category_id queda en NULL hasta ejecutar push_categories.
+            Ese comando crea/vincula las categorías en Odoo y rellena el ID real.
     - seed_products.py referencia categorías por nombre; si cambias nombres
       aquí debes actualizar también los nombres en seed_products.py.
 """
@@ -285,8 +285,8 @@ class Command(BaseCommand):
             )
         )
         self.stdout.write(
-            "   Siguiente paso: ejecutar la sync con Odoo para poblar odoo_category_id:\n"
-            "   docker exec -it ecomparts-backend python manage.py sync_products\n"
+            "   Siguiente paso: empujar categorías a Odoo para poblar odoo_category_id:\n"
+            "   docker exec -it ecomparts-backend python manage.py push_categories\n"
         )
 
     # -----------------------------------------------------------------------

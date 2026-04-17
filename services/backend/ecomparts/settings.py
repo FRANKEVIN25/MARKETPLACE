@@ -109,6 +109,13 @@ CELERY_TASK_SERIALIZER = 'json'
 CELERY_RESULT_SERIALIZER = 'json'
 CELERY_TIMEZONE = 'America/Lima'
 
+# Sync stock: ajustar según etapa del marketplace sin tocar la lógica del servicio.
+SYNC_STOCK_INTERVAL_MINUTES = int(os.getenv('SYNC_STOCK_INTERVAL_MINUTES', '60'))
+SYNC_CATALOG_SCHEDULE_HOUR = int(os.getenv('SYNC_CATALOG_SCHEDULE_HOUR', '1'))
+SYNC_CATALOG_SCHEDULE_MINUTE = int(os.getenv('SYNC_CATALOG_SCHEDULE_MINUTE', '0'))
+SYNC_COMPATIBILITY_SCHEDULE_HOUR = int(os.getenv('SYNC_COMPATIBILITY_SCHEDULE_HOUR', '2'))
+SYNC_COMPATIBILITY_SCHEDULE_MINUTE = int(os.getenv('SYNC_COMPATIBILITY_SCHEDULE_MINUTE', '10'))
+
 # Celery Beat — tareas periódicas
 from celery.schedules import crontab  # noqa: E402
 CELERY_BEAT_SCHEDULE = {

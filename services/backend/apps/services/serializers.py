@@ -75,6 +75,9 @@ class ServiceListingSerializer(serializers.ModelSerializer):
     commerceLevel = serializers.CharField(source='workshop.commerce_level', read_only=True)
     vehicleExpertise = serializers.SerializerMethodField()
     trustNotes = serializers.SerializerMethodField()
+    workshopScore = serializers.DecimalField(
+        source='workshop.score', max_digits=5, decimal_places=2, read_only=True
+    )
 
     class Meta:
         model = WorkshopService
@@ -103,6 +106,7 @@ class ServiceListingSerializer(serializers.ModelSerializer):
             'commerceLevel',
             'vehicleExpertise',
             'trustNotes',
+            'workshopScore',
         ]
         read_only_fields = fields
 
