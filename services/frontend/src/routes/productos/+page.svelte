@@ -198,50 +198,60 @@
 </script>
 
 <svelte:head>
-  <title>Productos - ECOMPARTS</title>
-  <meta name="description" content="Catálogo completo de autopartes" />
+  <title>Catálogo — ECOMPARTS · Autopartes Perú</title>
+  <meta name="description" content="Catálogo completo de autopartes de calidad en Perú" />
 </svelte:head>
 
-<div class="bg-gray-50 min-h-screen">
-  <!-- Header -->
-  <div class="bg-white border-b border-gray-200 sticky top-0 z-10">
-    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      <h1 class="text-4xl font-bold text-gray-900 mb-4">Catálogo de Productos</h1>
-      <p class="text-gray-600">Explora nuestro completo catálogo de autopartes de calidad</p>
+<div class="bg-iron-950 min-h-screen">
+  <!-- Header industrial -->
+  <div class="bg-iron-900 border-b border-steel-600/30 sticky top-0 z-10">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div class="flex items-end gap-6">
+        <div>
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// CATÁLOGO</p>
+          <h1 class="font-display text-5xl text-bone uppercase leading-none">CATÁLOGO DE PRODUCTOS</h1>
+        </div>
+        {#if data.count !== undefined}
+          <span class="font-mono text-xs text-steel-500 uppercase tracking-widest mb-1 hidden sm:block">
+            {data.count} REFERENCIAS DISPONIBLES
+          </span>
+        {/if}
+      </div>
     </div>
   </div>
 
   <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Filtros -->
-    <div class="bg-white rounded-lg shadow p-6 mb-8 space-y-6">
+    <!-- Filtros industriales -->
+    <div class="bg-iron-900 border border-steel-600/25 p-6 mb-8 space-y-6"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
         <!-- Búsqueda -->
         <div>
-          <label for="busqueda" class="block text-sm font-medium text-gray-700 mb-2">
-            Buscar productos
+          <label for="busqueda" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+            // BUSCAR PRODUCTO
           </label>
           <input
             id="busqueda"
             type="text"
-            placeholder="Ej: Disco de Freno, Bujías..."
+            placeholder="Ej: Disco de Freno, Bujías, SKU..."
             bind:value={filtros.q}
             on:change={() => {
               filtros.page = 1;
               actualizarURL();
             }}
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            class="input-industrial"
           />
         </div>
 
         <!-- Categoría -->
         <div>
-          <label for="filtro-categoria" class="block text-sm font-medium text-gray-700 mb-2">
-            Categoría
+          <label for="filtro-categoria" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+            // CATEGORÍA
           </label>
           <select
             id="filtro-categoria"
             bind:value={filtros.category_id}
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            class="input-industrial"
             on:change={() => {
               filtros.page = 1;
               actualizarURL();
@@ -259,13 +269,13 @@
       <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         <!-- Marca -->
         <div>
-          <label for="filtro-marca" class="block text-sm font-medium text-gray-700 mb-2">
-            Marca
+          <label for="filtro-marca" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+            // MARCA
           </label>
           <select
             id="filtro-marca"
             bind:value={filtros.marca_id}
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            class="input-industrial"
             on:change={async () => {
               filtros.modelo_id = '';
               filtros.variante_id = '';
@@ -284,13 +294,13 @@
 
         <!-- Modelo -->
         <div>
-          <label for="filtro-modelo" class="block text-sm font-medium text-gray-700 mb-2">
-            Modelo
+          <label for="filtro-modelo" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+            // MODELO
           </label>
           <select
             id="filtro-modelo"
             bind:value={filtros.modelo_id}
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            class="input-industrial disabled:opacity-40"
             disabled={!filtros.marca_id}
             on:change={async () => {
               filtros.variante_id = '';
@@ -309,13 +319,13 @@
 
         <!-- Variante -->
         <div>
-          <label for="filtro-variante" class="block text-sm font-medium text-gray-700 mb-2">
-            Variante (motor / año)
+          <label for="filtro-variante" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+            // VARIANTE (MOTOR / AÑO)
           </label>
           <select
             id="filtro-variante"
             bind:value={filtros.variante_id}
-            class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+            class="input-industrial disabled:opacity-40"
             disabled={!filtros.modelo_id}
             on:change={async () => {
               filtros.page = 1;
@@ -331,13 +341,13 @@
         </div>
       </div>
 
-      <div class="flex flex-wrap items-center gap-3 text-sm text-gray-600">
-        <span class="inline-flex items-center rounded-full bg-blue-50 px-3 py-2 text-blue-800">
+      <div class="flex flex-wrap items-center gap-3">
+        <span class="font-mono text-[10px] text-steel-600 uppercase tracking-widest border border-steel-600/30 px-3 py-1.5">
           El vehículo activo filtra el catálogo y se conserva en tu cuenta.
         </span>
         {#if $isAuthenticated}
-          <span class={`inline-flex items-center rounded-full px-3 py-2 ${sincronizandoVehiculo ? 'bg-amber-50 text-amber-800' : 'bg-emerald-50 text-emerald-800'}`}>
-            {sincronizandoVehiculo ? 'Guardando vehículo activo...' : 'Vehículo activo sincronizado'}
+          <span class="font-mono text-[10px] uppercase tracking-widest border px-3 py-1.5 {sincronizandoVehiculo ? 'border-amber-600/40 text-amber-500' : 'border-green-600/40 text-green-500'}">
+            {sincronizandoVehiculo ? '⟳ GUARDANDO VEHÍCULO...' : '✓ VEHÍCULO SINCRONIZADO'}
           </span>
         {/if}
       </div>
@@ -347,12 +357,12 @@
         <div class="flex items-center space-x-4">
           <button
             type="button"
-            class={`inline-flex items-center px-3 py-2 rounded-full text-sm border ${
+            class={`inline-flex items-center font-mono text-[10px] uppercase tracking-widest px-3 py-2 border transition-colors ${
               filtros.es_universal === null || filtros.es_universal === undefined
-                ? 'bg-blue-50 text-blue-800 border-blue-200'
+                ? 'bg-iron-800 text-steel-400 border-steel-600/50'
                 : filtros.es_universal
-                ? 'bg-green-50 text-green-800 border-green-200'
-                : 'bg-red-50 text-red-800 border-red-200'
+                ? 'bg-iron-800 text-green-500 border-green-600/50'
+                : 'bg-iron-800 text-rust-500 border-rust-600/50'
             }`}
             on:click={() => {
               // Ciclo de estados: null (ambos) -> true (solo universales) -> false (sin universales) -> null
@@ -385,7 +395,7 @@
         {#if marcaSeleccionada}
           <button
             type="button"
-            class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 hover:bg-blue-200"
+            class="inline-flex items-center font-mono text-[10px] uppercase tracking-widest px-3 py-1 bg-iron-800 text-steel-300 border border-steel-600/40 hover:border-rust-600/60 hover:text-rust-500 transition-colors"
             on:click={async () => {
               filtros.marca_id = '';
               filtros.modelo_id = '';
@@ -405,7 +415,7 @@
         {#if modeloSeleccionado}
           <button
             type="button"
-            class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 hover:bg-blue-200"
+            class="inline-flex items-center font-mono text-[10px] uppercase tracking-widest px-3 py-1 bg-iron-800 text-steel-300 border border-steel-600/40 hover:border-rust-600/60 hover:text-rust-500 transition-colors"
             on:click={async () => {
               filtros.modelo_id = '';
               filtros.variante_id = '';
@@ -423,7 +433,7 @@
         {#if varianteSeleccionada}
           <button
             type="button"
-            class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-100 text-blue-800 hover:bg-blue-200"
+            class="inline-flex items-center font-mono text-[10px] uppercase tracking-widest px-3 py-1 bg-iron-800 text-steel-300 border border-steel-600/40 hover:border-rust-600/60 hover:text-rust-500 transition-colors"
             on:click={async () => {
               filtros.variante_id = '';
               filtros.page = 1;
@@ -441,7 +451,7 @@
               {#if String(category.id) === String(filtros.category_id)}
                 <button
                   type="button"
-                  class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-purple-100 text-purple-800 hover:bg-purple-200"
+                  class="inline-flex items-center font-mono text-[10px] uppercase tracking-widest px-3 py-1 bg-iron-800 text-steel-300 border border-steel-600/40 hover:border-rust-600/60 hover:text-rust-500 transition-colors"
                   on:click={() => {
                     filtros.category_id = '';
                     filtros.page = 1;
@@ -459,7 +469,7 @@
         {#if filtros.es_universal !== null && filtros.es_universal !== undefined}
           <button
             type="button"
-            class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-teal-100 text-teal-800 hover:bg-teal-200"
+            class="inline-flex items-center font-mono text-[10px] uppercase tracking-widest px-3 py-1 bg-iron-800 text-steel-300 border border-steel-600/40 hover:border-rust-600/60 hover:text-rust-500 transition-colors"
             on:click={() => {
               filtros.es_universal = null;
               filtros.page = 1;
@@ -477,7 +487,7 @@
 
         <button
           type="button"
-          class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-gray-100 text-gray-700 hover:bg-gray-200 ml-auto"
+          class="inline-flex items-center font-mono text-[10px] uppercase tracking-widest px-3 py-1 bg-iron-800 text-rust-500 border border-rust-600/40 hover:bg-rust-600/10 transition-colors ml-auto"
           on:click={async () => {
             filtros.marca_id = '';
             filtros.modelo_id = '';
@@ -499,24 +509,27 @@
 
     <!-- Resultados -->
     {#if data.error}
-      <div class="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800 text-center">
-        <p class="font-medium">Error al cargar productos</p>
-        <p class="text-sm mt-1">{data.error}</p>
+      <div class="border border-rust-700/50 bg-iron-900 p-8"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <p class="font-mono text-xs text-rust-500 uppercase tracking-widest mb-1">// ERROR AL CARGAR PRODUCTOS</p>
+        <p class="font-mono text-sm text-steel-400">{data.error}</p>
       </div>
     {:else if data.products.length === 0}
-      <div class="bg-white rounded-lg shadow p-12 text-center">
-        <svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 21l-4.35-4.35m0 0A7.5 7.5 0 103.305 3.305a7.5 7.5 0 0110.345 10.345z" />
+      <div class="border border-steel-600/25 bg-iron-900 p-16 text-center"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <svg class="mx-auto h-14 w-14 text-steel-700 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+            d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
         </svg>
-        <p class="text-gray-500 mt-4 text-lg">No se encontraron productos</p>
-        <p class="text-gray-400 text-sm mt-1">Intenta con otros términos de búsqueda</p>
+        <p class="font-display text-3xl text-steel-600 uppercase mb-2">SIN RESULTADOS</p>
+        <p class="font-mono text-xs text-steel-700 uppercase tracking-widest">INTENTA CON OTROS TÉRMINOS DE BÚSQUEDA</p>
       </div>
     {:else}
       <div>
-        <p class="text-gray-600 mb-6 font-medium">
-          Mostrando {data.products.length} de {data.totalCount} productos
+        <p class="font-mono text-[10px] text-steel-600 uppercase tracking-widest mb-6">
+          MOSTRANDO {data.products.length} DE {data.totalCount} PRODUCTOS
         </p>
-        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
           {#each data.products as product (product.id)}
             <ProductCard {product} />
           {/each}

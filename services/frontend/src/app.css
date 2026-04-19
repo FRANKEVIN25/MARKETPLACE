@@ -2,32 +2,235 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Google Fonts fallback (already loaded via app.html) ─── */
+
 @layer base {
-  body {
-    @apply bg-gray-50 text-gray-900;
+  :root {
+    --iron-950: #1a1a1a;
+    --iron-900: #242424;
+    --iron-800: #2e2e2e;
+    --steel-600: #546e7a;
+    --rust-600:  #e64a19;
+    --bone:      #f0ebe3;
   }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    @apply bg-iron-950 text-bone;
+    font-family: 'IBM Plex Mono', monospace;
+    /* Blueprint/metal grid background */
+    background-image:
+      linear-gradient(rgba(84, 110, 122, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(84, 110, 122, 0.06) 1px, transparent 1px);
+    background-size: 32px 32px;
+    min-height: 100vh;
+  }
+
+  h1, h2, h3 {
+    font-family: 'Bebas Neue', Impact, sans-serif;
+  }
+
+  ::selection {
+    background: #e64a19;
+    color: #f0ebe3;
+  }
+
+  /* Scrollbar industrial */
+  ::-webkit-scrollbar        { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track  { background: #1a1a1a; }
+  ::-webkit-scrollbar-thumb  { background: #546e7a; }
+  ::-webkit-scrollbar-thumb:hover { background: #e64a19; }
 }
 
 @layer components {
-  /* Botón primario */
-  .btn-primary {
-    @apply px-4 py-2 bg-primary-600 text-white rounded-lg hover:bg-primary-700 
-           transition-colors duration-200 font-medium;
-  }
 
-  /* Botón secundario */
-  .btn-secondary {
-    @apply px-4 py-2 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 
-           transition-colors duration-200 font-medium;
-  }
-
-  /* Card genérico */
-  .card {
-    @apply bg-white rounded-lg shadow-sm border border-gray-200 p-4;
-  }
-
-  /* Container responsive */
+  /* ── Layout ── */
   .container-responsive {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* ── Buttons ── */
+  .btn-rust {
+    @apply inline-block bg-rust-600 text-bone font-mono font-bold uppercase tracking-industrial
+           px-6 py-3 border-2 border-rust-600
+           hover:bg-transparent hover:text-rust-600
+           transition-all duration-150 text-sm;
+    clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+  }
+
+  .btn-outline {
+    @apply inline-block bg-transparent text-bone font-mono font-bold uppercase tracking-industrial
+           px-6 py-3 border border-steel-600
+           hover:border-rust-600 hover:text-rust-600
+           transition-all duration-150 text-sm;
+  }
+
+  .btn-ghost {
+    @apply inline-block bg-transparent text-steel-300 font-mono text-xs uppercase tracking-industrial
+           px-4 py-2 border border-steel-600/50
+           hover:border-steel-400 hover:text-bone
+           transition-all duration-150;
+  }
+
+  /* ── Cards ── */
+  .card-industrial {
+    @apply bg-iron-900 border border-steel-600/25 relative overflow-hidden;
+    clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%);
+  }
+
+  .card-industrial::before {
+    content: '';
+    position: absolute;
+    top: 0; right: 14px; left: 0;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(84,110,122,0.5), transparent);
+  }
+
+  /* ── Section divider ── */
+  .divider-industrial {
+    @apply border-0 border-t border-steel-600/30 my-0;
+  }
+
+  /* ── Badge / Tag ── */
+  .badge-rust {
+    @apply inline-block bg-rust-600 text-bone font-mono text-xs uppercase tracking-industrial px-2 py-0.5;
+  }
+
+  .badge-steel {
+    @apply inline-block bg-iron-800 text-steel-300 font-mono text-xs uppercase tracking-industrial px-2 py-0.5 border border-steel-600/40;
+  }
+
+  /* ── Input industrial ── */
+  .input-industrial {
+    @apply w-full bg-iron-800 border border-steel-600/50 text-bone font-mono text-sm
+           px-4 py-3 outline-none placeholder-steel-600
+           focus:border-rust-600 transition-colors;
+    border-radius: 0;
+  }
+
+  /* ── Stat block ── */
+  .stat-block {
+    @apply flex flex-col gap-1 border-l-2 border-rust-600 pl-4;
+  }
+
+  /* ── Noise overlay ── */
+  .noise-overlay::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 1;
+  }
+
+  /* ── Hero gradient ── */
+  .hero-industrial {
+    @apply relative overflow-hidden;
+    background:
+      linear-gradient(135deg, #1a1a1a 0%, #242424 50%, #1a1a1a 100%);
+    border-bottom: 2px solid #e64a19;
+  }
+
+  .hero-industrial::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(84,110,122,0.08) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(84,110,122,0.08) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+  }
+
+  /* Diagonal slash decoration */
+  .hero-industrial::after {
+    content: '';
+    position: absolute;
+    top: 0; right: -60px;
+    width: 300px; height: 100%;
+    background: linear-gradient(135deg, transparent 50%, rgba(230,74,25,0.04) 50%);
+    pointer-events: none;
+  }
+
+  /* ── Ticker tape ── */
+  .ticker-wrap {
+    @apply overflow-hidden border-t border-b border-steel-600/30 bg-iron-900 py-2;
+  }
+
+  .ticker-content {
+    display: flex;
+    white-space: nowrap;
+    animation: ticker 28s linear infinite;
+  }
+
+  @keyframes ticker {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+
+  /* ── Product card 3D hover ── */
+  .card-3d {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    transform-style: preserve-3d;
+  }
+
+  .card-3d:hover {
+    transform: translateY(-6px) rotateX(2deg);
+    box-shadow: 0 20px 40px rgba(0,0,0,0.5), 0 0 0 1px rgba(230,74,25,0.3);
+  }
+
+  /* ── Pulse dot ── */
+  .pulse-rust {
+    @apply relative inline-flex;
+  }
+  .pulse-rust::before {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-rust-600 opacity-75;
+    animation: ping 1.2s cubic-bezier(0,0,0.2,1) infinite;
+  }
+
+  @keyframes ping {
+    75%, 100% { transform: scale(2); opacity: 0; }
+  }
+
+  /* ── Corner cut decoration ── */
+  .corner-cut-tr {
+    @apply relative;
+  }
+  .corner-cut-tr::after {
+    content: '';
+    position: absolute;
+    top: 0; right: 0;
+    width: 14px; height: 14px;
+    background: #1a1a1a;
+    clip-path: polygon(0 0, 100% 0, 100% 100%);
+  }
+}
+
+@layer utilities {
+  .font-display { font-family: 'Bebas Neue', Impact, sans-serif; }
+  .font-mono    { font-family: 'IBM Plex Mono', monospace; }
+
+  .text-stroke-rust {
+    -webkit-text-stroke: 2px #e64a19;
+    color: transparent;
+  }
+
+  .text-stroke-bone {
+    -webkit-text-stroke: 1px #f0ebe3;
+    color: transparent;
+  }
+
+  /* Animated counter numbers */
+  .counter-animate {
+    animation: countUp 0.8s ease-out forwards;
+  }
+
+  @keyframes countUp {
+    from { opacity: 0; transform: translateY(20px); }
+    to   { opacity: 1; transform: translateY(0); }
   }
 }
