@@ -3,7 +3,6 @@ from django.dispatch import receiver
 
 from apps.customer.models import Customer, CustomerStats
 from apps.services.models import Workshop
-from decimal import Decimal
 from .models import WorkshopReview, WorkshopServiceHistory
 
 @receiver(post_save, sender=Workshop)
@@ -60,27 +59,28 @@ def ensure_workshop_customer_profile(sender, instance, **kwargs):
 @receiver(post_save, sender=WorkshopReview)
 def update_service_history_rating(sender, instance, created, **kwargs):
     """
-    Cada vez que se crea una reseña, actualizamos el promedio y el total 
-    en el historial de servicio correspondiente.
+    Recalcula avg_rating y total_ratings en WorkshopServiceHistory cada vez
+    que se crea una reseña con servicio asociado.
+
+    Se recalcula desde la fuente (agregación SQL) en lugar de usar fórmula
+    incremental, para evitar condiciones de carrera cuando dos reseñas se
+    guardan simultáneamente para el mismo taller+servicio.
     """
-    if created and instance.service:  # Solo si es nueva y tiene un servicio asociado
-        # 1. Obtener o crear el registro de historial para ese Taller y ese Servicio
-        history, _ = WorkshopServiceHistory.objects.get_or_create(
-            workshop=instance.workshop,
-            service=instance.service
-        )
+    if not (created and instance.service):
+        return
 
-        # 2. Preparar datos para la fórmula
-        nueva_nota = Decimal(instance.rating)
-        promedio_actual = history.avg_rating
-        total_anterior = history.total_ratings
+    from django.db.models import Avg, Count
 
-        # 3. Aplicar fórmula de promedio móvil
-        nuevo_total = total_anterior + 1
-        # Fórmula: ((Promedio * Cantidad) + NuevaNota) / NuevaCantidad
-        nuevo_promedio = ((promedio_actual * total_anterior) + nueva_nota) / nuevo_total
+    agg = WorkshopReview.objects.filter(
+        workshop=instance.workshop,
+        service=instance.service,
+    ).aggregate(avg=Avg('rating'), total=Count('id'))
 
-        # 4. Actualizar campos
-        history.total_ratings = nuevo_total
-        history.avg_rating = nuevo_promedio
-        history.save()        
+    WorkshopServiceHistory.objects.update_or_create(
+        workshop=instance.workshop,
+        service=instance.service,
+        defaults={
+            'avg_rating': agg['avg'] or 0,
+            'total_ratings': agg['total'],
+        },
+    )

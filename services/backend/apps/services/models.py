@@ -1,4 +1,5 @@
 from django.db import models
+from django.db.models import Q, F
 from django.contrib.auth.models import User
 
 """
@@ -189,6 +190,26 @@ class Workshop(models.Model):
     )
     is_active = models.BooleanField(default=True)
 
+    # ── Score de visibilidad ───────────────────────────────────────────────────
+    # Valor materializado (0.00–100.00) calculado por la tarea Celery
+    # `recalculate_workshop_scores`. Permite ordenar el listado público sin
+    # joins en tiempo real. Recalculado cada 12 horas (configurable via CELERY_BEAT).
+    #
+    # Fórmula (ver apps/services/tasks.py):
+    #   40 % historial de compra (CustomerStats.total_spent del customer_profile)
+    #   25 % rating promedio de reviews (WorkshopReview)
+    #   15 % demanda de servicios (WorkshopServiceHistory.total_demand)
+    #   10 % expertise vehicular  (WorkshopVehicleExpertise count + nivel)
+    #   10 % confianza            (is_verified + years_experience)
+    score = models.DecimalField(
+        max_digits=5,
+        decimal_places=2,
+        default=0,
+        db_index=True,
+        verbose_name="Score de visibilidad",
+        help_text="Puntuación 0–100 calculada periódicamente. Mayor score → aparece primero.",
+    )
+
     # ── Auditoría ──────────────────────────────────────────────────────────────
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -197,6 +218,17 @@ class Workshop(models.Model):
         verbose_name = 'Taller'
         verbose_name_plural = 'Talleres'
         ordering = ['-created_at']
+        constraints = [
+            # Un taller SELLER debe tener provider asignado.
+            # Cualquier otro commerce_level no debe tenerlo.
+            models.CheckConstraint(
+                check=(
+                    Q(commerce_level='SELLER', provider__isnull=False) |
+                    ~Q(commerce_level='SELLER')
+                ),
+                name='provider_required_if_seller',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.name}"
@@ -319,7 +351,7 @@ class Service(models.Model):
 
     category = models.ForeignKey(
         ServiceCategory,
-        on_delete=models.CASCADE,
+        on_delete=models.PROTECT,
         related_name='services',
     )
     name = models.CharField(max_length=150)
@@ -437,6 +469,18 @@ class WorkshopService(models.Model):
         verbose_name = 'Servicio de Taller'
         verbose_name_plural = 'Servicios de Taller'
         unique_together = ('workshop', 'service')
+        constraints = [
+            # max_price >= min_price cuando ambos están definidos.
+            # Si alguno es null el constraint no aplica (precio aún sin definir).
+            models.CheckConstraint(
+                check=(
+                    Q(min_price__isnull=True) |
+                    Q(max_price__isnull=True) |
+                    Q(max_price__gte=F('min_price'))
+                ),
+                name='valid_workshop_service_price_range',
+            ),
+        ]
 
     def __str__(self):
         return f"{self.workshop.name} → {self.service.name}"
@@ -651,16 +695,26 @@ class WorkshopVehicleExpertise(models.Model):
     class Meta:
         verbose_name = 'Expertise Vehicular del Taller'
         verbose_name_plural = 'Expertise Vehicular de Talleres'
-        # Un taller no puede tener el mismo registro duplicado para la misma
-        # combinación (marca, modelo). NULLs no rompen el unique_together
-        # en PostgreSQL (cada NULL es distinto), pero la lógica de negocio restringe
-        # a exactamente un FK poblado a la vez, así que la colisión real es imposible.
-        unique_together = ('workshop', 'marca', 'modelo')
         ordering = ['workshop', '-expertise_level']
         indexes = [
             models.Index(fields=['workshop', 'expertise_level']),
             models.Index(fields=['marca']),
             models.Index(fields=['modelo']),
+        ]
+        constraints = [
+            # Dos constraints condicionales en lugar de unique_together porque
+            # PostgreSQL trata NULL != NULL — un unique_together estándar no
+            # impide duplicados cuando uno de los FK es NULL.
+            models.UniqueConstraint(
+                fields=['workshop', 'marca'],
+                condition=Q(modelo__isnull=True),
+                name='unique_workshop_marca',
+            ),
+            models.UniqueConstraint(
+                fields=['workshop', 'modelo'],
+                condition=Q(modelo__isnull=False),
+                name='unique_workshop_modelo',
+            ),
         ]
 
     def clean(self):
@@ -719,6 +773,22 @@ class WorkshopLocation(models.Model):
 
     created_at = models.DateTimeField(auto_now_add=True)
 
+    class Meta:
+        verbose_name = 'Ubicación de Taller'
+        verbose_name_plural = 'Ubicaciones de Taller'
+        indexes = [
+            # Cubre búsquedas por department solo, (department, province) y (department, province, district).
+            models.Index(fields=['department', 'province', 'district']),
+        ]
+        constraints = [
+            # Solo puede haber una sede principal por taller.
+            models.UniqueConstraint(
+                fields=['workshop'],
+                condition=Q(is_main=True),
+                name='unique_main_location_per_workshop',
+            ),
+        ]
+
 
 class WorkshopReview(models.Model):
     workshop = models.ForeignKey(
@@ -744,3 +814,13 @@ class WorkshopReview(models.Model):
     comment = models.TextField(blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = 'Reseña de Taller'
+        verbose_name_plural = 'Reseñas de Taller'
+        constraints = [
+            models.UniqueConstraint(
+                fields=['workshop', 'user'],
+                name='unique_review_per_user_per_workshop',
+            ),
+        ]

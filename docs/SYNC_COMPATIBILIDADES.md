@@ -118,7 +118,7 @@ solo el sistema, no los usuarios de Odoo, debe modificar esa relación.
    → Abre su producto "Pastilla de freno Brembo"
    → Agrega compatibilidad seleccionando la variante
 
-4. SYNC trae las compatibilidades a Django (cada hora via Celery Beat)
+4. SYNC trae las compatibilidades a Django en una fase separada y de baja frecuencia
    → Lee autopart.compatibility desde Odoo
    → Resuelve la variante: odoo_variante_id=7 → VariantVehiculo.id=42 (Vía 1)
    → Crea CompatibilidadProducto(producto=..., variante_id=42)
@@ -191,7 +191,7 @@ Un proveedor nuevo llega con un catálogo de N productos con sus vehiculos de co
    → Solo las nuevas se envían a Odoo.
 5. Proveedor abre Odoo y ve todas las variantes disponibles.
 6. Proveedor crea sus productos y asigna compatibilidades desde la UI de Odoo.
-7. La sync (Celery Beat, cada hora) trae las compatibilidades a Django.
+7. La sync nocturna de compatibilidades trae los cambios a Django.
 ```
 
 ### Escenario B — Proveedor necesita una variante que no existe
@@ -234,7 +234,9 @@ Una vez que el catálogo está construido y vinculado:
 
 ```
 push_vehicles  → solo al agregar variantes nuevas en Django
-sync_products  → cada hora (Celery Beat), trae producto + compatibilidades
+sync_provider_catalog_snapshot / sync_products  → ventana nocturna de catálogo
+sync_all_compatibility                         → ventana nocturna separada
+sync_all_stock                                 → intervalo corto y configurable
 ```
 
 El catálogo crece gradualmente: cada nuevo proveedor que se afilia puede traer variantes
@@ -280,13 +282,13 @@ docker exec -it ecomparts-backend python manage.py sync_products
 | `apps/vehicles/models.py` | `VariantVehiculo.odoo_variante_id` (ancla Django→Odoo) |
 | `apps/vehicles/management/commands/push_vehicles.py` | **Push completo** del catálogo → Odoo con vinculación bidireccional |
 | `apps/products/models.py` | `CompatibilidadProducto` (tabla through M2M) |
-| `apps/sync/odoo_connector.py` → `push_marca/modelo/motor/transmision/traccion/variante()` | Métodos de push con estrategia 3 vías + caché |
-| `apps/sync/odoo_connector.py` → `get_compatibilities()` | Lee `autopart.compatibility` en lote |
-| `apps/sync/odoo_connector.py` → `get_vehicle_variants()` | Lee `vehiculo.variante` con `django_external_id` |
-| `apps/sync/tasks.py` → `sync_provider_compatibility()` | Tarea Celery de compatibilidades |
-| `apps/sync/tasks.py` → `_resolve_django_variant()` | Resolución bidireccional de variante (2 vías) |
-| `apps/sync/tasks.py` → `sync_provider_products()` paso 5 | Llama a compat al final de la sync completa |
-| `apps/products/management/commands/sync_products.py` → `_sync_compatibility()` | Mismo flujo vía CLI |
+| `apps/sync/connector/vehicles.py` | Métodos de push con estrategia 3 vías + caché |
+| `apps/sync/connector/compatibility.py` | Lectura de `autopart.compatibility` y `vehiculo.variante` en lote |
+| `apps/sync/services/compatibility.py` | Sync de compatibilidades y resolución bidireccional de variante |
+| `apps/sync/tasks.py` → `sync_all_compatibility()` / `sync_provider_compatibility()` | Tareas Celery de compatibilidades |
+| `apps/sync/models.py` | `ProviderSyncState` para observabilidad por provider y por fase |
+| `apps/sync/services/observability.py` | Persistencia de inicio/fin/estado/métricas de cada fase |
+| `apps/sync/management/commands/sync_compatibility.py` | Ejecución manual de compatibilidades vía CLI |
 | `services/odoo/addons/ecomparts_integration/models/vehicle_models.py` | Modelos Odoo — `django_external_id` sin `readonly` a nivel de campo |
 | `services/odoo/addons/ecomparts_integration/views/vehicle_views.xml` | Vistas Odoo — `django_external_id` con `readonly="1"` (solo UI) |
 | `services/odoo/addons/ecomparts_integration/models/compatibility.py` | `autopart.compatibility` en Odoo |
@@ -301,14 +303,17 @@ docker exec -it ecomparts-backend python manage.py push_vehicles
 docker exec -it ecomparts-backend python manage.py push_vehicles --only-unlinked
 docker exec -it ecomparts-backend python manage.py push_vehicles --dry-run
 
-# Sync completa (categorías + almacenes + productos + stock + compatibilidades)
+# Sync completa de catálogo, imágenes y compatibilidades
 docker exec -it ecomparts-backend python manage.py sync_products
 
 # Solo compatibilidades
-docker exec -it ecomparts-backend python manage.py sync_products --skip-stock
+docker exec -it ecomparts-backend python manage.py sync_compatibility
 
 # Sin compatibilidades
 docker exec -it ecomparts-backend python manage.py sync_products --skip-compat
+
+# Solo stock rápido
+docker exec -it ecomparts-backend python manage.py sync_stock
 
 # Dry-run
 docker exec -it ecomparts-backend python manage.py sync_products --dry-run
@@ -345,14 +350,51 @@ print(result)
 
 ## Consideraciones importantes
 
-- La sync **no borra** compatibilidades en Django cuando se desactivan en Odoo (`active=False`). Quedan hasta limpieza manual. Para limpieza activa habría que comparar el conjunto completo.
+- La sync sí reconcilia el conjunto activo: si una compatibilidad deja de venir desde Odoo, se elimina de Django en la fase de reconcile.
 - El catálogo de variantes es universal y compartido entre proveedores. Múltiples proveedores pueden tener compatibilidades hacia la misma `VariantVehiculo`.
 - `unique_together = ('producto', 'variante')` garantiza idempotencia en `CompatibilidadProducto`.
 - `fitment_notes` (Odoo) → `notas_instalacion` en Django, truncado a 255 chars.
+- La fase de compatibilidades ya corre separada del snapshot de catálogo y del stock, y deja estado persistido por provider en `ProviderSyncState`.
+
+---
+
+## Arquitectura operativa actual
+
+La arquitectura más sana para compatibilidades quedó así:
+
+- `push_vehicles` mantiene el catálogo vehicular y sus anclas bidireccionales.
+- Los proveedores crean y editan compatibilidades en Odoo.
+- Django sincroniza compatibilidades en una fase propia, separada de catálogo e imágenes.
+- La frecuencia recomendada es baja o nocturna, no al ritmo del stock.
+- Cada corrida deja métricas y estado por provider para operación y soporte.
+
+Eso evita mezclar en una sola corrida:
+
+- snapshot de catálogo,
+- binarios de imágenes,
+- stock rápido,
+- y compatibilidades relacionales pesadas.
 
 ---
 
 ## Mejoras pendientes
+
+### [REVISION PENDIENTE] Compatibilidades diferenciales
+
+**Estado:** Pendiente de revisión  
+**Prioridad:** Media
+
+Hoy la sync de compatibilidades funciona por reconcile del conjunto activo del provider, lo cual ya es correcto para la etapa actual del proyecto.
+
+La mejora arquitectónica a revisar más adelante sería pasar de reconcile completo a sync diferencial, por ejemplo usando un ancla adicional como:
+
+- `odoo_compatibility_id` en Django,
+- `write_date` remoto,
+- o alguna versión/hash específico expuesto por Odoo.
+
+Eso permitiría traer solo altas, cambios y bajas relevantes en vez de reconstruir el estado deseado completo en cada corrida.
+
+Por ahora queda explícitamente como revisión futura, no como cambio necesario inmediato.
 
 ### [MEJORA] Auto-importar variantes nuevas creadas directamente en Odoo
 
@@ -364,54 +406,5 @@ Cuando un proveedor crea una variante en Odoo sin que Django la haya empujado, l
 **Riesgo:** requiere que todos los sub-registros (modelo, motor, transmision, traccion) también existan en Django con sus respectivos `django_external_id` en Odoo. Sin eso, la auto-creación fallaría silenciosamente o crearía datos parciales.
 
 **Archivos a modificar:**
-- `apps/sync/tasks.py` → `_resolve_django_variant()`: añadir Vía 3
+- `apps/sync/services/compatibility.py` → `_resolve_django_variant()`: añadir Vía 3
 - `apps/vehicles/models.py`: posible campo `is_pending_review` para variantes auto-importadas
-
-
-# Sincronización de Compatibilidades: Odoo ↔ Django
-
-## Resumen de lo implementado
-
-A continuación se listan los cambios importantes que se han implementado para soportar el scope de variantes por proveedor y la sincronización bidireccional entre Django y Odoo.
-
-- **Django (backend)**
-   - `apps/marketplace/models.py`
-      - Campo `Provider.variantes_habilitadas` → M2M a `VariantVehiculo`, tabla intermedia `marketplace_provider_variantesvehiculo`.
-      - Signal `m2m_changed` → cuando el admin agrega/quita variantes del scope, llama automáticamente a `scope_variante_for_company` / `unscope_variante_from_company` en Odoo sin intervención manual.
-   - `apps/marketplace/migrations/0008_provider_variantes_habilitadas.py`
-      - Migración auto-contenida que depende de `vehicles.0002`.
-   - `apps/marketplace/admin.py`
-      - `filter_horizontal = ('variantes_habilitadas',)` → widget de selección con búsqueda en tiempo real.
-      - Nuevo fieldset "🚗 Scope de Vehículos" con descripción instructiva.
-      - Columna "Variantes" en el listado de providers.
-      - Acción `push_variantes_a_odoo` → ejecuta `push_vehicles --provider-id` desde la UI del admin.
-   - `apps/vehicles/admin.py`
-      - `search_fields` expandido (tecnología, año hasta) para mejor búsqueda en el widget M2M.
-      - Columna `odoo_variante_id` y `Providers` en el listado.
-      - `readonly_fields = ('odoo_variante_id',)`.
-
-- **OdooConnector**
-   - `apps/sync/odoo_connector.py`
-      - Tres métodos nuevos en la sección "VEHICLE SCOPE POR PROVEEDOR":
-         - `scope_variante_for_company(odoo_variante_id, company_id)` → ORM command `(4, id)`, idempotente.
-         - `unscope_variante_from_company(odoo_variante_id, company_id)` → ORM command `(3, id)`.
-         - `sync_full_scope_for_company(odoo_variante_ids, company_id)` → diff completo en 2 batch-writes, garantiza consistencia total.
-
-- **push_vehicles**
-   - `apps/vehicles/management/commands/push_vehicles.py`
-      - Nuevo flag `--provider-id=N` → usa `provider.variantes_habilitadas` como queryset.
-      - Al finalizar el push con `--provider-id`, llama a `sync_full_scope_for_company` → añade variantes nuevas al scope y revoca las que ya no están (en un solo par de batch-writes).
-      - `--only-unlinked` sigue funcionando en modo provider.
-
-- **Odoo (addon `ecomparts_integration`)**
-   - `services/odoo/addons/ecomparts_integration/models/vehicle_models.py`
-      - Campo `VarianteVehiculo.company_ids` → `Many2many` a `res.company`, tabla `vehiculo_variante_company_rel`.
-   - `security/ir_rules.xml` (nuevo)
-      - Record Rule `rule_vehiculo_variante_by_company`: aplica a `group_user`, dominio `['|', ('company_ids', '=', False), ('company_ids', 'in', [company_id])]`.
-      - Variantes sin scope asignado (`company_ids` vacío) son visibles para todos → fallback seguro durante puesta en marcha.
-   - `__manifest__.py`
-      - Registra `security/ir_rules.xml` en `data`.
-   - `views/product_views.xml`
-      - `no_quick_create: True` en `variant_id` (el Record Rule ya filtra el queryset a nivel ORM).
-
-Estos cambios permiten que los proveedores vean solo las variantes que les corresponden en Odoo sin duplicar el catálogo maestro (marcas/modelos/motores/etc.) en múltiples compañías, mejorando UX y manteniendo Django como fuente de verdad para el catálogo.

@@ -526,6 +526,7 @@ export interface ServiceListing {
   commerceLevel: CommerceLevel;
   vehicleExpertise: string[];
   trustNotes: string[];
+  workshopScore: number;
 }
 
 export interface ServiceFilters {

@@ -29,7 +29,7 @@ def _get_models():
     return SubOrder, DiscountRule
 
 
-ESTADOS_VALIDOS = ['confirmado', 'enviado', 'entregado']
+ESTADOS_VALIDOS = {'confirmado', 'enviado', 'entregado'}
 
 
 def _redondear_al_sol(monto: Decimal) -> Decimal:
@@ -130,19 +130,20 @@ def calcular_descuento_suborder(customer, provider, subtotal_suborder: Decimal):
     if not customer:
         return Decimal('0'), Decimal('0.00')
 
+    subtotal = Decimal(str(subtotal_suborder))
     customer_type = customer.customer_type
     esquema = _esquema_ponderacion(customer_type)
     historial = _historial_ponderado(customer, provider, esquema)
 
     # Tier se busca con historial + ticket actual
-    monto_total = historial + Decimal(str(subtotal_suborder))
+    monto_total = historial + subtotal
 
     porcentaje = _buscar_regla(customer_type, provider, monto_total)
 
     if porcentaje <= Decimal('0'):
         return Decimal('0'), Decimal('0.00')
 
-    monto_exacto = (Decimal(str(subtotal_suborder)) * porcentaje) / Decimal('100')
+    monto_exacto = (subtotal * porcentaje) / Decimal('100')
     monto_redondeado = _redondear_al_sol(monto_exacto)
 
     return porcentaje, monto_redondeado

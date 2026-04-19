@@ -123,8 +123,9 @@ class PublicServiceListingListView(generics.ListAPIView):
         'history_total_demand',
         'history_avg_rating',
         'workshop__years_experience',
+        'workshop__score',
     ]
-    ordering = ['-history_total_demand', '-history_avg_rating', 'service__name']
+    ordering = ['-workshop__score', '-history_total_demand', '-history_avg_rating', 'service__name']
 
     def get_queryset(self):
         qs = _listing_queryset()

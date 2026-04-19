@@ -1,6 +1,8 @@
 """
 Modelos de Productos - Versión MVP
 """
+import uuid
+
 from decimal import Decimal
 from django.db import models
 from django.utils.text import slugify
@@ -32,16 +34,26 @@ class Category(MPTTModel):
     description = models.TextField(blank=True, null=True)
     is_active = models.BooleanField(default=True)
 
-    # Vínculo con Odoo — clave para sincronización correcta.
-    # Django es maestro de categorías; Odoo las recibe.
-    # odoo_category_id es el ancla estable: no cambia aunque el nombre
-    # de la categoría o su PK de Django lo hagan.
+    # Clave estable de sincronización Django -> Odoo.
+    # No depende del PK de Django, del nombre ni del ID nativo de Odoo.
+    sync_key = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        editable=False,
+        help_text="Clave estable usada para vincular la categoría con Odoo.",
+    )
+
+    # Vínculo cacheado con Odoo para resolución operativa rápida.
+    # Django es maestro de categorías; la fuente de verdad del vínculo es
+    # sync_key <-> product.category.django_sync_key.
+    # odoo_category_id solo guarda el ID nativo actual de Odoo para evitar
+    # búsquedas extra en syncs posteriores.
     odoo_category_id = models.IntegerField(
         null=True,
         blank=True,
         unique=True,
         help_text="ID de la categoría en Odoo (product.category). "
-                  "Permite vincular categorías aunque los IDs auto-incrementales difieran."
+                  "Se usa como cache operativa local; la vinculación estable la define sync_key."
     )
 
     # Metadata
@@ -146,6 +158,12 @@ class Product(models.Model):
         blank=True,
         null=True,
         help_text="Public ID en Cloudinary para transformaciones"
+    )
+    odoo_image_version = models.CharField(
+        max_length=64,
+        blank=True,
+        null=True,
+        help_text="Versión remota usada para decidir si la imagen debe refrescarse desde Odoo."
     )
 
     description = models.TextField(blank=True, null=True)
@@ -280,6 +298,8 @@ class Product(models.Model):
             models.Index(fields=['reference']),
             # Compuesto: el sync siempre filtra por (provider, odoo_product_id)
             models.Index(fields=['provider', 'odoo_product_id']),
+            # Compatibilidades resuelven productos por (provider, odoo_template_id)
+            models.Index(fields=['provider', 'odoo_template_id']),
             models.Index(fields=['slug']),
         ]
     
