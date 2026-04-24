@@ -1,6 +1,6 @@
 # Flujo de Compra Multiproveedor — ECOMPARTS Marketplace
-> Documentación técnica basada en el código real del proyecto (marzo 2026)
-> **Última revisión:** 10 de marzo de 2026 — v4: revisión de pago en Odoo, simplificación de estados y `x_payment_status` reducido
+> Documentación técnica basada en el código real del proyecto
+> **Última revisión:** 24 de abril de 2026 — v5.1: auditoría de arquitectura real `orders` ↔ `sync`, endpoints vigentes y brechas abiertas
 
 ---
 
@@ -10,12 +10,42 @@
 |---|---|
 | **SvelteKit (Frontend)** | Inicia acciones, muestra estados y gestiona la sesión de checkout (TTL 3 h). No calcula reglas de negocio. |
 | **Django (Marketplace)** | Orquesta todo el negocio: crea órdenes, gestiona pagos, expira reservas, decide cuándo integrar con Odoo. |
-| **Odoo** | Ejecuta operaciones ERP **solo cuando el pago ya fue confirmado**: ventas, stock, facturación, SUNAT. |
+| **Odoo** | Recibe una `sale.order` en `draft` cuando el cliente sube el comprobante, y desde ahí el proveedor revisa el pago y continúa el flujo ERP. |
 | **Celery** | Ejecuta la integración Django→Odoo de forma asíncrona (no bloquea al cliente). También ejecuta el job de expiración de órdenes pendientes. |
 
-> ⚠️ **Odoo recibe únicamente SubOrders con pago confirmado.**
-> Órdenes en `pendiente_pago` o `pago_en_revision` **nunca** se envían a Odoo.
+> ⚠️ **Estado real del código:** Odoo recibe la `SubOrder` cuando pasa a `pago_en_revision`.
+> La `sale.order` se crea en `draft` tras subir el comprobante; la aprobación o rechazo ocurre después en Odoo.
 > Django es el único orquestador del flujo completo.
+
+## 1.1 Estado real del código al 24 de abril de 2026
+
+### División actual de responsabilidades
+
+- `apps/orders` sigue siendo el dueño del dominio: modelos, serializers, endpoints REST, webhooks Odoo→Django y tareas Celery del flujo de compra.
+- `apps/sync` absorbió la infraestructura de integración con Odoo: conector y servicio `apps/sync/services/orders.py` para crear o actualizar `sale.order`.
+- `apps/orders/signals.py` ya no contiene la lógica de Odoo; hoy re-exporta funciones desde `apps/sync/services/orders.py` para mantener compatibilidad con imports antiguos.
+
+### Endpoints reales hoy en producción
+
+- `POST /api/v1/orders/orders/checkout-preview/`
+- `POST /api/v1/orders/orders/create_order/`
+- `POST /api/v1/orders/orders/upload_payment_proof/`
+- `POST /api/v1/orders/suborders/{id}/mark-received/`
+- `POST /api/v1/orders/odoo-webhook/sale-order-update/`
+- `POST /api/v1/orders/odoo-webhook/delivery-update/`
+- `POST /api/v1/orders/odoo-webhook/review-payment/`
+- `POST /api/v1/orders/odoo-webhook/mark-received/`
+
+### Tareas periódicas activas
+
+- `apps.orders.tasks.expire_pending_suborders` cada 15 min.
+- `apps.orders.tasks.reconcile_suborders_pending_odoo` cada 10 min.
+
+### Conclusión arquitectónica actual
+
+- La separación `orders = dominio` y `sync = infraestructura` es razonable y consistente.
+- La migración a `sync` no dejó obsoleto a `orders`: el flujo de compra sigue necesitando orquestación de negocio en `orders`.
+- El flujo está operativo, pero no puede considerarse completamente cerrado: hay endpoints legacy, stubs sin implementar y cobertura automatizada mínima.
 
 ---
 
@@ -45,7 +75,7 @@ Order creada → SubOrder creada → (espera pago)
     x_payment_status='rechazado'      sale.order.state='sale'
     notifica a Django →               notifica a Django →
     PaymentProof.rejected            PaymentProof.approved
-    SubOrder.status='pendiente_pago' SubOrder.status='confirmado'
+    SubOrder.status='pago_rechazado' SubOrder.status='confirmado'
 ```
 
 **Motivos del rediseño v4:**
@@ -209,7 +239,7 @@ El frontend muestra **una card por SubOrder** con:
 
 #### Paso D2 — Cliente sube comprobante
 
-**Endpoint:** `POST /api/orders/suborders/{id}/upload_payment/`
+**Endpoint real:** `POST /api/v1/orders/orders/upload_payment_proof/`
 
 Se crea un objeto `PaymentProof` (modelo actual de Django, ver código en
 `apps/orders/models/payment_proof.py`):
@@ -255,17 +285,16 @@ El módulo `orders_odoo` expone dos acciones principales:
 - Botón **Rechazar pago** (visible mientras `state = 'draft'`):
     - Se abre un cuadro para capturar `x_payment_rejection_reason`.
     - Pone `x_payment_status = 'rechazado'` en la `sale.order`.
-    - Llama a Django (endpoint interno, por ejemplo
-        `POST /api/orders/suborders/{id}/review_payment/`) con `action='reject'`.
+    - Llama a Django mediante `POST /api/v1/orders/odoo-webhook/review-payment/`
+        con `action='reject'`.
     - Django actualiza el último `PaymentProof`:
 
         ```python
         PaymentProof.status           → 'rejected'
         PaymentProof.rejection_reason → x_payment_rejection_reason
-        PaymentProof.verified_by      → usuario Odoo mapeado
         PaymentProof.verified_at      → now()
 
-        SubOrder.status          → 'pendiente_pago'
+        SubOrder.status          → 'pago_rechazado'
         SubOrder.payment_rejected = True
         ```
 
@@ -279,10 +308,9 @@ El módulo `orders_odoo` expone dos acciones principales:
         ```python
         x_payment_status = 'aprobado'
         # Llamada a Django
-        review_payment(suborder_id, action='approve', payment_proof_id=...)  # vía XML-RPC / HTTP
+        review_payment(suborder_number, action='approve')  # vía HTTP webhook
 
         PaymentProof.status      → 'approved'
-        PaymentProof.verified_by → usuario Odoo mapeado
         PaymentProof.verified_at → now()
 
         SubOrder.status       → 'confirmado'
@@ -293,16 +321,17 @@ El módulo `orders_odoo` expone dos acciones principales:
         la aprobación del pago y la confirmación de la cotización ocurren en la
         misma acción de Odoo.
 
-> 🔑 `payment_rejected` sigue siendo un **flag**, no un estado. Después de un
-> rechazo volvemos siempre a `SubOrder.status = 'pendiente_pago'` para que el
-> flujo de "subir comprobante" sea el mismo que la primera vez.
+> 🔑 En el código actual, `payment_rejected` es un flag complementario pero el
+> rechazo sí deja a la `SubOrder` en `pago_rechazado`. La resubida vuelve el
+> flujo a `pago_en_revision` sin reactivar el TTL.
 
 ---
 
 ### 🧾 F. Creación de `sale.order` en Odoo (tras subir comprobante)
 
-**Función:** `sync_suborder_to_odoo(suborder)` — `apps/orders/signals.py`
-**Protocolo:** XML-RPC (`xmlrpc.client.ServerProxy`) — puerto 8069
+**Función real:** `sync_suborder_to_odoo(suborder)` — `apps/sync/services/orders.py`
+**Compatibilidad:** `apps/orders/signals.py` re-exporta esta función para no romper imports antiguos.
+**Protocolo real:** JSON-RPC vía `apps/sync/odoo_connector.py` — puerto 8069
 
 > Se ejecuta **cuando la SubOrder entra en `pago_en_revision`**, es decir, tras
 > la subida de un `PaymentProof` válido. Odoo crea una cotización en estado
@@ -596,6 +625,16 @@ Se almacena y actualiza desde el módulo `orders_odoo` y **no** se edita a mano.
 
 ## 6️⃣ Arquitectura de conexión Django ↔ Odoo (post-pago)
 
+### Estado real de la arquitectura
+
+El flujo quedó dividido así:
+
+- `apps/orders/views.py` decide cuándo crear la orden, cuándo aceptar comprobantes y cuándo encolar trabajo.
+- `apps/orders/tasks.py` conserva las tareas de negocio del checkout (`create_odoo_sale_order`, `update_suborder_payment_status`, expiración TTL y reconciliación).
+- `apps/sync/services/orders.py` concentra la lógica técnica de integración con Odoo (`sale.order`, `x_payment_status`, `x_delivery_status`).
+
+Esto significa que **no conviene mover todo a `sync`**: `sync` no debería volverse dueño del workflow del checkout, solo de la comunicación con Odoo.
+
 ```
 Django (Celery worker)  ← se activa cuando SubOrder.status = 'pago_en_revision'
                           (cliente subió comprobante)
@@ -603,11 +642,12 @@ Django (Celery worker)  ← se activa cuando SubOrder.status = 'pago_en_revision
     ├── apps/orders/tasks.py
     │       └── create_odoo_sale_order(sub_order_id)
     │               │
-    │               └── apps/orders/signals.py
+    │               └── apps/orders/signals.py  (re-export de compatibilidad)
     │                       └── sync_suborder_to_odoo(suborder)
     │                               │
-    │                               └── apps/sync/odoo_connector.py
-    │                                       └── OdooConnector (XML-RPC)
+    │                               └── apps/sync/services/orders.py
+    │                                       └── apps/sync/odoo_connector.py
+    │                                               └── OdooConnector (JSON-RPC)
     │                                               └── Odoo (http://odoo:8069)
     │                                                   ├── res.partner
     │                                                   └── sale.order (draft)
@@ -616,7 +656,7 @@ Django (Celery worker)  ← se activa cuando SubOrder.status = 'pago_en_revision
     │       └── update_suborder_payment_status(sub_order_id)
     │               └── Solo actualiza campos x_ de una sale.order YA existente
     │
-        └── Webhook / polling Odoo→Django  ← 🔲 PENDIENTE (Paso G)
+        └── Webhooks Odoo→Django  ← YA IMPLEMENTADOS
             └── sale.order.state = 'sale'               → SubOrder = 'confirmado'
             └── stock.picking(outgoing).state = 'done' → SubOrder = 'enviado'
             └── confirmación de recepción externa       → SubOrder = 'entregado'
@@ -627,7 +667,7 @@ Tarea periódica (Celery beat):
                 → SubOrder.status = 'cancelado', SubOrder.expired = True
 ```
 
-**Protocolo:** XML-RPC — puerto 8069
+**Protocolo:** JSON-RPC — puerto 8069
 **Autenticación:** credentials en `settings.ODOO_CONFIG`
 **Base de datos Odoo:** `ecomparts_odoo_shared` (compartida para todas las companies)
 
@@ -685,7 +725,7 @@ pero un `IntegrityError` de Odoo **no debe reintentar** → capturar y marcar `o
 
 ### Escenario 2 — Cancelación con comprobante en revisión (`pago_en_revision`, sale.order en `draft`)
 - La `sale.order` ya existe en Odoo en estado `draft`.
-- **Odoo:** Llamar `sale.order.action_cancel()` vía XML-RPC → estado `cancel`.
+- **Odoo:** Llamar `sale.order.action_cancel()` vía JSON-RPC → estado `cancel`.
 - **Django:** `SubOrder.status → 'cancelado'`.
 - Si el pago ya fue realizado → iniciar reembolso (Escenario 4) + `SubOrder.refunded = True`.
 
@@ -723,7 +763,7 @@ activar `SubOrder.refunded = True` automáticamente.
 | Caso | Descripción | Solución propuesta |
 |---|---|---|
 | **A. Paga a un proveedor, abandona los otros** | `SubOrder-A = pago_en_revision`, `SubOrder-B = pendiente_pago` | Cada SubOrder tiene su propio ciclo de vida. SubOrder-B expira por TTL (`cancelado + expired=True`). SubOrder-A ya fue a Odoo en draft. La Order permanece activa (no se cancela completa). |
-| **B. Comprobante rechazado en una SubOrder** | Proveedor rechaza; otra SubOrder ya está en Odoo | `PaymentProof.status = 'rejected'`, `SubOrder.payment_rejected = True`, `SubOrder.status → 'pendiente_pago'`. El cliente ve el aviso de rechazo y sube un nuevo comprobante. No afecta las demás SubOrders. |
+| **B. Comprobante rechazado en una SubOrder** | Proveedor rechaza; otra SubOrder ya está en Odoo | `PaymentProof.status = 'rejected'`, `SubOrder.payment_rejected = True`, `SubOrder.status → 'pago_rechazado'`. El cliente ve el aviso de rechazo y sube un nuevo comprobante. No afecta las demás SubOrders. |
 | **C. Un proveedor cancela su parte después del pago** | Solo esa SubOrder se cancela | Reembolso parcial (`SubOrder.refunded = True`, manual por ahora). `Order.status` no cambia a `cancelado` si otras SubOrders siguen activas. |
 | **D. Race condition de stock en compra simultánea** | Dos clientes pasan el mismo producto al mismo tiempo | El serializer valida `total_stock >= quantity` en el POST. El segundo checkout fallará si el primero ya hizo commit. Mitigación futura: `select_for_update()` en StockItem. |
 
@@ -878,7 +918,7 @@ Puntos clave del diseño:
 | `upload_payment` | Crear `PaymentProof`. Actualizar `SubOrder.status → 'pago_en_revision'`, limpiar `payment_rejected`. **Guard:** solo permite upload desde `pendiente_pago` o `pago_rechazado`. Encolar Celery solo en primera subida (idempotente en resubida). |
 | `confirm_payment` (admin/fallback) | Aprueba el último PaymentProof y pone `SubOrder.status → 'confirmado'`. En v5 el flujo principal viene desde Odoo, pero este endpoint sigue activo para admin. |
 | **NUEVO** `review_payment` (OdooWebhook) | Llamado por Odoo. `action='approve'` → PaymentProof.approved + SubOrder.confirmado. `action='reject'` → PaymentProof.rejected + **SubOrder.pago_rechazado** + payment_rejected=True. |
-| **NUEVO** `cancel_suborder` | Cancelar SubOrder. XML-RPC a Odoo si `odoo_sale_id` existe. |
+| **NUEVO** `cancel_suborder` | Cancelar SubOrder. JSON-RPC a Odoo si `odoo_sale_id` existe. |
 | **NUEVO** `retry_odoo_sync` | Reencolar `create_odoo_sale_order` para admin. Limpia `odoo_sync_error`. |
 
 ### tasks.py — cambios requeridos
@@ -971,8 +1011,8 @@ def recalculate_order_status(sender, instance, **kwargs):
 - [x] Frontend: detalle de orden `/cliente/historial-compras/[id]`
 
 ### 🔲 Paso 1 — TTL y expiración
-- [ ] Agregar `payment_deadline = now() + 3h` en `create_order`
-- [ ] Crear migración Django
+- [x] Agregar `payment_deadline = now() + 3h` en `create_order`
+- [x] Crear migración Django
 
 ### 🔲 Paso 2 — Rediseño de estados y flags (migración de modelo)
 
@@ -990,30 +1030,30 @@ def recalculate_order_status(sender, instance, **kwargs):
 - [x] Migración Django creada y aplicada
 
 ### 🔲 Paso 3 — Consolidar modelo PaymentProof
-- [ ] Revisar `apps/orders/models/payment_proof.py` para asegurar que contiene
+- [x] Revisar `apps/orders/models/payment_proof.py` para asegurar que contiene
     `status` (`uploaded`, `approved`, `rejected`) y los campos necesarios.
-- [ ] Endpoint `upload_payment` usa PaymentProof y pone la SubOrder en
+- [x] Endpoint `upload_payment` usa PaymentProof y pone la SubOrder en
     `pago_en_revision`.
-- [ ] Endpoint `review_payment` se usa ahora desde Odoo (botones del módulo
+- [x] Endpoint `review_payment` se usa ahora desde Odoo (botones del módulo
     `orders_odoo`), no desde un panel proveedor en Django.
-- [ ] Actualizar serializers y admin
-- [ ] Actualizar frontend: formulario de subida y manejo de rechazos
+- [x] Actualizar serializers y admin
+- [x] Actualizar frontend: formulario de subida y manejo de rechazos
 
 ### 🔲 Paso 4 — Expiración automática por SubOrder
-- [ ] Implementar tarea `expire_pending_suborders` en `tasks.py`
-- [ ] Registrar en Celery beat schedule (cada 15 min)
+- [x] Implementar tarea `expire_pending_suborders` en `tasks.py`
+- [x] Registrar en Celery beat schedule (cada 15 min)
 - [ ] Frontend: countdown en Paso 4 y en detalle de orden (por SubOrder, no por Order)
 - [ ] Frontend: manejo de respuesta `410 Gone` del backend para SubOrder específica
 
 ### 🔲 Paso 5 — Agregación automática de `Order.status`
-- [ ] Implementar función `update_order_status(order)` y signal `recalculate_order_status`
-- [ ] Eliminar toda escritura manual de `Order.status` en views y tasks
+- [x] Implementar función `update_order_status(order)` y signal `recalculate_order_status`
+- [x] Eliminar toda escritura manual de `Order.status` en views y tasks
 - [ ] Tests unitarios para todas las combinaciones de estados multiproveedor
 
 ### 🔲 Paso 6 — Idempotencia Odoo: constraint único
 - [ ] Agregar `_sql_constraints` con `UNIQUE(x_marketplace_suborder_id)` en módulo Odoo
-- [ ] Actualizar tarea Celery para no reintentar en `IntegrityError` de Odoo
-- [ ] Agregar `select_for_update()` en la lectura de SubOrder al inicio de la tarea
+- [x] Actualizar tarea Celery para no reintentar en `IntegrityError` de Odoo
+- [x] Agregar `select_for_update()` en la lectura de SubOrder al inicio de la tarea
 
 
 ### ✅ Paso 7 — Webhook / llamadas Odoo → Django (implementado en v5)
@@ -1033,7 +1073,7 @@ def recalculate_order_status(sender, instance, **kwargs):
 
 ### 🔲 Paso 8 — Cancelaciones y reembolsos
 - [ ] Endpoint `cancel_suborder` con lógica diferenciada según `odoo_sale_id` y estado Odoo
-- [ ] Llamada XML-RPC a `sale.order.action_cancel()` cuando aplica
+- [ ] Llamada JSON-RPC a `sale.order.action_cancel()` cuando aplica
 - [ ] Flujo de reembolso manual: `SubOrder.refunded = True` + `SubOrder.refund_notes`
 
 ### 🔲 Paso 9 — Panel del proveedor en frontend
@@ -1042,3 +1082,31 @@ def recalculate_order_status(sender, instance, **kwargs):
 - [ ] Acción ingresar tracking number
 - [ ] Link directo a la `sale.order` en Odoo
 - [ ] Vista de `PaymentTransaction` con historial de intentos
+
+---
+
+## 1️⃣3️⃣ Observaciones abiertas tras auditoría de abril 2026
+
+### 1. Seguridad y ownership pendientes
+
+- `create_order` recibe `customer_id` y crea la orden con ese ID, pero hoy no valida que pertenezca al `request.user` autenticado.
+- `upload_payment_proof` acepta `sub_order_id` y crea el comprobante sin validar ownership de la `SubOrder` contra el usuario autenticado.
+- Estas dos validaciones faltantes no rompen la arquitectura conceptual, pero sí impiden considerar el flujo completamente endurecido.
+
+### 2. Endpoints legacy todavía activos
+
+- `SubOrderViewSet.confirm_payment()` sigue permitiendo aprobación o rechazo manual desde Django para vendors/admin.
+- El frontend actual no consume ese endpoint; el flujo canónico ya pasa por Odoo webhook (`review-payment` y `sale-order-update`).
+- Debe tratarse como fallback manual, no como parte principal del diseño.
+
+### 3. Stubs y deuda técnica visibles
+
+- `apps/orders/tasks.py:update_order_status_from_odoo` sigue en `pass`.
+- `apps/orders/tasks.py:send_order_confirmation_email` sigue en `pass`.
+- `apps/sync/tasks.py:create_order_in_odoo` sigue en `pass` y ya no representa el flujo vigente.
+
+### 4. Cobertura automatizada insuficiente
+
+- Hoy `apps/orders/tests.py` solo cubre historial de órdenes.
+- No hay tests automatizados del flujo crítico: `create_order`, `upload_payment_proof`, webhooks Odoo, expiración TTL, reconciliación ni estados multiproveedor.
+- Por eso, aunque la arquitectura base es coherente, la funcionalidad end-to-end depende todavía demasiado de validación manual.

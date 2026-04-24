@@ -46,6 +46,23 @@ function createAuthStore() {
     return get(tokens)?.access ?? null;
   }
 
+  function getRefreshToken(): string | null {
+    return get(tokens)?.refresh ?? null;
+  }
+
+  function updateAccessToken(access: string) {
+    const currentTokens = get(tokens);
+    if (!currentTokens?.refresh) {
+      clearTokens();
+      return;
+    }
+
+    setTokens({
+      access,
+      refresh: currentTokens.refresh,
+    });
+  }
+
   return {
     tokens,
     user,
@@ -55,6 +72,8 @@ function createAuthStore() {
     setTokens,
     clearTokens,
     getAccessToken,
+    getRefreshToken,
+    updateAccessToken,
   };
 }
 
