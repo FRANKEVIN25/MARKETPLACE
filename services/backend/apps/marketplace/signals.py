@@ -27,30 +27,37 @@ def provider_post_save(sender, instance, created, **kwargs):
     previous = getattr(instance, '_previous_is_approved', False)
     just_approved = not previous and instance.is_approved
 
-    if just_approved and not instance.has_odoo_credentials():
-        logger.info(f"🔔 Signal: Provider '{instance.name}' aprobado — iniciando setup Odoo automático")
+    if just_approved:
+        # Asegurar is_active=True al aprobar (evita que providers con fallo
+        # previo queden inactivos permanentemente)
+        if not instance.is_active:
+            sender.objects.filter(pk=instance.pk).update(is_active=True)
+            logger.info(f"✅ Signal: Provider '{instance.name}' marcado is_active=True al aprobar")
 
-        odoo_password = instance.get_odoo_password_temp()
-        if not odoo_password:
-            from django.utils.crypto import get_random_string
-            odoo_password = get_random_string(12)
-            logger.warning(f"⚠️ {instance.name}: sin contraseña temp, usando aleatoria")
+        if not instance.has_odoo_credentials():
+            logger.info(f"🔔 Signal: Provider '{instance.name}' aprobado — iniciando setup Odoo automático")
 
-        provider_data = {
-            'name': instance.name,
-            'email': instance.email or '',
-            'phone': instance.phone or '',
-            'ruc': instance.ruc or '',
-            'tier': instance.tier,
-        }
+            odoo_password = instance.get_odoo_password_temp()
+            if not odoo_password:
+                from django.utils.crypto import get_random_string
+                odoo_password = get_random_string(12)
+                logger.warning(f"⚠️ {instance.name}: sin contraseña temp, usando aleatoria")
 
-        from apps.sync.tasks import create_provider_with_odoo_setup
-        task = create_provider_with_odoo_setup.delay(
-            user_id=instance.owner.id,
-            provider_data=provider_data,
-            odoo_password=odoo_password,
-        )
-        logger.info(f"🚀 Task lanzada automáticamente para '{instance.name}': {task.id}")
+            provider_data = {
+                'name': instance.name,
+                'email': instance.email or '',
+                'phone': instance.phone or '',
+                'ruc': instance.ruc or '',
+                'tier': instance.tier,
+            }
+
+            from apps.sync.tasks import create_provider_with_odoo_setup
+            task = create_provider_with_odoo_setup.delay(
+                user_id=instance.owner.id,
+                provider_data=provider_data,
+                odoo_password=odoo_password,
+            )
+            logger.info(f"🚀 Task lanzada automáticamente para '{instance.name}': {task.id}")
 
 
 @receiver(pre_save, sender=ProviderReview)

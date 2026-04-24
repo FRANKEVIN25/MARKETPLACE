@@ -86,6 +86,19 @@ def push_categories(odoo, stats: dict | None = None) -> dict:
         )
 
         if category.odoo_category_id != odoo_id:
+            conflicting_category = Category.objects.filter(odoo_category_id=odoo_id).exclude(pk=category.pk).first()
+            if conflicting_category:
+                logger.warning(
+                    "Liberando odoo_category_id=%s de la categoría local %s (%s) para reasignarlo a %s (%s)",
+                    odoo_id,
+                    conflicting_category.pk,
+                    conflicting_category.name,
+                    category.pk,
+                    category.name,
+                )
+                conflicting_category.odoo_category_id = None
+                conflicting_category.save(update_fields=['odoo_category_id'])
+
             category.odoo_category_id = odoo_id
             category.save(update_fields=['odoo_category_id'])
             updated = True

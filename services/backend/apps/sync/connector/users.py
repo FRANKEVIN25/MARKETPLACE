@@ -69,10 +69,14 @@ class OdooUsersMixin:
     def _get_default_vendor_groups(self) -> list:
         """
         Retorna los IDs de grupos por defecto para usuarios vendor:
-        Inventario/Usuario y Ventas/Vendedor.
+        - Inventario/Administrador: necesario para crear y gestionar productos (autoparts).
+          stock.group_stock_user (solo lectura de productos) es insuficiente.
+          stock.group_stock_manager NO implica base.group_system, por lo que
+          la record rule de scope de variantes sigue aplicando correctamente.
+        - Ventas/Vendedor: para gestionar sus propios pedidos de venta.
         """
         group_xmlids = [
-            'stock.group_stock_user',
+            'stock.group_stock_manager',
             'sales_team.group_sale_salesman',
         ]
         return [

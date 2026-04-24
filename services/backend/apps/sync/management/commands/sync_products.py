@@ -4,9 +4,9 @@ Management command: sync_products
 Capa delgada de CLI sobre apps/sync/services/products.py.
 
 Toda la lógica de sincronización vive en:
-  - apps/sync/services/products.py  → sync_provider_products(), sync_provider_stock()
-    - apps/sync/services/categories.py → push_categories(), get_persisted_category_map()
-  - apps/sync/services/compatibility.py → sync_provider_compatibility()
+    - apps/sync/services/products.py  → sync_provider_products(), sync_provider_product_images(), sync_provider_stock()
+        - apps/sync/services/categories.py → push_categories(), get_persisted_category_map()
+    - apps/sync/services/compatibility.py → sync_provider_compatibility()
 
 Este command solo se ocupa de:
   1. Parsear argumentos y determinar el conjunto de providers.
@@ -24,7 +24,7 @@ Uso:
   python manage.py sync_products --dry-run
   python manage.py sync_products --provider-id=3 --dry-run --limit=20
 
-  # Solo productos sin compatibilidades (más rápido, p.ej. para actualizar precios)
+    # Snapshot + imágenes, pero sin compatibilidades
   python manage.py sync_products --skip-compat
 
 Nota sobre --dry-run:
@@ -33,9 +33,10 @@ Nota sobre --dry-run:
   Solo disponible con --limit en este modo.
 
 Nota sobre --skip-compat:
-  Omite la sincronización de autopart.compatibility.
-  Útil cuando solo se necesita actualizar precios/stock y la jerarquía de
-  compatibilidades no cambió.
+    Omite la sincronización de autopart.compatibility.
+    La fase diferencial de imágenes sí se sigue ejecutando.
+    Útil cuando solo se necesita actualizar catálogo/stock/imágenes y la
+    jerarquía de compatibilidades no cambió.
 """
 import logging
 
@@ -51,7 +52,7 @@ logger = logging.getLogger(__name__)
 
 
 class Command(BaseCommand):
-    help = 'Sincroniza productos (+ categorías + stock + compatibilidades) desde Odoo al marketplace'
+    help = 'Sincroniza snapshot de catálogo + imágenes y opcionalmente compatibilidades desde Odoo'
 
     def add_arguments(self, parser):
         parser.add_argument(

@@ -8,8 +8,14 @@ from odoo import api, SUPERUSER_ID
 ADMIN_LOGIN = os.environ.get("ODOO_ADMIN_LOGIN", "admin2@ecomparts.local")
 ADMIN_PASS = os.environ.get("ODOO_ADMIN_PASS", "Admin!2025")
 
-SERVICE_LOGIN = os.environ.get("ODOO_SERVICE_LOGIN", "service@ecomparts.local")
-SERVICE_PASS = os.environ.get("ODOO_SERVICE_PASS", "Service!2025")
+SERVICE_LOGIN = os.environ.get(
+    "ODOO_SERVICE_LOGIN",
+    os.environ.get("ODOO_USERNAME", "service@ecomparts.local"),
+)
+SERVICE_PASS = os.environ.get(
+    "ODOO_SERVICE_PASS",
+    "Service!2025",
+)
 
 ADMIN_GROUPS = [
     "base.group_user",
@@ -23,7 +29,11 @@ SERVICE_GROUPS = [
     "stock.group_stock_manager",
 ]
 
-env = api.Environment(env.cr, SUPERUSER_ID, {})
+shell_env = globals().get("env")
+if shell_env is None:
+    raise RuntimeError("Este script debe ejecutarse desde odoo shell para disponer de 'env'.")
+
+env = api.Environment(shell_env.cr, SUPERUSER_ID, {})
 Users = env["res.users"].sudo()
 
 

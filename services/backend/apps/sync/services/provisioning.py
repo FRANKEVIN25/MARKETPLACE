@@ -72,6 +72,22 @@ def create_provider_with_odoo_setup(
             existing = Provider.objects.filter(name=provider_name).first()
             if existing:
                 provider = existing
+                # Guard: si ya tiene credenciales completas (otra task paralela terminó primero),
+                # no hacer nada — el aprovisionamiento ya está completo.
+                if provider.has_odoo_credentials():
+                    logger.info(
+                        "Provider '%s' ya tiene credenciales Odoo — task idempotente, nada que hacer.",
+                        provider.name,
+                    )
+                    return {
+                        'success': True,
+                        'provider_id': provider.id,
+                        'provider_name': provider.name,
+                        'odoo_company_id': provider.odoo_company_id,
+                        'odoo_user_id': provider.odoo_user_id,
+                        'odoo_username': provider.odoo_username,
+                        'message': 'Provider ya aprovisionado (task duplicada ignorada).',
+                    }
                 logger.info(
                     "Provider existente encontrado: %s (ID: %s)",
                     provider.name, provider.id,
@@ -95,7 +111,9 @@ def create_provider_with_odoo_setup(
             company_id = odoo.create_company(
                 name=provider_name,
                 email=provider_email,
-                currency_id=164,  # PEN — Soles peruanos
+                currency_code='PEN',
+                vat=provider_data.get('ruc') or None,
+                phone=provider_data.get('phone') or None,
             )
             if not company_id:
                 raise RuntimeError("No se pudo crear Company en Odoo")
@@ -117,11 +135,22 @@ def create_provider_with_odoo_setup(
             logger.info("Usuario creado en Odoo: %s (ID: %s)", odoo_username, odoo_user_id)
 
             # 6. Vincular Provider con Odoo
+            # Limpiar cualquier provider huérfano que tenga el mismo odoo_company_id
+            # (puede ocurrir con datos de seed sin odoo_user_id real)
+            Provider.objects.filter(
+                odoo_company_id=company_id,
+                odoo_user_id__isnull=True,
+            ).exclude(pk=provider.pk).update(odoo_company_id=None)
+
             provider.odoo_company_id = company_id
             provider.odoo_user_id    = odoo_user_id
             provider.odoo_username   = odoo_username
             provider.set_odoo_password(odoo_password)  # almacena encriptado
-            provider.save()
+            provider.clear_odoo_password_temp()        # ya no necesitamos la temporal
+            provider.save(update_fields=[
+                'odoo_company_id', 'odoo_user_id', 'odoo_username',
+                'odoo_password_hash', 'odoo_password_temp',
+            ])
             logger.info("Provider %s vinculado con Odoo correctamente", provider.name)
 
             return {
@@ -139,22 +168,12 @@ def create_provider_with_odoo_setup(
 
     except Exception as e:
         logger.exception("Error en create_provider_with_odoo_setup: %s", e)
-
-        # Marcar como inactivo si el Provider ya llegó a persistirse
-        try:
-            if 'provider' in locals() and provider.pk:
-                provider.is_active = False
-                provider.save(update_fields=['is_active'])
-                logger.warning(
-                    "Provider %s marcado como inactivo debido a error", provider.id
-                )
-        except Exception:
-            pass
-
+        # No marcamos el provider como inactivo: el admin puede reintentar
+        # la acción "Aprobar y configurar en Odoo" una vez resuelto el problema.
         return {
             'success': False,
             'error': str(e),
-            'message': 'Error al crear el proveedor. Por favor contacte al administrador.',
+            'message': 'Error al configurar Odoo. Por favor revise los logs y reintente desde el admin.',
         }
 
 

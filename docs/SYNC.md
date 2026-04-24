@@ -1,514 +1,295 @@
-# App `sync` — Documentación Técnica
+# App `sync` + `ecomparts` - Guia resumida
 
-## Índice
+## 1. Que resuelve esta parte del sistema
 
-1. [Propósito y responsabilidades](#1-propósito-y-responsabilidades)
-2. [Estructura de módulos](#2-estructura-de-módulos)
-3. [Capa de transporte: `connector/`](#3-capa-de-transporte-connector)
-   - [OdooBaseConnector](#31-odoobaseconnector)
-   - [Mixins especializados](#32-mixins-especializados)
-   - [OdooConnector (clase final)](#33-odooconnector-clase-final)
-   - [Factory `get_odoo_connector_for_provider`](#34-factory-get_odoo_connector_for_provider)
-4. [Capa de servicios: `services/`](#4-capa-de-servicios-services)
-   - [provisioning.py](#41-provisioningpy)
-   - [categories.py](#42-categoriespy)
-   - [products.py](#43-productspy)
-   - [compatibility.py](#44-compatibilitypy)
-   - [orders.py](#45-orderspy)
-5. [Tareas Celery: `tasks.py`](#5-tareas-celery-taskspy)
-6. [Management Commands](#6-management-commands)
-7. [Flujos principales](#7-flujos-principales)
-   - [Alta de Provider (onboarding)](#71-alta-de-provider-onboarding)
-   - [Sincronización completa de productos](#72-sincronización-completa-de-productos)
-   - [Sincronización rápida de stock](#73-sincronización-rápida-de-stock)
-   - [Ciclo de vida de una SubOrder](#74-ciclo-de-vida-de-una-suborder)
-8. [Relación con otras apps](#8-relación-con-otras-apps)
-9. [Compatibilidad de imports: `odoo_connector.py`](#9-compatibilidad-de-imports-odoo_connectorpy)
-10. [Decisiones de diseño](#10-decisiones-de-diseño)
-11. [Guía de referencia rápida](#11-guía-de-referencia-rápida)
+La app `sync` concentra la integracion entre Django y Odoo.
 
----
+Su trabajo se divide en cuatro bloques:
 
-## 1. Propósito y responsabilidades
+- transporte hacia Odoo por JSON-RPC
+- servicios de sincronizacion y aprovisionamiento
+- tareas Celery para ejecucion asincrona
+- observabilidad basica por provider y por fase
 
-La app `sync` es el **puente bidireccional** entre el marketplace Django y Odoo. Concentra toda la lógica de integración en un solo lugar siguiendo el principio de separación de capas:
+El paquete `ecomparts` no contiene logica de negocio de sync, pero si gobierna la
+operacion automatica:
 
-| Dirección | Qué sincroniza |
-|---|---|
-| Odoo → Django | Categorías, productos, stock, compatibilidades producto↔vehículo |
-| Django → Odoo | Jerarquía vehicular, órdenes de venta (sale.order), estados de pago y entrega |
-| Bootstrap | Creación de Company + User en Odoo al registrar un nuevo Provider |
+- carga settings de Django
+- inicializa Celery
+- define el horario de Beat
+- expone la configuracion efectiva que usan worker y beat
 
-**Lo que `sync` NO hace:**
-- No contiene modelos propios (no tiene `models.py`).
-- No expone endpoints HTTP (no tiene `urls.py`).
-- No aplica lógica de negocio de dominio (precios, descuentos, carrito) — esa lógica permanece en sus apps respectivas.
+## 2. Estructura actual
 
----
-
-## 2. Estructura de módulos
-
-```
+```text
 apps/sync/
-├── __init__.py
-├── odoo_connector.py          ← shim de compatibilidad (re-exporta connector/)
-├── tasks.py                   ← tareas Celery (capas delgadas sobre services/)
-├── connector/                 ← transporte HTTP JSON-RPC hacia Odoo
-│   ├── __init__.py            ← ensambla OdooConnector + factory
-│   ├── base.py                ← _call(), autenticación, execute_kw(), ping()
-│   ├── companies.py           ← res.company
-│   ├── users.py               ← res.users
-│   ├── products.py            ← product.*, stock.warehouse, stock.quant
-│   ├── vehicles.py            ← vehiculo.* (push Django→Odoo)
-│   └── compatibility.py       ← autopart.compatibility, vehiculo.variante (solo lectura)
-├── services/                  ← lógica de negocio de la integración
-│   ├── __init__.py
-│   ├── provisioning.py        ← alta de nuevos providers en Odoo
-│   ├── categories.py          ← sync categorías Odoo→Django
-│   ├── products.py            ← sync productos+stock Odoo→Django
-│   ├── compatibility.py       ← sync compatibilidades Odoo→Django
-│   └── orders.py              ← sync órdenes Django→Odoo
-└── management/
-    └── commands/
-        ├── setup_odoo.py          ← configura módulos, permisos y reglas al arrancar
-        ├── sync_products.py       ← CLI para sync completa de productos
-        ├── sync_stock.py          ← CLI para sync rápida de stock 
-        └── sync_delivery_status.py← CLI para reconciliar estados de entrega
+├── connector/
+│   ├── base.py
+│   ├── companies.py
+│   ├── users.py
+│   ├── products.py
+│   ├── vehicles.py
+│   └── compatibility.py
+├── services/
+│   ├── provisioning.py
+│   ├── categories.py
+│   ├── products.py
+│   ├── compatibility.py
+│   ├── orders.py
+│   └── observability.py
+├── management/commands/
+│   ├── setup_odoo.py
+│   ├── push_categories.py
+│   ├── sync_products.py
+│   ├── sync_images.py
+│   ├── sync_stock.py
+│   ├── sync_compatibility.py
+│   ├── sync_delivery_status.py
+│   ├── sync_celery_beat.py
+│   └── upgrade_odoo_module.py
+├── models.py
+├── tasks.py
+├── odoo_connector.py
+└── __init__.py
+
+ecomparts/
+├── settings.py
+├── beat_schedule.py
+├── celery.py
+├── urls.py
+└── ...
 ```
 
----
+## 3. Como se reparte la responsabilidad
 
-## 3. Capa de transporte: `connector/`
+### `connector/`
 
-El conector implementa una arquitectura de **mixin por dominio** sobre una base de transporte HTTP. Ningún mixin importa modelos Django, son I/O puro contra Odoo.
+Es la capa de transporte pura contra Odoo. No decide negocio ni persiste modelos Django.
 
-### 3.1 `OdooBaseConnector`
+- `base.py`: autenticacion, `requests.Session`, `execute_kw`, reautenticacion
+- `products.py`: lectura de productos, stock y categorias Odoo
+- `vehicles.py`: push de jerarquia vehicular Django -> Odoo
+- `compatibility.py`: lectura de `autopart.compatibility` y `vehiculo.variante`
+- `companies.py` y `users.py`: alta tecnica de company y users en Odoo
 
-Ubicado en `connector/base.py`, es la única clase con estado. Gestiona:
+La clase final `OdooConnector` compone estos mixins y `odoo_connector.py` se mantiene
+como shim de compatibilidad para imports viejos.
 
-- **Ciclo de autenticación**: la primera llamada a `self.uid` dispara `_authenticate()`, que guarda el UID y las cookies de sesión en `self._session` (una instancia `requests.Session`). El UID **no** se cachea en Redis porque está acoplado a las cookies HTTP de la sesión.
-- **`execute_kw(model, method, args, kwargs)`**: ejecuta cualquier método ORM de Odoo vía `/web/dataset/call_kw`. Siempre inyecta `{'tz': 'America/Lima'}` en el contexto. Si Odoo retorna `Session Expired`, reautentica una vez y reintenta automáticamente.
-- **`ping()`**: health-check liviano que retorna `True/False`.
+### `services/`
 
+Aqui vive la logica real.
+
+- `provisioning.py`: crea provider en Django y su company/user en Odoo
+- `categories.py`: empuja y resuelve categorias globales
+- `products.py`: snapshot de catalogo, sync diferencial de imagenes, sync completa y stock rapido
+- `compatibility.py`: sincroniza compatibilidades producto <-> vehiculo en lote
+- `orders.py`: integra ordenes y estados con Odoo
+- `observability.py`: actualiza estado de sync por provider y por fase
+
+### `tasks.py`
+
+Las tareas Celery son delgadas: reciben argumentos y delegan al servicio correcto.
+
+Tareas mas importantes hoy:
+
+- `sync_all_active_providers`: dispara snapshot de catalogo para todos los providers, sin compatibilidades
+- `sync_all_compatibility`: dispara la sync separada de compatibilidades
+- `sync_all_stock`: dispara la sync rapida de stock
+- `sync_provider_products`: sync por provider con bandera `include_compatibility`
+- `sync_provider_compatibility`: sync puntual de compatibilidades por provider
+- `create_provider_with_odoo_setup`: onboarding tecnico del provider
+
+### `models.py`
+
+La app `sync` ya no es solo servicios y tareas. Ahora tambien tiene persistencia propia:
+
+- `ProviderSyncState`: guarda ultimo estado de sync por provider y tipo (`catalog`, `images`, `stock`, `compatibility`)
+
+Esto permite dejar trazabilidad simple de:
+
+- ultima ejecucion
+- duracion
+- error mas reciente
+- metricas resumidas
+
+## 4. Flujos principales actuales
+
+### Catalogo base
+
+```text
+Beat/CLI -> tasks.sync_all_active_providers
+         -> tasks.sync_provider_products(provider_id, include_compatibility=False)
+         -> services.products.sync_provider_products()
+         -> snapshot catalogo + fase diferencial de imagenes
 ```
-Credenciales → _authenticate() → self._uid + self._session (cookies)
-                                          ↓
-                              execute_kw (todas las operaciones ORM)
+
+### Compatibilidades
+
+```text
+Beat/CLI -> tasks.sync_all_compatibility
+         -> tasks.sync_provider_compatibility(provider_id)
+         -> services.compatibility.sync_provider_compatibility()
+         -> Odoo autopart.compatibility -> Django CompatibilidadProducto
 ```
 
-### 3.2 Mixins especializados
+### Stock rapido
 
-| Mixin | Archivo | Modelos Odoo |
-|---|---|---|
-| `OdooCompaniesMixin` | `companies.py` | `res.company` |
-| `OdooUsersMixin` | `users.py` | `res.users` |
-| `OdooProductsMixin` | `products.py` | `product.product`, `product.template`, `product.category`, `stock.warehouse`, `stock.quant` |
-| `OdooVehiclesMixin` | `vehicles.py` | `vehiculo.marca`, `vehiculo.modelo`, `vehiculo.motor`, `vehiculo.transmision`, `vehiculo.traccion`, `vehiculo.variante` |
-| `OdooCompatibilityMixin` | `compatibility.py` | `autopart.compatibility`, `vehiculo.variante` (solo lectura) |
+```text
+Beat/CLI -> tasks.sync_all_stock
+         -> tasks.sync_provider_stock(provider_id)
+         -> services.products.sync_provider_stock()
+```
 
-**`OdooProductsMixin` — método destacado: `get_stock_quants_for_warehouse`**
+### Onboarding de provider
 
-Evita el problema N+1 en catalógos grandes usando `read_group` para agregar `stock.quant` por producto en una sola query, y luego un segundo query para mapear `product.product → product.template`.
+```text
+Admin/API -> tasks.create_provider_with_odoo_setup
+          -> services.provisioning.create_provider_with_odoo_setup()
+          -> Provider Django + Company Odoo + User Odoo
+```
 
-**`OdooVehiclesMixin` — patrón de 3 vías (idempotente)**
+## 5. Relacion con `ecomparts`
 
-Todos los métodos `push_*` del mixin vehicular son idempotentes:
-1. Buscar por `django_external_id` → ya vinculado, retornar `odoo_id`.
-2. Buscar por clave natural (nombre, etc.) → existe sin vincular, vincular y retornar.
-3. Crear en Odoo → nuevo registro.
+La parte importante para operacion automatica no esta solo en `apps/sync`. Tambien depende de
+los archivos del paquete `ecomparts`.
 
-Esto permite ejecutar el push múltiples veces sin duplicar datos.
+### `ecomparts/settings.py`
 
-### 3.3 `OdooConnector` (clase final)
+Define la configuracion base:
 
-Compone todos los mixins mediante herencia múltiple:
+- broker y backend de Celery
+- timezone
+- variables de horario para sync
+- `CELERY_BEAT_SCHEDULE` base del proyecto
+
+Variables de sync relevantes:
 
 ```python
-class OdooConnector(
-    OdooCompaniesMixin,
-    OdooUsersMixin,
-    OdooProductsMixin,
-    OdooVehiclesMixin,
-    OdooCompatibilityMixin,
-    OdooBaseConnector,   # ← siempre al final (MRO)
-):
-    ...
+SYNC_STOCK_INTERVAL_MINUTES
+SYNC_CATALOG_SCHEDULE_HOUR
+SYNC_CATALOG_SCHEDULE_MINUTE
+SYNC_COMPATIBILITY_SCHEDULE_HOUR
+SYNC_COMPATIBILITY_SCHEDULE_MINUTE
 ```
 
-El orden de herencia garantiza que `OdooBaseConnector` (con `__init__` y `execute_kw`) se resuelva al final del MRO, permitiendo a cada mixin llamar `self.execute_kw()` sin imports circulares.
+Estas constantes se resuelven desde variables de entorno con fallback local en `settings.py`.
 
-También se expone un singleton de conveniencia para uso rápido con las credenciales por defecto del `settings`:
+### `ecomparts/beat_schedule.py`
+
+Es la fuente central del horario operativo de sync.
+
+`get_periodic_schedule(base_schedule=None)` toma el schedule base del proyecto y le agrega:
+
+- `sync-odoo-products-nightly`
+- `sync-odoo-compatibility-nightly`
+- `sync-odoo-stock-interval`
+- `recalculate-workshop-scores`
+
+La ventaja es que el horario de sync queda concentrado en un solo lugar y reutilizable.
+
+### `ecomparts/celery.py`
+
+Inicializa Celery y carga el schedule efectivo:
 
 ```python
-odoo_connector = OdooConnector()   # credentials from settings.ODOO_CONFIG
+app.config_from_object('django.conf:settings', namespace='CELERY')
+app.conf.update(beat_schedule=get_periodic_schedule(getattr(app.conf, 'beat_schedule', {})))
 ```
 
-### 3.4 Factory `get_odoo_connector_for_provider`
+Eso significa que Celery arranca con:
 
-```python
-from apps.sync.connector import get_odoo_connector_for_provider
+- la configuracion base de `settings.py`
+- mas el schedule enriquecido por `beat_schedule.py`
 
-odoo = get_odoo_connector_for_provider(provider)
+## 6. Como se conecta esto con `django_celery_beat`
+
+En este proyecto Beat no corre solo con el diccionario en memoria. Corre con `DatabaseScheduler`.
+
+En `docker-compose.yml`, `celery_beat` arranca asi:
+
+```sh
+python manage.py sync_celery_beat && \
+celery -A ecomparts beat --loglevel=info \
+  --scheduler django_celery_beat.schedulers:DatabaseScheduler
 ```
 
-Retorna un `OdooConnector` apuntando a la URL y DB del `Provider` indicado. Las credenciales siempre son las del admin del `settings` (la desencriptación de credenciales propias del provider está pendiente de implementación).
+Eso tiene una consecuencia importante:
 
----
+- el horario se define en codigo
+- luego `sync_celery_beat` lo sincroniza a la tabla de `django_celery_beat`
+- despues Beat agenda usando la base de datos
 
-## 4. Capa de servicios: `services/`
+Si cambias horarios en `settings.py` o `beat_schedule.py`, el contenedor `celery_beat`
+debe volver a ejecutar `sync_celery_beat` para reflejar esos cambios en la base.
 
-Toda la lógica de negocio de la integración vive aquí. Los servicios **sí importan modelos Django** y coordinan las llamadas al conector con persistencia en la base de datos.
+## 7. Que hace `sync_celery_beat`
 
-### 4.1 `provisioning.py`
+El comando `apps/sync/management/commands/sync_celery_beat.py` traduce el schedule en codigo
+ a registros de `django_celery_beat`.
 
-**Función principal: `create_provider_with_odoo_setup(user_id, provider_data, odoo_password)`**
+Hace tres cosas:
 
-Flujo de onboarding de un nuevo proveedor (dentro de una transacción atómica):
+- lee `get_periodic_schedule(...)`
+- crea o actualiza `PeriodicTask`, `CrontabSchedule` e `IntervalSchedule`
+- limpia tareas legacy que ya no deben seguir vivas
 
+Esto evita el problema clasico de tener:
+
+- horarios editados en Python
+- pero `PeriodicTask` viejas todavia activas en base de datos
+
+## 8. Comandos utiles
+
+```bash
+# Sync completa de catalogo: snapshot + imagenes + compatibilidades
+docker exec -it ecomparts-backend python manage.py sync_products
+
+# Sync de catalogo sin compatibilidades: snapshot + imagenes
+docker exec -it ecomparts-backend python manage.py sync_products --skip-compat
+
+# Solo imagenes
+docker exec -it ecomparts-backend python manage.py sync_images
+docker exec -it ecomparts-backend python manage.py sync_images --provider-id=3
+docker exec -it ecomparts-backend python manage.py sync_images --force
+
+# Solo compatibilidades
+docker exec -it ecomparts-backend python manage.py sync_compatibility
+
+# Solo stock
+docker exec -it ecomparts-backend python manage.py sync_stock
+
+# Sincronizar tareas periodicas hacia django_celery_beat
+docker exec -it ecomparts-backend python manage.py sync_celery_beat
 ```
-1. Verificar usuario Django existe
-2. Crear (o recuperar) Provider en Django
-3. Crear Company en Odoo  (res.company)  — admin connector
-4. Derivar username único para Odoo
-5. Crear User en Odoo vinculado a la Company
-6. Guardar odoo_company_id, odoo_user_id, odoo_username en Provider
-```
 
-Si cualquiera de los pasos 3-6 falla, la transacción Django se revierte y el Provider queda marcado como inactivo.
+## 9. Donde tocar segun el cambio
 
-**Función secundaria: `verify_provider_odoo_connection(provider_id)`**
-
-Health-check que verifica que la Company y el User del provider aún existen en Odoo. Retorna `{success: bool, ...}`.
-
-### 4.2 `categories.py`
-
-**Funciones: `push_categories(odoo, stats) → dict` y `get_persisted_category_map() → dict`**
-
-Empuja el catálogo global `Category` desde Django hacia `product.category` en Odoo.
-
-La vinculación estable usa:
-
-| Campo | Rol |
+| Necesidad | Archivo principal |
 |---|---|
-| `Category.sync_key` | Ancla principal y estable en Django |
-| `product.category.django_sync_key` | Reflejo de esa ancla en Odoo |
-| `Category.odoo_category_id` | Cache local del ID nativo actual de Odoo; no es la fuente de verdad |
-
-`push_categories()` recorre el árbol MPTT en orden padre → hijo y, para cada nodo, intenta:
-- buscar por `django_sync_key`
-- luego por `odoo_category_id`
-- luego por clave natural controlada (`name + parent_id`)
-- y si no existe, crea la categoría en Odoo
-
-`get_persisted_category_map()` retorna el mapa `{odoo_category_id: Category}` ya persistido localmente. Ese mapa se usa por eficiencia en las syncs de producto, pero el vínculo estable entre sistemas sigue siendo `sync_key`.
-
-La categoría raíz `All` de Odoo sigue siendo el parent de las categorías top-level.
-
-### 4.3 `products.py`
-
-**Función principal: `sync_provider_products(provider_id) → dict`**
-
-Sincronización completa para un provider (ejecuta los 3 pasos en secuencia):
-
-```
-0. Categorías globales ya empujadas por `push_categories()`
-1. Productos     → get_products(company_id) + update_or_create() + Cloudinary
-2. Stock         → total_stock_cached actualizado junto con el paso 1
-3. Compatibilidades → sync_provider_compatibility()
-```
-
-Cada producto se mapea contra `Product` en Django usando `(provider, odoo_product_id)` como clave de idempotencia. La categoría se resuelve únicamente con el mapa persistido en Django por `odoo_category_id`. Si falta alguna categoría global vinculada, la sync falla rápido. Al finalizar, actualiza `Provider.total_products`.
-
-**Subida de imágenes a Cloudinary (`_upload_image`)**
-
-Si el producto trae `image_1920` (base64) desde Odoo, se sube a Cloudinary con transformación automática (800×800, quality auto, format auto). Falla silenciosamente si Cloudinary no está disponible.
-
-**Anti-duplicación de referencias (`_resolve_reference`)**
-
-Si la `default_code` de Odoo ya existe en otro producto del mismo provider en Django, usa el fallback `ODOO-{odoo_product_id}` para evitar colisiones en la columna `UNIQUE(provider, reference)`.
-
-**Función secundaria: `sync_provider_stock(provider_id) → dict`**
-
-Sincronización ligera: solo actualiza `total_stock_cached` consultando `qty_available` en Odoo. No toca categorías, imágenes ni compatibilidades. Se usa para ciclos frecuentes (cada 15 min en producción).
-
-### 4.4 `compatibility.py`
-
-**Función: `sync_provider_compatibility(provider_id) → dict`**
-
-Sincroniza `autopart.compatibility` de Odoo hacia `CompatibilidadProducto` de Django.
-
-Flujo optimizado (minimiza queries N+1):
-1. Obtener todos los `Product` del provider con `odoo_template_id` en **una query**.
-2. Consultar `autopart.compatibility` en Odoo en **lote** con todos los template IDs.
-3. Prefetch `vehiculo.variante` en Odoo en **una sola query** con todos los IDs únicos.
-4. Para cada registro: resolver `Product` y `VariantVehiculo`, luego `update_or_create` en `CompatibilidadProducto`.
-
-**Resolución de `VariantVehiculo` (`_resolve_django_variant`) — 3 estrategias:**
-
-| Estrategia | Condición | Mecanismo |
-|---|---|---|
-| 1 | `VariantVehiculo.odoo_variante_id` ya está guardado | Lookup directo por PK externo |
-| 2 | Odoo tiene `django_external_id` en `vehiculo.variante` | Lookup por PK de Django |
-| 3 | Sin match | Retorna `None` + log de aviso (resolver ejecutando `push_vehicles`) |
-
-### 4.5 `orders.py`
-
-Sincroniza el ciclo de vida de las órdenes entre Django y Odoo.
-
-**Funciones principales:**
-
-| Función | Dirección | Cuándo |
-|---|---|---|
-| `sync_suborder_to_odoo(suborder)` | Django → Odoo | Al confirmar pago de una SubOrder |
-| `update_odoo_payment_status(suborder)` | Django → Odoo | Al cambiar `SubOrder.status` |
-| `update_odoo_delivery_status(suborder)` | Django → Odoo | Al marcar como enviado/entregado |
-
-**Mapas de estado:**
-
-```python
-# SubOrder.status → x_payment_status en Odoo
-_PAYMENT_STATUS_MAP = {
-    'pago_en_revision': 'pendiente_revision',
-    'pago_rechazado':   'rechazado',
-    'confirmado':       'aprobado',
-    'enviado':          'aprobado',
-    'entregado':        'aprobado',
-    'cancelado':        False,   # limpia el campo
-}
-
-# SubOrder.status → x_delivery_status en Odoo
-_DELIVERY_STATUS_MAP = {
-    'pendiente_pago':   'pendiente',
-    'confirmado':       'pendiente',
-    'enviado':          'enviado',
-    'entregado':        'recibido',
-    'cancelado':        'cancelado',
-}
-```
-
-**`sync_suborder_to_odoo` — Flujo detallado:**
-
-1. Si `suborder.odoo_sale_id` ya existe → retorna el ID sin duplicar (idempotente).
-2. Busca o crea `res.partner` en Odoo por email o DNI/RUC del customer.
-3. Construye `order_lines` a partir de los `OrderItem` (omite productos sin `odoo_product_id`).
-4. Antes de crear, verifica en Odoo si ya existe una `sale.order` con `x_marketplace_suborder_id` igual (segunda capa de idempotencia).
-5. Crea la `sale.order` con todos los campos del módulo `orders_odoo` (estados, método de pago, dirección de entrega, etc.).
-
----
-
-## 5. Tareas Celery: `tasks.py`
-
-Las tareas son **capas delgadas** que delegan completamente a los servicios. Su única responsabilidad es deserializar argumentos y enrutar al servicio correcto.
-
-| Tarea | Servicio delegado | Frecuencia sugerida |
-|---|---|---|
-| `create_provider_with_odoo_setup` | `provisioning.create_provider_with_odoo_setup` | On-demand (onboarding) |
-| `sync_provider_products` | `products.sync_provider_products` | On-demand / diario |
-| `sync_all_active_providers` | `sync_provider_products` (por cada provider) | Diario |
-| `sync_provider_stock` | `products.sync_provider_stock` | Cada 15 min |
-| `sync_all_stock` | `sync_provider_stock` (por cada provider) | Cada 15 min |
-| `sync_provider_compatibility` | `compatibility.sync_provider_compatibility` | On-demand |
-| `check_providers_for_upgrade` | Lógica inline (verifica tier) | Diario |
-| `verify_provider_odoo_connection` | `provisioning.verify_provider_odoo_connection` | On-demand / semanal |
-| `create_order_in_odoo` | — (TODO) | — |
-
-> **Nota:** `sync_all_stock` solo procesa providers con `odoo_company_id` no nulo, ya que sin ese dato no hay contexto de empresa en Odoo.
-
----
-
-## 6. Management Commands
-
-### `setup_odoo`
-```bash
-python manage.py setup_odoo [--force] [--skip-modules]
-```
-Configura Odoo al arrancar el backend. Idempotente.
-- Instala módulos `orders_odoo` y `multi_company_products`.
-- Aplica 6 reglas de aislamiento multi-company (`ir.rule`).
-- Configura grupos de permisos para todos los providers existentes.
-- Espera a que Odoo esté disponible (hasta 10 reintentos con delay de 5s).
-
-### `sync_products`
-```bash
-python manage.py sync_products [--provider-id=N] [--dry-run] [--limit=N] [--skip-compat]
-```
-Sincronización completa: categorías → productos → stock → compatibilidades.
-
-Precondición: el catálogo global debe haber sido normalizado antes con `push_categories`.
-
-| Modo | Comportamiento |
-|---|---|
-| Sin flags | Todos los providers activos y aprobados con `odoo_company_id` |
-| `--provider-id=N` | Solo el provider especificado |
-| `--dry-run` | Conecta a Odoo, reporta qué haría, **no guarda nada** |
-| `--skip-compat` | Omite la sincronización de compatibilidades |
-
-### `sync_stock`
-```bash
-python manage.py sync_stock [--provider-id=N] [--dry-run]
-```
-Sincronización rápida: solo actualiza `total_stock_cached`. No toca metadatos ni compatibilidades.
-
-### `sync_delivery_status`
-```bash
-python manage.py sync_delivery_status [--suborder=ORD-YYYY-NNNNN-X] [--dry-run]
-```
-Reconciliación de estados de entrega. Útil cuando el webhook de Odoo no llegó a Django (p.ej. por caídas temporales). Compara el estado de `stock.picking` en Odoo con `SubOrder.status` en Django y corrige las discrepancias.
-
----
-
-## 7. Flujos principales
-
-### 7.1 Alta de Provider (onboarding)
-
-```
-[Vista/API marketplace] → tasks.create_provider_with_odoo_setup.delay(user_id, data, pwd)
-                                      ↓  (Celery worker)
-                          services/provisioning.create_provider_with_odoo_setup()
-                                      ↓
-                          ┌── 1. Crear Provider (Django DB) ──────────────────┐
-                          ├── 2. connector.create_company() → res.company     │
-                          ├── 3. connector.create_user_for_company()          │ atómico
-                          └── 4. Provider.odoo_company_id / odoo_user_id ←───┘
-                                      ↓
-                          Provider listo para sincronizar productos
-```
-
-### 7.2 Sincronización completa de productos
-
-```
-[Celery Beat / CLI] → tasks.sync_provider_products.delay(provider_id)
-                                ↓
-                    services/products.sync_provider_products()
-                                ↓
-              ┌─ 0. push_categories()            → Category (Django) → product.category (Odoo)
-              ├─ 1. connector.get_products()     → product.product  → Product  (Django)
-              │      └─ _upload_image()          → Cloudinary
-              │      └─ _resolve_reference()     → anti-duplicados
-              ├─ 2. total_stock_cached           → actualizado en paso 1
-              └─ 3. sync_provider_compatibility()→ autopart.compatibility → CompatibilidadProducto
-```
-
-### 7.3 Sincronización rápida de stock
-
-```
-[Celery Beat cada 15 min] → tasks.sync_all_stock()
-                                   ↓ (por cada provider activo con odoo_company_id)
-                       tasks.sync_provider_stock.delay(provider_id)
-                                   ↓
-                   services/products.sync_provider_stock()
-                                   ↓
-               connector.get_products(company_id)
-                                   ↓
-               Product.update(total_stock_cached=qty_available)
-```
-
-### 7.4 Ciclo de vida de una SubOrder
-
-```
-Cliente confirma pago
-        ↓
-[orders app] → tasks.sync_suborder_to_odoo (via signals o views)
-        ↓
-services/orders.sync_suborder_to_odoo(suborder)
-        ├─ _get_or_create_partner()    → res.partner
-        ├─ order_lines ← OrderItem.odoo_product_id
-        └─ execute_kw('sale.order', 'create') → suborder.odoo_sale_id
-
-Provider actualiza despacho en Odoo
-        ↓
-[Webhook Odoo → Django] o [sync_delivery_status command]
-        ↓
-SubOrder.status = 'enviado' / 'entregado'
-        ↓
-services/orders.update_odoo_delivery_status(suborder)
-        └─ sale.order.write(x_delivery_status = 'enviado'/'recibido')
-```
-
----
-
-## 8. Relación con otras apps
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                         apps/sync                               │
-│  connector/  ◄──── JSON-RPC ────►  ODOO                         │
-│  services/   ↕ importa modelos   ↕                              │
-└───────┬──────────────┬──────────────┬──────────────┬────────────┘
-        │              │              │              │
-   marketplace/    products/       orders/        vehicles/
-   ─────────────   ──────────      ────────       ─────────
-   Provider        Product         SubOrder       VariantVehiculo
-   (odoo_company_id (odoo_product_id (odoo_sale_id  (odoo_variante_id
-   odoo_user_id     odoo_template_id  status)        django_external_id
-   odoo_username    total_stock_cached)               en Odoo)
-   tier, is_approved Category
-   is_active)       CompatibilidadProducto
-```
-
-### Detalle por app
-
-| App | Qué usa `sync` | Qué provee a `sync` |
-|---|---|---|
-| **marketplace** | `Provider.get_odoo_connection_info()`, `generate_odoo_username()`, `set_odoo_password()` | Contexto multi-company para el conector |
-| **products** | `Product`, `Category`, `CompatibilidadProducto` para persistir resultados de sync | Modelos destino de la sincronización |
-| **orders** | `SubOrder`, `OrderItem`, `PaymentProof` para construir `sale.order` en Odoo | Origen de los datos que van hacia Odoo |
-| **vehicles** | `VariantVehiculo` para resolver compatibilidades; `push_*` del conector para enviar la jerarquía | Catálogo vehicular que se indexa en Odoo |
-| **customer** | `Customer` (vía `order.customer`) para crear `res.partner` en Odoo | Datos del comprador |
-
----
-
-## 9. Compatibilidad de imports: `odoo_connector.py`
-
-El módulo `apps/sync/odoo_connector.py` es un **shim de compatibilidad** que re-exporta todo desde `apps/sync/connector/`. Garantiza que todos los imports previos al refactor sigan funcionando:
-
-```python
-# Ambas formas funcionan:
-from apps.sync.odoo_connector import OdooConnector                   # legado
-from apps.sync.connector import OdooConnector                        # nuevo (preferido)
-```
-
----
-
-## 10. Decisiones de diseño
-
-### UID de Odoo no se cachea en Redis
-El UID de autenticación está acoplado a las cookies HTTP de `requests.Session`. Reutilizar un UID de otra instancia produciría errores de `Session Expired`. La autenticación tarda ~50 ms y ocurre una vez por instancia de `OdooConnector`, lo cual es suficiente para el ciclo de vida de una tarea Celery.
-
-### Tasks como capas delgadas
-Cada tarea Celery solo deserializa argumentos y llama al servicio. Esto permite testear la lógica de negocio sin un broker Celery, y reusar los mismos servicios desde management commands y desde otros puntos del código.
-
-### Estrategia de 3 vías para categorías y vehículos
-Permite arrancar el sistema en cualquier orden: seeds de Django pueden existir antes de que Odoo esté configurado, y la primera sync los vincula sin duplicar.
-
-### Resolución de `VariantVehiculo` en 3 estrategias
-La estrategia 2 (`django_external_id` en Odoo) es el puente que conecta la dirección Django→Odoo (push de vehículos) con la dirección Odoo→Django (pull de compatibilidades). Requiere haber ejecutado el comando `push_vehicles` o su equivalente Celery al menos una vez.
-
-### Contexto multi-company explícito en `orders.py`
-Todas las operaciones sobre modelos de Odoo que son sensibles al contexto de compañía (`sale.order`, `account.move`, etc.) incluyen `company_id`, `force_company` y `allowed_company_ids` en el contexto para garantizar el aislamiento correcto en la instancia Odoo compartida.
-
----
-
-## 11. Guía de referencia rápida
-
-### ¿Qué archivo modificar para…?
-
-| Necesidad | Archivo |
-|---|---|
-| Agregar un nuevo campo sincronizado desde Odoo a `Product` | `services/products.py` → `sync_provider_products()` |
-| Agregar soporte para un nuevo modelo de Odoo (ej: `res.currency`) | `connector/` → nuevo mixin + agregar a `OdooConnector` |
-| Cambiar el mapeo de estado de pago | `services/orders.py` → `_PAYMENT_STATUS_MAP` |
-| Agregar una nueva tarea periódica | `tasks.py` + `ecomparts/settings.py` → `CELERY_BEAT_SCHEDULE` |
-| Diagnosticar por qué un producto no se sincroniza | `sync_products --provider-id=N --dry-run` |
-| Diagnosticar desincronización de stock | `sync_stock --provider-id=N --dry-run` |
-| Reparar estados de entrega perdidos por webhook fallido | `sync_delivery_status --dry-run` |
-| Verificar la conexión Odoo de un provider | `tasks.verify_provider_odoo_connection.delay(provider_id)` |
-
-### Variables de entorno relevantes (`settings.ODOO_CONFIG`)
-
-| Variable | Default | Descripción |
-|---|---|---|
-| `ODOO_URL` | `http://odoo:8069` | URL de la instancia Odoo |
-| `ODOO_DB` | `ecomparts_odoo_shared` | Nombre de la base de datos Odoo |
-| `ODOO_USERNAME` | `admin` | Usuario admin del conector |
-| `ODOO_PASSWORD` | `admin` | Password admin del conector |
+| Cambiar horario de catalogo, compatibilidades o stock | `ecomparts/settings.py` y `ecomparts/beat_schedule.py` |
+| Hacer efectiva la programacion en DB | `apps/sync/management/commands/sync_celery_beat.py` |
+| Agregar una tarea nueva de sync | `apps/sync/tasks.py` + `ecomparts/beat_schedule.py` |
+| Cambiar logica de productos o imagenes | `apps/sync/services/products.py` |
+| Cambiar logica de compatibilidades | `apps/sync/services/compatibility.py` |
+| Cambiar trazabilidad del estado | `apps/sync/models.py` y `apps/sync/services/observability.py` |
+| Cambiar transporte hacia Odoo | `apps/sync/connector/` |
+
+## 10. Resumen operativo
+
+La foto actual del sistema es esta:
+
+- `apps/sync` contiene la logica de integracion y observabilidad
+- `ecomparts/settings.py` define parametros base y defaults
+- `ecomparts/beat_schedule.py` arma el horario real de sync
+- `ecomparts/celery.py` carga ese horario en Celery
+- `sync_celery_beat` baja ese horario a `django_celery_beat`
+- `celery_beat` agenda desde base de datos y `celery_worker` ejecuta las tareas
+
+Si algo no corre automatico, normalmente hay que revisar esta cadena en ese orden:
+
+1. `settings.py`
+2. `beat_schedule.py`
+3. `sync_celery_beat`
+4. `PeriodicTask` en DB
+5. logs de `celery_beat`
+6. logs de `celery_worker`
