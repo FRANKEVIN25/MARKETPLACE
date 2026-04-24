@@ -351,7 +351,7 @@ class Product(models.Model):
         return self.odoo_product_id is not None
 
     @property
-    def disponible(self):
+    def is_available(self):
         """
         Producto está disponible para compra en el marketplace.
 

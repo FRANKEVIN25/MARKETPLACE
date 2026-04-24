@@ -71,14 +71,14 @@ class CartViewSet(viewsets.ViewSet):
 				'price_unit': product.price,
 				'tax_percent': product.tax_percent,
 				'quantity': min(quantity, available_stock),
-				'is_available': True,
+				'is_available': product.is_available,
 				'stock_checked_at': timezone.now(),
 			}
 		)
 		if not created:
 			new_qty = min(line.quantity + quantity, available_stock)
 			line.quantity = new_qty
-			line.is_available = True
+			line.is_available = product.is_available
 			line.stock_checked_at = timezone.now()
 			line.save(update_fields=['quantity', 'is_available', 'stock_checked_at'])
 		serializer = CartLineSerializer(line)

@@ -51,8 +51,6 @@ class OrderViewSet(viewsets.ModelViewSet):
             'sub_orders__items__product',
             'sub_orders__items__provider',
             'sub_orders__payments',
-            'items__product',
-            'items__provider',
         )
 
         # Si es customer, solo sus órdenes
