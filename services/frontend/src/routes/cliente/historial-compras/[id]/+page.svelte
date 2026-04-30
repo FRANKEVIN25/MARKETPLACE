@@ -23,73 +23,73 @@
   // Helpers de UI
   // -------------------------------------------------------------------
   const orderStatusLabel: Record<OrderStatus, string> = {
-    pendiente_pago: 'Pendiente de pago',
-    pagado: 'Pagado',
-    procesando: 'Procesando',
-    enviado: 'Enviado',
-    completado: 'Completado',
-    cancelado: 'Cancelado',
+    pendiente_pago: 'PENDIENTE DE PAGO',
+    pagado: 'PAGADO',
+    procesando: 'PROCESANDO',
+    enviado: 'ENVIADO',
+    completado: 'COMPLETADO',
+    cancelado: 'CANCELADO',
   };
 
   const orderStatusColor: Record<OrderStatus, string> = {
-    pendiente_pago: 'bg-yellow-100 text-yellow-800 border border-yellow-200',
-    pagado: 'bg-blue-100 text-blue-800 border border-blue-200',
-    procesando: 'bg-indigo-100 text-indigo-800 border border-indigo-200',
-    enviado: 'bg-purple-100 text-purple-800 border border-purple-200',
-    completado: 'bg-green-100 text-green-800 border border-green-200',
-    cancelado: 'bg-red-100 text-red-800 border border-red-200',
+    pendiente_pago: 'border-yellow-700/50 text-yellow-400',
+    pagado: 'border-steel-600/50 text-steel-300',
+    procesando: 'border-rust-700/50 text-rust-400',
+    enviado: 'border-steel-600/50 text-bone',
+    completado: 'border-green-700/50 text-green-400',
+    cancelado: 'border-rust-700/50 text-rust-500',
   };
 
   const subOrderStatusLabel: Record<SubOrderStatus, string> = {
-    pendiente_pago:   'Pendiente de pago',
-    pago_en_revision: 'Pago en revisión',
-    pago_rechazado:   'Pago Rechazado',     // v5
-    confirmado:       'Confirmado',
-    enviado:          'Enviado',
-    entregado:        'Recibido',
-    cancelado:        'Cancelado',
+    pendiente_pago:   'PENDIENTE DE PAGO',
+    pago_en_revision: 'PAGO EN REVISIÓN',
+    pago_rechazado:   'PAGO RECHAZADO',
+    confirmado:       'CONFIRMADO',
+    enviado:          'ENVIADO',
+    entregado:        'RECIBIDO',
+    cancelado:        'CANCELADO',
   };
 
   const subOrderStatusColor: Record<SubOrderStatus, string> = {
-    pendiente_pago:   'bg-yellow-50 text-yellow-700 border border-yellow-200',
-    pago_en_revision: 'bg-orange-50 text-orange-700 border border-orange-200',
-    pago_rechazado:   'bg-red-50 text-red-700 border border-red-200',      // v5
-    confirmado:       'bg-indigo-50 text-indigo-700 border border-indigo-200',
-    enviado:          'bg-purple-50 text-purple-700 border border-purple-200',
-    entregado:        'bg-green-50 text-green-700 border border-green-200',
-    cancelado:        'bg-gray-100 text-gray-600 border border-gray-200',
+    pendiente_pago:   'border-yellow-700/50 text-yellow-400',
+    pago_en_revision: 'border-rust-700/50 text-rust-400',
+    pago_rechazado:   'border-rust-700/50 text-rust-500',
+    confirmado:       'border-steel-600/50 text-bone',
+    enviado:          'border-steel-600/50 text-steel-300',
+    entregado:        'border-green-700/50 text-green-400',
+    cancelado:        'border-steel-600/40 text-steel-600',
   };
 
   const proofStatusBadge: Record<'uploaded' | 'approved' | 'rejected', string> = {
-    uploaded: 'bg-yellow-50 text-yellow-700 border border-yellow-200',
-    approved: 'bg-green-50 text-green-700 border border-green-200',
-    rejected: 'bg-red-50 text-red-700 border border-red-200',
+    uploaded: 'border-yellow-700/50 text-yellow-400',
+    approved: 'border-green-700/50 text-green-400',
+    rejected: 'border-rust-700/50 text-rust-500',
   };
 
   const proofStatusLabel: Record<'uploaded' | 'approved' | 'rejected', string> = {
-    uploaded: 'Comprobante subido',
-    approved: 'Aprobado ✓',
-    rejected: 'Rechazado ×',
+    uploaded: 'SUBIDO',
+    approved: 'APROBADO ✓',
+    rejected: 'RECHAZADO ×',
   };
 
   const deliveryLabel: Record<string, string> = {
-    domicilio: 'Envío a domicilio',
-    agencia: 'Recojo en agencia',
-    tienda: 'Recojo en tienda',
+    domicilio: 'ENVÍO A DOMICILIO',
+    agencia: 'RECOJO EN AGENCIA',
+    tienda: 'RECOJO EN TIENDA',
   };
 
   const paymentMethodLabel: Record<string, string> = {
-    transferencia: 'Transferencia bancaria',
-    yape: 'Yape',
-    plin: 'Plin',
-    efectivo_contraentrega: 'Efectivo contraentrega',
-    efectivo_tienda: 'Efectivo en tienda',
+    transferencia: 'TRANSFERENCIA BANCARIA',
+    yape: 'YAPE',
+    plin: 'PLIN',
+    efectivo_contraentrega: 'EFECTIVO CONTRAENTREGA',
+    efectivo_tienda: 'EFECTIVO EN TIENDA',
   };
 
   function formatDate(iso: string): string {
     return new Date(iso).toLocaleDateString('es-PE', {
       day: '2-digit',
-      month: 'long',
+      month: 'short',
       year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
@@ -109,7 +109,7 @@
     function tick() {
       const diff = new Date(deadline).getTime() - Date.now();
       if (diff <= 0) {
-        countdown = '⏰ Tiempo expirado';
+        countdown = 'TIEMPO EXPIRADO';
         clearInterval(countdownInterval!);
         return;
       }
@@ -122,13 +122,10 @@
     countdownInterval = setInterval(tick, 1_000);
   }
 
-  // True si alguna SubOrder está genuinamente en pendiente_pago (no expirada, no cancelada)
-  // pago_rechazado NO activa el timer: el cliente ya pagó una vez, está en corrección
   $: hasTrulyPending = (order?.sub_orders ?? []).some(
     s => s.status === 'pendiente_pago' && !s.expired
   );
 
-  // Cuando el Order dice pendiente_pago pero todas las subórdenes ya subieron comprobante
   $: allInRevisionOrBeyond =
     order?.status === 'pendiente_pago' &&
     !hasTrulyPending &&
@@ -138,7 +135,6 @@
     startCountdown(order.payment_deadline);
   }
 
-  // Detener el timer cuando ya no queden pagos genuinamente pendientes
   $: if (!hasTrulyPending && countdownInterval) {
     clearInterval(countdownInterval);
     countdownInterval = null;
@@ -147,7 +143,6 @@
 
   onDestroy(() => { if (countdownInterval) clearInterval(countdownInterval); });
 
-  /** Devuelve el motivo del rechazo más reciente desde el historial de comprobantes */
   function getLastRejectionReason(sub: SubOrder): string {
     if (!sub.payment_rejected || !sub.payments?.length) return '';
     const rejected = sub.payments
@@ -156,7 +151,6 @@
     return rejected[0]?.rejection_reason ?? '';
   }
 
-  /** Construye el resumen de métodos de pago del proveedor */
   function buildPaymentOptions(sub: SubOrder): string[] {
     const opts: string[] = [];
     const info = sub.provider_payment_info;
@@ -187,11 +181,11 @@
   let proofForms: Record<number, ProofForm> = {};
 
   const PAYMENT_METHOD_LABELS: Record<string, string> = {
-    transferencia: 'Transferencia bancaria',
-    yape: 'Yape',
-    plin: 'Plin',
-    efectivo_contraentrega: 'Efectivo contraentrega',
-    efectivo_tienda: 'Efectivo en tienda',
+    transferencia: 'TRANSFERENCIA BANCARIA',
+    yape: 'YAPE',
+    plin: 'PLIN',
+    efectivo_contraentrega: 'EFECTIVO CONTRAENTREGA',
+    efectivo_tienda: 'EFECTIVO EN TIENDA',
   };
 
   $: if (order) {
@@ -243,7 +237,6 @@
         amount: parseFloat(form.amount),
       });
       proofForms[sub.id] = { ...proofForms[sub.id], uploading: false, uploaded: true };
-      // Recargar la orden para reflejar el nuevo status
       order = await api.orders.getOrder(token, order!.id);
     } catch (e: any) {
       const msg = e?.response?.data?.detail || 'Error al subir el comprobante.';
@@ -293,106 +286,97 @@
 </script>
 
 <svelte:head>
-  <title>{order ? `Pedido ${order.order_number}` : 'Detalle de Pedido'} - ECOMPARTS</title>
+  <title>{order ? `Pedido ${order.order_number}` : 'Detalle de Pedido'} — ECOMPARTS</title>
 </svelte:head>
 
-<div class="max-w-4xl mx-auto py-12 px-4">
-  <!-- Breadcrumb -->
-  <nav class="flex items-center gap-2 text-sm text-gray-400 mb-8">
-    <a href="/cliente/perfil" class="hover:text-blue-600 transition">Mi cuenta</a>
-    <span>›</span>
-    <a href="/cliente/historial-compras" class="hover:text-blue-600 transition">Historial de compras</a>
-    <span>›</span>
-    <span class="text-gray-600 font-medium">
-      {order ? order.order_number : 'Cargando...'}
-    </span>
-  </nav>
+<div class="container-responsive py-10 max-w-4xl">
 
-  <!-- Estado de carga -->
+  <!-- Breadcrumb -->
+  <div class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-steel-500 mb-8">
+    <a href="/cliente/perfil" class="hover:text-rust-500 transition-colors">MI CUENTA</a>
+    <span class="text-steel-700">/</span>
+    <a href="/cliente/historial-compras" class="hover:text-rust-500 transition-colors">HISTORIAL</a>
+    <span class="text-steel-700">/</span>
+    <span class="text-bone truncate">{order ? order.order_number : 'CARGANDO...'}</span>
+  </div>
+
+  <!-- Cargando -->
   {#if loading}
-    <div class="flex flex-col items-center justify-center py-24 text-gray-400">
-      <svg
-        class="animate-spin h-8 w-8 mb-3 text-blue-500"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4" />
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v8H4z"
-        />
+    <div class="flex flex-col items-center justify-center py-24 gap-4">
+      <svg class="animate-spin h-8 w-8 text-rust-600" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
       </svg>
-      Cargando pedido...
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest animate-pulse">CARGANDO PEDIDO...</p>
     </div>
 
   {:else if error}
-    <div class="bg-red-50 border border-red-200 text-red-700 rounded-lg p-6 text-center">
-      {error}
-      <div class="mt-4">
-        <a href="/cliente/historial-compras" class="text-sm font-medium text-red-700 underline">
-          ← Volver al historial
-        </a>
-      </div>
+    <div class="border border-rust-700/50 bg-rust-600/10 p-6 text-center">
+      <p class="font-mono text-xs text-rust-400 mb-4">{error}</p>
+      <a href="/cliente/historial-compras" class="btn-ghost font-mono text-[10px] uppercase tracking-widest">
+        ← VOLVER AL HISTORIAL
+      </a>
     </div>
 
   {:else if order}
+
     <!-- ================================================================
          ENCABEZADO DE LA ORDEN
     ================================================================ -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-      <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
-        <div>
-          <div class="flex items-center gap-3 flex-wrap mb-1">
-            <h1 class="text-xl font-bold text-gray-900 font-mono">
-              {order.order_number}
-            </h1>
-            <!-- Si ya están todos en revisión pero el Order aún dice pendiente_pago, mostrar badge correcto -->
-            {#if allInRevisionOrBeyond}
-              <span class="text-sm font-medium px-2.5 py-0.5 rounded-full bg-orange-100 text-orange-800 border border-orange-200">
-                Pago en revisión
-              </span>
-            {:else}
-              <span class="text-sm font-medium px-2.5 py-0.5 rounded-full {orderStatusColor[order.status]}">
-                {orderStatusLabel[order.status]}
-              </span>
-            {/if}
-          </div>
-          <p class="text-sm text-gray-500">
-            Realizado el {formatDate(order.created_at)}
-          </p>
+    <div class="bg-iron-900 border border-steel-600/25 mb-4"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4 flex items-center justify-between gap-3 flex-wrap">
+        <div class="flex items-center gap-3 flex-wrap">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// ORDEN {order.order_number}</p>
+          {#if allInRevisionOrBeyond}
+            <span class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border border-rust-700/50 text-rust-400">
+              PAGO EN REVISIÓN
+            </span>
+          {:else}
+            <span class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border {orderStatusColor[order.status]}">
+              {orderStatusLabel[order.status]}
+            </span>
+          {/if}
+        </div>
+        <p class="font-mono text-[10px] text-steel-500">{formatDate(order.created_at)}</p>
+      </div>
+
+      <div class="px-6 py-5 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+        <div class="space-y-1">
           {#if order.payment_deadline && hasTrulyPending}
-            <p class="text-sm mt-1 font-medium text-amber-600">
-              ⌛ Tiempo para pagar: {countdown || '...'}
-            </p>
+            <div class="border border-yellow-700/50 bg-yellow-600/10 px-4 py-2 flex items-center gap-3 mb-3">
+              <span class="w-1.5 h-1.5 bg-yellow-500 flex-shrink-0"></span>
+              <p class="font-mono text-xs text-yellow-400 uppercase tracking-widest">
+                TIEMPO PARA PAGAR: {countdown || '...'}
+              </p>
+            </div>
           {/if}
           {#if order.customer_notes}
-            <p class="text-sm text-gray-500 mt-1 italic">
-              Nota: {order.customer_notes}
+            <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+              NOTA: {order.customer_notes}
             </p>
           {/if}
         </div>
 
         <!-- Totales -->
-        <div class="text-right min-w-[160px] space-y-1">
-          <div class="flex justify-between gap-6 text-sm text-gray-500">
-            <span>Subtotal</span>
-            <span>{formatCurrency(order.subtotal)}</span>
+        <div class="min-w-[180px] space-y-1.5">
+          <div class="flex justify-between gap-6">
+            <span class="font-mono text-[10px] text-steel-600 uppercase tracking-widest">SUBTOTAL</span>
+            <span class="font-mono text-xs text-steel-400">{formatCurrency(order.subtotal)}</span>
           </div>
           {#if parseFloat(order.discount) > 0}
-            <div class="flex justify-between gap-6 text-sm text-green-600">
-              <span>Descuento</span>
-              <span>-{formatCurrency(order.discount)}</span>
+            <div class="flex justify-between gap-6">
+              <span class="font-mono text-[10px] text-steel-600 uppercase tracking-widest">DESCUENTO</span>
+              <span class="font-mono text-xs text-green-400">-{formatCurrency(order.discount)}</span>
             </div>
           {/if}
-          <div class="flex justify-between gap-6 text-sm text-gray-500">
-            <span>IGV</span>
-            <span>{formatCurrency(order.tax)}</span>
+          <div class="flex justify-between gap-6">
+            <span class="font-mono text-[10px] text-steel-600 uppercase tracking-widest">IGV</span>
+            <span class="font-mono text-xs text-steel-400">{formatCurrency(order.tax)}</span>
           </div>
-          <div class="flex justify-between gap-6 font-bold text-gray-900 border-t border-gray-100 pt-1">
-            <span>Total</span>
-            <span class="text-blue-700">{formatCurrency(order.total)}</span>
+          <div class="flex justify-between gap-6 border-t border-steel-600/20 pt-1.5">
+            <span class="font-mono text-[10px] text-steel-400 uppercase tracking-widest">TOTAL</span>
+            <span class="font-display text-2xl text-rust-600 leading-none">{formatCurrency(order.total)}</span>
           </div>
         </div>
       </div>
@@ -401,40 +385,35 @@
     <!-- ================================================================
          ENTREGA
     ================================================================ -->
-    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-      <h2 class="text-base font-semibold text-gray-800 mb-3">Entrega</h2>
-      <div class="flex items-start gap-3">
-        <svg
-          class="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="currentColor"
-        >
-          <path
-            fill-rule="evenodd"
+    <div class="bg-iron-900 border border-steel-600/25 mb-4"
+         style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-5 py-3">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// ENTREGA</p>
+      </div>
+      <div class="px-5 py-4 flex items-start gap-3">
+        <svg class="h-5 w-5 text-rust-600 mt-0.5 flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+          <path fill-rule="evenodd"
             d="M11.54 22.351l.07.04.028.016a.76.76 0 00.723 0l.028-.015.071-.041a16.975 16.975 0 001.144-.742 19.58 19.58 0 002.683-2.282c1.944-2.013 3.5-4.697 3.5-8.327a8 8 0 10-16 0c0 3.63 1.556 6.314 3.5 8.327a19.579 19.579 0 002.682 2.282 16.975 16.975 0 001.145.742zM12 13.5a3 3 0 100-6 3 3 0 000 6z"
-            clip-rule="evenodd"
-          />
+            clip-rule="evenodd"/>
         </svg>
         <div>
-          <p class="text-sm font-medium text-gray-800">
+          <p class="font-mono text-xs text-bone uppercase tracking-widest mb-1">
             {deliveryLabel[order.delivery_method] ?? order.delivery_method}
           </p>
           {#if order.shipping_address_detail}
-            <p class="text-sm text-gray-600 mt-0.5">
-              {order.shipping_address_detail.contact_name} ·
-              {order.shipping_address_detail.contact_phone}
+            <p class="font-mono text-xs text-steel-400">
+              {order.shipping_address_detail.contact_name} · {order.shipping_address_detail.contact_phone}
             </p>
-            <p class="text-sm text-gray-500">
+            <p class="font-mono text-[10px] text-steel-500 mt-0.5">
               {order.shipping_address_detail.full_address}
             </p>
             {#if order.shipping_address_detail.reference}
-              <p class="text-xs text-gray-400 mt-0.5">
-                Ref: {order.shipping_address_detail.reference}
+              <p class="font-mono text-[10px] text-steel-600 mt-0.5">
+                REF: {order.shipping_address_detail.reference}
               </p>
             {/if}
           {:else}
-            <p class="text-sm text-gray-500">Sin dirección registrada</p>
+            <p class="font-mono text-[10px] text-steel-600">SIN DIRECCIÓN REGISTRADA</p>
           {/if}
         </div>
       </div>
@@ -444,134 +423,118 @@
          SUB-ÓRDENES POR PROVEEDOR
     ================================================================ -->
     {#if order.sub_orders && order.sub_orders.length > 0}
-      <div class="space-y-6">
+      <div class="space-y-4">
         {#each order.sub_orders as sub (sub.id)}
-          <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+          <div class="bg-iron-900 border border-steel-600/25"
+               style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+
             <!-- Encabezado sub-orden -->
-            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 px-6 py-4 bg-gray-50 border-b border-gray-100">
-              <div>
-                <div class="flex items-center gap-2 flex-wrap">
-                  <span class="text-sm font-semibold text-gray-800">
-                    {sub.provider_name}
-                  </span>
-                  <span class="text-xs font-mono text-gray-400">
-                    #{sub.sub_order_number}
-                  </span>
-                  <span class="text-xs font-medium px-2 py-0.5 rounded-full {subOrderStatusColor[sub.status]}">
-                    {subOrderStatusLabel[sub.status]}
-                  </span>
-                </div>
-                {#if sub.tracking_number}
-                  <p class="text-xs text-gray-500 mt-0.5">
-                    Tracking: <span class="font-mono">{sub.tracking_number}</span>
-                  </p>
-                {/if}
-                {#if sub.shipped_at}
-                  <p class="text-xs text-gray-500 mt-0.5">
-                    Despachado: {formatDate(sub.shipped_at)}
-                  </p>
-                {/if}
-                {#if sub.delivered_at}
-                  <p class="text-xs text-green-700 mt-0.5 font-medium">
-                    Recibido: {formatDate(sub.delivered_at)}
-                  </p>
-                {/if}
+            <div class="border-b border-steel-600/25 px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-iron-800/50">
+              <div class="flex items-center gap-3 flex-wrap">
+                <span class="font-mono text-xs text-bone">{sub.provider_name}</span>
+                <span class="font-mono text-[9px] text-steel-600">#{sub.sub_order_number}</span>
+                <span class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border {subOrderStatusColor[sub.status]}">
+                  {subOrderStatusLabel[sub.status]}
+                </span>
               </div>
               <div class="text-right">
-                <p class="text-sm font-bold text-gray-900">{formatCurrency(sub.total)}</p>
-                <p class="text-xs text-gray-400">IGV incl.</p>
+                <p class="font-display text-xl text-bone leading-none">{formatCurrency(sub.total)}</p>
+                <p class="font-mono text-[9px] text-steel-600 uppercase">IGV INCL.</p>
               </div>
             </div>
 
+            {#if sub.tracking_number || sub.shipped_at || sub.delivered_at}
+              <div class="border-b border-steel-600/20 px-5 py-2 flex flex-wrap gap-4">
+                {#if sub.tracking_number}
+                  <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+                    TRACKING: <span class="text-bone">{sub.tracking_number}</span>
+                  </p>
+                {/if}
+                {#if sub.shipped_at}
+                  <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+                    DESPACHADO: {formatDate(sub.shipped_at)}
+                  </p>
+                {/if}
+                {#if sub.delivered_at}
+                  <p class="font-mono text-[10px] text-green-400 uppercase tracking-widest">
+                    RECIBIDO: {formatDate(sub.delivered_at)}
+                  </p>
+                {/if}
+              </div>
+            {/if}
+
+            <!-- Confirmar recepción -->
             {#if sub.status === 'enviado'}
-              <div class="px-6 py-4 border-t border-emerald-100 bg-emerald-50">
+              <div class="border-b border-green-700/30 bg-green-600/10 px-5 py-4">
                 <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div>
-                    <p class="text-sm font-semibold text-emerald-900">
-                      ¿Ya recibiste este envío?
-                    </p>
-                    <p class="text-sm text-emerald-700 mt-0.5">
+                    <p class="font-mono text-xs text-green-400 uppercase tracking-widest mb-1">¿YA RECIBISTE ESTE ENVÍO?</p>
+                    <p class="font-mono text-[10px] text-steel-400">
                       Confírmalo para cerrar correctamente el seguimiento de esta suborden.
                     </p>
                   </div>
                   <button
-                    class="inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60"
+                    class="btn-rust disabled:opacity-40 disabled:cursor-not-allowed shrink-0"
                     on:click={() => marcarComoRecibido(sub)}
                     disabled={receivingSubOrders[sub.id]}
                   >
-                    {#if receivingSubOrders[sub.id]}
-                      Confirmando...
-                    {:else}
-                      Marcar como recibido
-                    {/if}
+                    {receivingSubOrders[sub.id] ? 'CONFIRMANDO...' : 'MARCAR COMO RECIBIDO'}
                   </button>
                 </div>
                 {#if receiveErrors[sub.id]}
-                  <p class="text-sm text-red-600 mt-3">{receiveErrors[sub.id]}</p>
+                  <p class="font-mono text-[10px] text-rust-400 mt-3">{receiveErrors[sub.id]}</p>
                 {/if}
               </div>
             {/if}
 
             <!-- Items de la sub-orden -->
-            <div class="divide-y divide-gray-50">
+            <div class="divide-y divide-steel-600/15">
               {#each sub.items as item (item.id)}
-                <div class="flex justify-between items-start gap-4 px-6 py-4">
+                <div class="flex justify-between items-start gap-4 px-5 py-4">
                   <div class="flex-1 min-w-0">
-                    <p class="text-sm font-medium text-gray-900 truncate">
-                      {item.product_name}
-                    </p>
-                    <p class="text-xs text-gray-400 mt-0.5 font-mono">
-                      SKU: {item.product_sku}
-                    </p>
+                    <p class="font-mono text-xs text-bone truncate">{item.product_name}</p>
+                    <p class="font-mono text-[10px] text-steel-600 mt-0.5">SKU: {item.product_sku}</p>
                   </div>
                   <div class="text-right flex-shrink-0 space-y-0.5">
-                    <p class="text-sm text-gray-600">
-                      {item.quantity} × {formatCurrency(item.unit_price)}
-                    </p>
-                    <p class="text-sm font-semibold text-gray-900">
-                      {formatCurrency(item.subtotal)}
-                    </p>
+                    <p class="font-mono text-[10px] text-steel-500">{item.quantity} × {formatCurrency(item.unit_price)}</p>
+                    <p class="font-mono text-xs text-bone">{formatCurrency(item.subtotal)}</p>
                     {#if parseFloat(item.discount) > 0}
-                      <p class="text-xs text-green-600">
-                        Desc: -{formatCurrency(item.discount)}
-                      </p>
+                      <p class="font-mono text-[10px] text-green-400">-{formatCurrency(item.discount)}</p>
                     {/if}
                   </div>
                 </div>
               {/each}
             </div>
 
-            <!-- Desglose de la sub-orden -->
-            <div class="px-6 py-3 bg-gray-50 border-t border-gray-100 text-xs text-gray-500 flex flex-wrap gap-x-6 gap-y-1">
-              <span>Subtotal: {formatCurrency(sub.subtotal)}</span>
-              <span>IGV ({parseFloat(sub.igv_rate) * 100}%): {formatCurrency(sub.igv_amount)}</span>
-              <span class="font-semibold text-gray-700">Total: {formatCurrency(sub.total)}</span>
+            <!-- Desglose -->
+            <div class="border-t border-steel-600/20 px-5 py-3 bg-iron-800/30 flex flex-wrap gap-x-6 gap-y-1">
+              <span class="font-mono text-[10px] text-steel-600 uppercase">SUBTOTAL: {formatCurrency(sub.subtotal)}</span>
+              <span class="font-mono text-[10px] text-steel-600 uppercase">IGV ({parseFloat(sub.igv_rate) * 100}%): {formatCurrency(sub.igv_amount)}</span>
+              <span class="font-mono text-[10px] text-bone uppercase">TOTAL: {formatCurrency(sub.total)}</span>
             </div>
 
-            <!-- Pago pendiente / rechazado: datos bancarios + formulario de comprobante -->
+            <!-- Pago pendiente / rechazado -->
             {#if (sub.status === 'pendiente_pago' && !sub.expired) || sub.status === 'pago_rechazado'}
               {@const pay = sub.provider_payment_info}
               {@const form = proofForms[sub.id]}
 
-              <!-- Banner: pago rechazado (estado pago_rechazado) -->
+              <!-- Banner rechazo -->
               {#if sub.status === 'pago_rechazado'}
-                <div class="px-6 py-4 bg-red-50 border-t border-red-200">
+                <div class="border-t border-rust-700/50 bg-rust-600/10 px-5 py-4">
                   <div class="flex items-start gap-3">
-                    <span class="text-xl mt-0.5">🚫</span>
+                    <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0 mt-1"></span>
                     <div>
-                      <p class="text-sm font-semibold text-red-700">
-                        Tu comprobante fue rechazado. Corrígelo y vuelve a enviarlo.
+                      <p class="font-mono text-xs text-rust-400 uppercase tracking-widest mb-1">
+                        COMPROBANTE RECHAZADO — CORRÍGELO Y REENVÍA
                       </p>
                       {#if sub.rejection_reason}
-                        <p class="text-sm text-red-600 mt-1">
-                          <span class="font-medium">Motivo:</span> {sub.rejection_reason}
+                        <p class="font-mono text-[10px] text-steel-400">
+                          MOTIVO: {sub.rejection_reason}
                         </p>
                       {:else}
                         {@const reason = getLastRejectionReason(sub)}
                         {#if reason}
-                          <p class="text-sm text-red-600 mt-1">
-                            <span class="font-medium">Motivo:</span> {reason}
-                          </p>
+                          <p class="font-mono text-[10px] text-steel-400">MOTIVO: {reason}</p>
                         {/if}
                       {/if}
                     </div>
@@ -579,31 +542,33 @@
                 </div>
               {/if}
 
-              <div class="px-6 py-5 border-t border-gray-100 space-y-5">
+              <div class="border-t border-steel-600/20 px-5 py-5 space-y-5">
 
                 <!-- Datos bancarios del proveedor -->
-                <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
-                  <p class="text-sm font-semibold text-blue-900">💳 Datos de pago — {sub.provider_name}</p>
+                <div class="bg-iron-800 border border-steel-600/25 p-4">
+                  <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-4">
+                    // DATOS DE PAGO — {sub.provider_name}
+                  </p>
 
                   {#if pay.banco_nombre || pay.banco_cuenta}
-                    <div class="bg-white rounded-lg p-3 border border-blue-100 space-y-1.5">
-                      <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">🏦 Transferencia Bancaria</p>
+                    <div class="border border-steel-600/20 bg-iron-900/50 p-3 mb-3 space-y-2">
+                      <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest">TRANSFERENCIA BANCARIA</p>
                       {#if pay.banco_nombre}
-                        <div class="flex justify-between text-sm">
-                          <span class="text-gray-500">Banco</span>
-                          <span class="font-semibold text-gray-800">{pay.banco_nombre}</span>
+                        <div class="flex justify-between">
+                          <span class="font-mono text-[10px] text-steel-500 uppercase">BANCO</span>
+                          <span class="font-mono text-xs text-bone">{pay.banco_nombre}</span>
                         </div>
                       {/if}
                       {#if pay.banco_cuenta}
-                        <div class="flex justify-between text-sm">
-                          <span class="text-gray-500">N° Cuenta</span>
-                          <span class="font-mono font-semibold text-gray-800 select-all">{pay.banco_cuenta}</span>
+                        <div class="flex justify-between">
+                          <span class="font-mono text-[10px] text-steel-500 uppercase">N° CUENTA</span>
+                          <span class="font-mono text-xs text-bone select-all">{pay.banco_cuenta}</span>
                         </div>
                       {/if}
                       {#if pay.banco_cci}
-                        <div class="flex justify-between text-sm">
-                          <span class="text-gray-500">CCI</span>
-                          <span class="font-mono font-semibold text-gray-800 select-all">{pay.banco_cci}</span>
+                        <div class="flex justify-between">
+                          <span class="font-mono text-[10px] text-steel-500 uppercase">CCI</span>
+                          <span class="font-mono text-xs text-bone select-all">{pay.banco_cci}</span>
                         </div>
                       {/if}
                     </div>
@@ -612,91 +577,92 @@
                   {#if pay.yape_numero || pay.plin_numero}
                     <div class="flex gap-3 flex-wrap">
                       {#if pay.yape_numero}
-                        <div class="flex-1 min-w-[120px] bg-white rounded-lg p-3 border border-blue-100 text-center">
-                          <p class="text-xs font-semibold text-purple-600 mb-1">💜 Yape</p>
-                          <p class="font-mono font-bold text-gray-800 select-all">{pay.yape_numero}</p>
+                        <div class="flex-1 min-w-[120px] border border-steel-600/25 bg-iron-900/50 p-3 text-center">
+                          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">YAPE</p>
+                          <p class="font-mono text-sm text-bone select-all">{pay.yape_numero}</p>
                         </div>
                       {/if}
                       {#if pay.plin_numero}
-                        <div class="flex-1 min-w-[120px] bg-white rounded-lg p-3 border border-blue-100 text-center">
-                          <p class="text-xs font-semibold text-green-600 mb-1">💚 Plin</p>
-                          <p class="font-mono font-bold text-gray-800 select-all">{pay.plin_numero}</p>
+                        <div class="flex-1 min-w-[120px] border border-steel-600/25 bg-iron-900/50 p-3 text-center">
+                          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">PLIN</p>
+                          <p class="font-mono text-sm text-bone select-all">{pay.plin_numero}</p>
                         </div>
                       {/if}
                     </div>
                   {/if}
 
                   {#if !pay.banco_nombre && !pay.banco_cuenta && !pay.yape_numero && !pay.plin_numero}
-                    <p class="text-sm text-gray-500 italic">El proveedor coordinará el método de pago contigo.</p>
+                    <p class="font-mono text-[10px] text-steel-600 uppercase">
+                      EL PROVEEDOR COORDINARÁ EL MÉTODO DE PAGO CONTIGO.
+                    </p>
                   {/if}
                 </div>
 
                 <!-- Formulario de comprobante -->
                 {#if form && !form.uploaded}
                   <div class="space-y-4">
-                    <p class="text-sm font-semibold text-gray-800">📎 Sube tu comprobante de pago</p>
+                    <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// SUBE TU COMPROBANTE DE PAGO</p>
 
                     <!-- Método de pago -->
                     <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                       {#each [
-                        { value: 'transferencia',          label: 'Transferencia', icon: '🏦' },
-                        { value: 'yape',                   label: 'Yape',          icon: '💜' },
-                        { value: 'plin',                   label: 'Plin',          icon: '💚' },
-                        { value: 'efectivo_contraentrega', label: 'Contraentrega', icon: '🚚' },
-                        { value: 'efectivo_tienda',        label: 'En tienda',     icon: '🏪' },
+                        { value: 'transferencia',          label: 'TRANSFERENCIA' },
+                        { value: 'yape',                   label: 'YAPE' },
+                        { value: 'plin',                   label: 'PLIN' },
+                        { value: 'efectivo_contraentrega', label: 'CONTRAENTREGA' },
+                        { value: 'efectivo_tienda',        label: 'EN TIENDA' },
                       ] as m}
                         <button
-                          class="rounded-lg border-2 py-2 px-3 text-xs font-medium text-center transition-all
+                          class="border py-2 px-3 font-mono text-[10px] uppercase tracking-widest transition-colors
                             {form.payment_method === m.value
-                              ? 'border-blue-500 bg-blue-50 text-blue-700'
-                              : 'border-gray-200 hover:border-gray-300 text-gray-600'}"
+                              ? 'border-rust-600 bg-rust-600/20 text-rust-400'
+                              : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
                           on:click={() => { proofForms[sub.id] = { ...form, payment_method: m.value as PaymentMethod }; }}
-                        >{m.icon} {m.label}</button>
+                        >{m.label}</button>
                       {/each}
                     </div>
 
                     <!-- Monto y número de operación -->
                     <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                       <div>
-                        <label for="hist-amount-{sub.id}" class="block text-xs text-gray-500 mb-1">Monto pagado (S/) *</label>
+                        <label for="hist-amount-{sub.id}" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                          // MONTO PAGADO (S/) *
+                        </label>
                         <input
                           id="hist-amount-{sub.id}"
                           type="number" step="0.01" min="0.01"
                           bind:value={proofForms[sub.id].amount}
-                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                                 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                          class="input-industrial" />
                       </div>
                       <div>
-                        <label for="hist-opnum-{sub.id}" class="block text-xs text-gray-500 mb-1">N° de operación</label>
+                        <label for="hist-opnum-{sub.id}" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                          // N° DE OPERACIÓN
+                        </label>
                         <input
                           id="hist-opnum-{sub.id}"
                           type="text"
                           bind:value={proofForms[sub.id].operation_number}
                           placeholder="Ej: 123456789"
-                          class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                                 focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                          class="input-industrial" />
                       </div>
                     </div>
 
                     <!-- Adjuntar archivo -->
                     <div>
-                      <label for="hist-file-{sub.id}" class="block text-xs text-gray-500 mb-1">
-                        Captura / voucher * (JPG, PNG, PDF)
+                      <label for="hist-file-{sub.id}" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                        // CAPTURA / VOUCHER * (JPG, PNG, PDF)
                       </label>
                       <label for="hist-file-{sub.id}"
-                        class="flex flex-col items-center justify-center w-full border-2 border-dashed
-                               rounded-xl cursor-pointer py-5 transition-colors
+                        class="flex flex-col items-center justify-center w-full border-2 border-dashed cursor-pointer py-6 transition-colors
                                {form.file
-                                 ? 'border-green-400 bg-green-50'
-                                 : 'border-gray-300 hover:border-blue-400 hover:bg-blue-50/30'}">
+                                 ? 'border-green-700/50 bg-green-600/5'
+                                 : 'border-steel-600/40 hover:border-rust-600/50 hover:bg-rust-600/5'}">
                         {#if form.file}
-                          <span class="text-2xl">📄</span>
-                          <span class="text-sm font-medium text-green-700 mt-1">{form.file.name}</span>
-                          <span class="text-xs text-gray-400 mt-0.5">{(form.file.size / 1024).toFixed(1)} KB</span>
+                          <p class="font-mono text-xs text-green-400 uppercase tracking-widest">{form.file.name}</p>
+                          <p class="font-mono text-[10px] text-steel-600 mt-1">{(form.file.size / 1024).toFixed(1)} KB</p>
                         {:else}
-                          <span class="text-2xl text-gray-300">📎</span>
-                          <span class="text-sm text-gray-500 mt-1">Haz clic para adjuntar</span>
-                          <span class="text-xs text-gray-400">o arrastra aquí</span>
+                          <p class="font-mono text-xs text-steel-500 uppercase tracking-widest">ADJUNTAR ARCHIVO</p>
+                          <p class="font-mono text-[10px] text-steel-700 mt-1">HAZ CLIC O ARRASTRA AQUÍ</p>
                         {/if}
                       </label>
                       <input
@@ -710,15 +676,15 @@
 
                     <!-- Error -->
                     {#if form.error}
-                      <div class="bg-red-50 text-red-700 rounded-lg px-4 py-3 text-sm">{form.error}</div>
+                      <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+                        <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+                        <p class="font-mono text-xs text-rust-400">{form.error}</p>
+                      </div>
                     {/if}
 
                     <!-- Botón subir -->
                     <button
-                      class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-40
-                             disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg
-                             transition-colors text-sm flex items-center justify-center gap-2
-                             {sub.status === 'pago_rechazado' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}"
+                      class="w-full btn-rust disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                       disabled={form.uploading || !form.file || !form.amount}
                       on:click={() => subirComprobante(sub)}
                     >
@@ -727,29 +693,29 @@
                           <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                           <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                         </svg>
-                        Subiendo comprobante…
+                        SUBIENDO COMPROBANTE...
                       {:else if sub.status === 'pago_rechazado'}
-                        🔄 Corregir y reenviar comprobante
+                        CORREGIR Y REENVIAR COMPROBANTE
                       {:else}
-                        ↑ Enviar comprobante a {sub.provider_name}
+                        ENVIAR COMPROBANTE A {sub.provider_name.toUpperCase()}
                       {/if}
                     </button>
                   </div>
 
                 {:else if form?.uploaded}
-                  <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-                    <span class="text-2xl">✅</span>
+                  <div class="border border-green-700/50 bg-green-600/10 px-5 py-4 flex items-start gap-3">
+                    <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0 mt-1"></span>
                     <div>
-                      <p class="text-sm font-semibold text-green-800">
+                      <p class="font-mono text-xs text-green-400 uppercase tracking-widest mb-1">
                         {sub.status === 'pago_rechazado'
-                          ? 'Comprobante corregido y enviado'
-                          : 'Comprobante enviado correctamente'}
+                          ? 'COMPROBANTE CORREGIDO Y ENVIADO'
+                          : 'COMPROBANTE ENVIADO CORRECTAMENTE'}
                       </p>
-                      <p class="text-xs text-green-600">
+                      <p class="font-mono text-[10px] text-steel-400">
                         {PAYMENT_METHOD_LABELS[form.payment_method]} · S/ {parseFloat(form.amount).toFixed(2)}
-                        {form.operation_number ? ` · Op. ${form.operation_number}` : ''}
+                        {form.operation_number ? ` · OP. ${form.operation_number}` : ''}
                       </p>
-                      <p class="text-xs text-green-500 mt-0.5">El proveedor verificará tu pago y confirmará la orden.</p>
+                      <p class="font-mono text-[10px] text-steel-600 mt-0.5">EL PROVEEDOR VERIFICARÁ TU PAGO Y CONFIRMARÁ LA ORDEN.</p>
                     </div>
                   </div>
                 {/if}
@@ -759,42 +725,35 @@
 
             <!-- Comprobantes de pago subidos -->
             {#if sub.payments && sub.payments.length > 0}
-              <div class="px-6 py-4 border-t border-gray-100">
-                <p class="text-sm font-semibold text-gray-700 mb-3">Comprobantes de pago</p>
+              <div class="border-t border-steel-600/20 px-5 py-4">
+                <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-3">// COMPROBANTES DE PAGO</p>
                 <div class="space-y-3">
                   {#each sub.payments as proof (proof.id)}
-                    <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 bg-gray-50 rounded-lg p-3 text-sm">
-                      <div class="space-y-0.5 flex-1">
+                    <div class="bg-iron-800/50 border border-steel-600/20 px-4 py-3 flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3">
+                      <div class="space-y-1 flex-1">
                         <div class="flex items-center gap-2 flex-wrap">
-                          <p class="font-medium text-gray-800">
+                          <p class="font-mono text-xs text-bone uppercase tracking-widest">
                             {paymentMethodLabel[proof.payment_method] ?? proof.payment_method}
                           </p>
-                          <span class="text-xs font-medium px-1.5 py-0.5 rounded-full {proofStatusBadge[proof.status]}">
+                          <span class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border {proofStatusBadge[proof.status]}">
                             {proofStatusLabel[proof.status] ?? proof.status_display}
                           </span>
                         </div>
-                        <p class="text-gray-500 text-xs">
+                        <p class="font-mono text-[10px] text-steel-500">
                           {formatCurrency(proof.amount)}
-                          {#if proof.operation_number}
-                            · Op: {proof.operation_number}
-                          {/if}
+                          {#if proof.operation_number}· OP: {proof.operation_number}{/if}
                         </p>
-                        <p class="text-gray-400 text-xs">
-                          Subido el {formatDate(proof.uploaded_at)}
-                          por {proof.uploaded_by_name}
+                        <p class="font-mono text-[10px] text-steel-600">
+                          SUBIDO EL {formatDate(proof.uploaded_at)} POR {proof.uploaded_by_name}
                         </p>
                         {#if proof.verified_by_name}
-                          <p class="text-xs text-green-600">
-                            ✓ Verificado por {proof.verified_by_name}
-                            {#if proof.verified_at}
-                              el {formatDate(proof.verified_at)}
-                            {/if}
+                          <p class="font-mono text-[10px] text-green-400">
+                            VERIFICADO POR {proof.verified_by_name}
+                            {#if proof.verified_at}· {formatDate(proof.verified_at)}{/if}
                           </p>
                         {/if}
                         {#if proof.status === 'rejected' && proof.rejection_reason}
-                          <p class="text-xs text-red-600 italic">
-                            Motivo: {proof.rejection_reason}
-                          </p>
+                          <p class="font-mono text-[10px] text-rust-400">MOTIVO: {proof.rejection_reason}</p>
                         {/if}
                       </div>
                       {#if proof.file}
@@ -802,9 +761,9 @@
                           href={proof.file}
                           target="_blank"
                           rel="noopener noreferrer"
-                          class="text-xs font-medium text-blue-600 hover:underline flex-shrink-0"
+                          class="font-mono text-[10px] text-rust-500 hover:text-rust-400 uppercase tracking-widest flex-shrink-0 transition-colors"
                         >
-                          Ver comprobante →
+                          VER COMPROBANTE →
                         </a>
                       {/if}
                     </div>
@@ -813,48 +772,53 @@
               </div>
             {/if}
 
-            <!-- Aviso pago rechazado (solo si NO está en pendiente_pago, es decir ya tiene otro estado pero el flag quedó) -->
+            <!-- Aviso pago rechazado residual -->
             {#if sub.payment_rejected && sub.status !== 'pendiente_pago'}
               {@const reason = getLastRejectionReason(sub)}
-              <div class="px-6 py-3 bg-red-50 border-t border-red-100">
-                <p class="text-sm font-semibold text-red-700">
-                  ⚠️ Tu pago fue rechazado. Por favor sube un nuevo comprobante.
-                </p>
-                {#if reason}
-                  <p class="text-sm text-red-600 mt-0.5">
-                    Motivo: {reason}
+              <div class="border-t border-rust-700/30 bg-rust-600/10 px-5 py-3 flex items-start gap-3">
+                <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0 mt-1"></span>
+                <div>
+                  <p class="font-mono text-[10px] text-rust-400 uppercase tracking-widest">
+                    PAGO RECHAZADO — SUBE UN NUEVO COMPROBANTE
                   </p>
-                {/if}
+                  {#if reason}
+                    <p class="font-mono text-[10px] text-steel-400 mt-0.5">MOTIVO: {reason}</p>
+                  {/if}
+                </div>
               </div>
             {/if}
 
             <!-- SubOrder expirada -->
             {#if sub.expired}
-              <div class="px-6 py-3 bg-gray-50 border-t border-gray-200 text-sm text-gray-500">
-                ⏰ Esta sub-orden expiró sin recibir pago y fue cancelada.
+              <div class="border-t border-steel-600/20 bg-iron-800/30 px-5 py-3">
+                <p class="font-mono text-[10px] text-steel-600 uppercase tracking-widest">
+                  ESTA SUB-ORDEN EXPIRÓ SIN RECIBIR PAGO Y FUE CANCELADA.
+                </p>
               </div>
             {/if}
+
           </div>
         {/each}
       </div>
 
     {:else}
-      <!-- Fallback: mostrar items directamente -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div class="px-6 py-4 bg-gray-50 border-b border-gray-100">
-          <h2 class="text-sm font-semibold text-gray-700">Productos del pedido</h2>
+      <!-- Fallback: items directos -->
+      <div class="bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+        <div class="border-b border-steel-600/25 px-5 py-3">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PRODUCTOS DEL PEDIDO</p>
         </div>
-        <div class="divide-y divide-gray-50">
+        <div class="divide-y divide-steel-600/15">
           {#each order.items as item (item.id)}
-            <div class="flex justify-between items-start gap-4 px-6 py-4">
+            <div class="flex justify-between items-start gap-4 px-5 py-4">
               <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-gray-900 truncate">{item.product_name}</p>
-                <p class="text-xs text-gray-400 font-mono">SKU: {item.product_sku}</p>
-                <p class="text-xs text-gray-500 mt-0.5">Proveedor: {item.provider_name}</p>
+                <p class="font-mono text-xs text-bone truncate">{item.product_name}</p>
+                <p class="font-mono text-[10px] text-steel-600 mt-0.5">SKU: {item.product_sku}</p>
+                <p class="font-mono text-[10px] text-steel-500">PROVEEDOR: {item.provider_name}</p>
               </div>
               <div class="text-right flex-shrink-0">
-                <p class="text-sm text-gray-600">{item.quantity} × {formatCurrency(item.unit_price)}</p>
-                <p class="text-sm font-semibold text-gray-900">{formatCurrency(item.subtotal)}</p>
+                <p class="font-mono text-[10px] text-steel-500">{item.quantity} × {formatCurrency(item.unit_price)}</p>
+                <p class="font-mono text-xs text-bone">{formatCurrency(item.subtotal)}</p>
               </div>
             </div>
           {/each}
@@ -864,12 +828,10 @@
 
     <!-- Volver -->
     <div class="mt-8">
-      <a
-        href="/cliente/historial-compras"
-        class="inline-flex items-center gap-2 text-sm text-blue-600 hover:underline"
-      >
-        ← Volver al historial de compras
+      <a href="/cliente/historial-compras" class="btn-ghost font-mono text-[10px] uppercase tracking-widest">
+        ← VOLVER AL HISTORIAL DE COMPRAS
       </a>
     </div>
+
   {/if}
 </div>

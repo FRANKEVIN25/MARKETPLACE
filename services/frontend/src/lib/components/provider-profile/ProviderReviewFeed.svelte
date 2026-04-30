@@ -19,45 +19,46 @@
   }
 </script>
 
-<section class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.55)]">
-  <div class="flex flex-wrap items-end justify-between gap-4">
+<div class="bg-iron-900 border border-steel-600/25"
+     style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+  <div class="border-b border-steel-600/25 px-6 py-4 flex flex-wrap items-start justify-between gap-3">
     <div>
-      <p class="text-sm font-semibold uppercase tracking-[0.25em] text-cyan-700">Reviews</p>
-      <h2 class="mt-2 text-3xl font-black text-slate-950">Lo que ya dijeron los clientes</h2>
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// REVIEWS</p>
+      <h2 class="font-display text-3xl text-bone uppercase leading-none">LO QUE DICEN LOS CLIENTES</h2>
     </div>
-    <p class="max-w-xl text-sm leading-6 text-slate-600">
-      Solo se muestran reseñas visibles asociadas a subordenes entregadas. La plantilla es comun; la reputacion la define cada proveedor.
+    <p class="font-mono text-[10px] text-steel-500 max-w-xs leading-relaxed">
+      SOLO RESEÑAS VISIBLES DE SUBÓRDENES ENTREGADAS.
     </p>
   </div>
 
   {#if reviews.length === 0}
-    <div class="mt-8 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
-      Aun no hay reseñas publicadas para este proveedor.
+    <div class="p-8 text-center">
+      <p class="font-mono text-xs text-steel-600 uppercase tracking-widest">SIN RESEÑAS PUBLICADAS AÚN</p>
     </div>
   {:else}
-    <div class="mt-8 grid gap-4 lg:grid-cols-2">
+    <div class="p-5 grid gap-4 lg:grid-cols-2">
       {#each reviews as review}
-        <article class="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-6">
-          <div class="flex items-start justify-between gap-4">
+        <div class="bg-iron-800/50 border border-steel-600/20 p-5">
+          <div class="flex items-start justify-between gap-3 mb-3">
             <div>
-              <p class="text-lg font-bold text-slate-950">{review.customer_name}</p>
-              <p class="text-xs uppercase tracking-[0.24em] text-slate-500">{review.sub_order_number}</p>
+              <p class="font-mono text-xs text-bone">{review.customer_name}</p>
+              <p class="font-mono text-[9px] text-steel-600 uppercase">{review.sub_order_number}</p>
             </div>
-            <p class="text-xs font-semibold uppercase tracking-[0.22em] text-slate-500">{formatDate(review.created_at)}</p>
+            <p class="font-mono text-[9px] text-steel-600 uppercase flex-shrink-0">{formatDate(review.created_at)}</p>
           </div>
 
-          <div class="mt-4 flex items-center gap-1 text-lg">
-            {#each stars(review.rating) as state}
-              <span class={state === 'filled' ? 'text-amber-500' : 'text-slate-300'}>★</span>
+          <div class="flex items-center gap-1 mb-3">
+            {#each stars(review.rating) as starState}
+              <span class={starState === 'filled' ? 'text-rust-600' : 'text-steel-700'}>★</span>
             {/each}
-            <span class="ml-2 text-sm font-semibold text-slate-600">{review.rating}/5</span>
+            <span class="font-mono text-[10px] text-steel-500 ml-2">{review.rating}/5</span>
           </div>
 
-          <p class="mt-4 text-sm leading-7 text-slate-700">
-            {review.comment || 'El cliente dejo una calificacion sin comentario adicional.'}
+          <p class="font-mono text-[10px] text-steel-400 leading-relaxed">
+            {review.comment || 'El cliente dejó una calificación sin comentario adicional.'}
           </p>
-        </article>
+        </div>
       {/each}
     </div>
   {/if}
-</section>
+</div>

@@ -19,24 +19,23 @@
   let error = '';
   let fieldErrors: Record<string, string> = {};
 
-  // El tipo de documento se deduce automáticamente del tipo de cliente
   $: documentType = (customerType === 'company' ? 'RUC' : 'DNI') as DocumentType;
-  $: documentLabel = customerType === 'company' ? 'RUC (11 dígitos)' : 'DNI (8 dígitos)';
+  $: documentLabel = customerType === 'company' ? 'RUC (11 DÍGITOS)' : 'DNI (8 DÍGITOS)';
   $: documentPlaceholder = customerType === 'company' ? '20XXXXXXXXX' : '12345678';
 
   function validar(): boolean {
     fieldErrors = {};
-    if (!documentNumber) fieldErrors.documentNumber = 'Requerido';
+    if (!documentNumber) fieldErrors.documentNumber = 'REQUERIDO';
     else if (customerType === 'individual' && documentNumber.length !== 8)
-      fieldErrors.documentNumber = 'El DNI debe tener 8 dígitos';
+      fieldErrors.documentNumber = 'EL DNI DEBE TENER 8 DÍGITOS';
     else if (customerType === 'company' && documentNumber.length !== 11)
-      fieldErrors.documentNumber = 'El RUC debe tener 11 dígitos';
+      fieldErrors.documentNumber = 'EL RUC DEBE TENER 11 DÍGITOS';
     if (customerType === 'company' && !businessActivity)
-      fieldErrors.businessActivity = 'Selecciona el tipo de empresa';
-    if (!email) fieldErrors.email = 'Requerido';
-    if (!password) fieldErrors.password = 'Requerido';
-    else if (password.length < 8) fieldErrors.password = 'Mínimo 8 caracteres';
-    if (password !== confirmPassword) fieldErrors.confirmPassword = 'Las contraseñas no coinciden';
+      fieldErrors.businessActivity = 'SELECCIONA EL TIPO DE EMPRESA';
+    if (!email) fieldErrors.email = 'REQUERIDO';
+    if (!password) fieldErrors.password = 'REQUERIDO';
+    else if (password.length < 8) fieldErrors.password = 'MÍNIMO 8 CARACTERES';
+    if (password !== confirmPassword) fieldErrors.confirmPassword = 'LAS CONTRASEÑAS NO COINCIDEN';
     return Object.keys(fieldErrors).length === 0;
   }
 
@@ -53,14 +52,12 @@
         email,
         password,
       });
-      // El backend devuelve tokens + customer en la misma respuesta — no hace falta segundo request
       auth.setTokens(result.tokens);
       auth.customer.set(result.customer);
       window.location.href = '/cliente/perfil';
     } catch (e: any) {
       const data = e?.response?.data;
       if (data && typeof data === 'object') {
-        // Mostrar errores de campo del backend
         const msgs = Object.values(data).flat().join(' ');
         error = msgs || 'Error al registrarse. Intenta de nuevo.';
       } else {
@@ -73,137 +70,200 @@
 </script>
 
 <svelte:head>
-  <title>Crear Cuenta - ECOMPARTS</title>
+  <title>Crear Cuenta — ECOMPARTS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4 py-12">
-  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
+<div class="min-h-screen flex items-center justify-center px-4 py-16">
+  <div class="w-full max-w-md">
 
-    <div class="text-center mb-8">
-      <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-        <span class="text-white font-bold text-2xl">E</span>
+    <!-- Logo + header -->
+    <div class="text-center mb-10">
+      <a href="/" class="inline-flex flex-col items-center gap-2 group">
+        <div class="w-14 h-14 bg-rust-600 flex items-center justify-center group-hover:bg-rust-700 transition-colors"
+             style="clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)">
+          <span class="font-display text-3xl text-bone leading-none">E</span>
+        </div>
+        <span class="font-display text-2xl text-bone uppercase tracking-widest group-hover:text-rust-400 transition-colors">ECOMPARTS</span>
+      </a>
+      <div class="mt-6 border-b border-steel-600/30 pb-6">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// REGISTRO</p>
+        <h1 class="font-display text-4xl text-bone uppercase leading-none">CREAR CUENTA</h1>
       </div>
-      <h1 class="text-2xl font-bold text-gray-900">Crear Cuenta</h1>
-      <p class="text-gray-500 text-sm mt-1">Regístrate para comprar en ECOMPARTS</p>
     </div>
 
-    <form on:submit|preventDefault={registrar} class="space-y-5">
+    <!-- Card -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%)">
+      <div class="p-8">
+        <form on:submit|preventDefault={registrar} class="space-y-5">
 
-      <!-- Tipo de cliente -->
-      <div>
-        <p class="block text-sm font-medium text-gray-700 mb-2">Tipo de cuenta</p>
-        <div class="grid grid-cols-2 gap-3">
-          <button type="button"
-            on:click={() => {
-              customerType = 'individual';
-              businessActivity = '';
-            }}
-            class="flex flex-col items-center gap-1 border-2 rounded-xl p-4 transition cursor-pointer
-              {customerType === 'individual' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}">
-            <span class="text-2xl">👤</span>
-            <span class="text-sm font-semibold">Persona Natural</span>
-          </button>
-          <button type="button"
-            on:click={() => customerType = 'company'}
-            class="flex flex-col items-center gap-1 border-2 rounded-xl p-4 transition cursor-pointer
-              {customerType === 'company' ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300'}">
-            <span class="text-2xl">🏢</span>
-            <span class="text-sm font-semibold">Empresa</span>
-          </button>
-        </div>
-      </div>
+          <!-- Tipo de cuenta -->
+          <div>
+            <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-3">// TIPO DE CUENTA</p>
+            <div class="grid grid-cols-2 gap-3">
+              <button
+                type="button"
+                on:click={() => { customerType = 'individual'; businessActivity = ''; }}
+                class="flex flex-col items-center gap-2 border py-4 px-3 transition-all duration-150
+                  {customerType === 'individual'
+                    ? 'border-rust-600 bg-rust-600/10 text-rust-400'
+                    : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+                </svg>
+                <span class="font-mono text-[10px] uppercase tracking-widest">PERSONA NATURAL</span>
+              </button>
+              <button
+                type="button"
+                on:click={() => customerType = 'company'}
+                class="flex flex-col items-center gap-2 border py-4 px-3 transition-all duration-150
+                  {customerType === 'company'
+                    ? 'border-rust-600 bg-rust-600/10 text-rust-400'
+                    : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
+              >
+                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
+                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                </svg>
+                <span class="font-mono text-[10px] uppercase tracking-widest">EMPRESA</span>
+              </button>
+            </div>
+          </div>
 
-      <!-- Documento -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="documentNumber">
-          {documentLabel}
-        </label>
-        <div class="flex gap-2">
-          <span class="inline-flex items-center px-3 bg-gray-100 border border-r-0 border-gray-300 rounded-l-lg text-gray-600 text-sm font-semibold">
-            {documentType}
-          </span>
-          <input id="documentNumber" type="text" bind:value={documentNumber}
-            placeholder={documentPlaceholder}
-            maxlength={customerType === 'company' ? 11 : 8}
-            class="flex-1 border border-gray-300 rounded-r-lg px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500
-              {fieldErrors.documentNumber ? 'border-red-400' : ''}" />
-        </div>
-        {#if fieldErrors.documentNumber}
-          <p class="text-red-500 text-xs mt-1">{fieldErrors.documentNumber}</p>
-        {/if}
-      </div>
+          <!-- Documento -->
+          <div>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="documentNumber">
+              // {documentLabel}
+            </label>
+            <div class="flex gap-0">
+              <span class="flex items-center px-3 bg-iron-800 border border-r-0 border-steel-600/50
+                           font-mono text-xs text-steel-400 uppercase tracking-widest whitespace-nowrap">
+                {documentType}
+              </span>
+              <input
+                id="documentNumber"
+                type="text"
+                bind:value={documentNumber}
+                placeholder={documentPlaceholder}
+                maxlength={customerType === 'company' ? 11 : 8}
+                class="flex-1 input-industrial {fieldErrors.documentNumber ? 'border-rust-600/70' : ''}"
+              />
+            </div>
+            {#if fieldErrors.documentNumber}
+              <p class="font-mono text-[9px] text-rust-500 mt-1 uppercase tracking-widest">{fieldErrors.documentNumber}</p>
+            {/if}
+          </div>
 
-      {#if customerType === 'company'}
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1" for="businessActivity">Actividad económica</label>
-          <select
-            id="businessActivity"
-            bind:value={businessActivity}
-            class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500
-              {fieldErrors.businessActivity ? 'border-red-400' : ''}"
-          >
-            <option value="">Selecciona el tipo de empresa</option>
-            {#each BUSINESS_ACTIVITY_OPTIONS as option}
-              <option value={option.value}>{option.label}</option>
-            {/each}
-          </select>
-          <p class="text-xs text-gray-500 mt-1">Solo las empresas marcadas como taller verán la configuración de taller y servicios.</p>
-          {#if fieldErrors.businessActivity}
-            <p class="text-red-500 text-xs mt-1">{fieldErrors.businessActivity}</p>
+          <!-- Actividad económica (empresa) -->
+          {#if customerType === 'company'}
+            <div>
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="businessActivity">
+                // ACTIVIDAD ECONÓMICA
+              </label>
+              <select
+                id="businessActivity"
+                bind:value={businessActivity}
+                class="input-industrial {fieldErrors.businessActivity ? 'border-rust-600/70' : ''}"
+              >
+                <option value="">Selecciona el tipo de empresa</option>
+                {#each BUSINESS_ACTIVITY_OPTIONS as option}
+                  <option value={option.value}>{option.label}</option>
+                {/each}
+              </select>
+              <p class="font-mono text-[9px] text-steel-600 mt-1 uppercase tracking-widest">
+                SOLO TALLERES MECÁNICOS VEN LA CONFIGURACIÓN DE TALLER
+              </p>
+              {#if fieldErrors.businessActivity}
+                <p class="font-mono text-[9px] text-rust-500 mt-1 uppercase tracking-widest">{fieldErrors.businessActivity}</p>
+              {/if}
+            </div>
           {/if}
-        </div>
-      {/if}
 
-      <!-- Email -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="email">Correo electrónico</label>
-        <input id="email" type="email" bind:value={email} autocomplete="email"
-          placeholder="tu@email.com"
-          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500
-            {fieldErrors.email ? 'border-red-400' : ''}" />
-        {#if fieldErrors.email}
-          <p class="text-red-500 text-xs mt-1">{fieldErrors.email}</p>
-        {/if}
+          <!-- Email -->
+          <div>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="email">
+              // CORREO ELECTRÓNICO
+            </label>
+            <input
+              id="email"
+              type="email"
+              bind:value={email}
+              autocomplete="email"
+              placeholder="tu@email.com"
+              class="input-industrial {fieldErrors.email ? 'border-rust-600/70' : ''}"
+            />
+            {#if fieldErrors.email}
+              <p class="font-mono text-[9px] text-rust-500 mt-1 uppercase tracking-widest">{fieldErrors.email}</p>
+            {/if}
+          </div>
+
+          <!-- Contraseña -->
+          <div>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="password">
+              // CONTRASEÑA
+            </label>
+            <input
+              id="password"
+              type="password"
+              bind:value={password}
+              autocomplete="new-password"
+              placeholder="Mínimo 8 caracteres"
+              class="input-industrial {fieldErrors.password ? 'border-rust-600/70' : ''}"
+            />
+            {#if fieldErrors.password}
+              <p class="font-mono text-[9px] text-rust-500 mt-1 uppercase tracking-widest">{fieldErrors.password}</p>
+            {/if}
+          </div>
+
+          <!-- Confirmar contraseña -->
+          <div>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="confirmPassword">
+              // CONFIRMAR CONTRASEÑA
+            </label>
+            <input
+              id="confirmPassword"
+              type="password"
+              bind:value={confirmPassword}
+              autocomplete="new-password"
+              placeholder="Repite tu contraseña"
+              class="input-industrial {fieldErrors.confirmPassword ? 'border-rust-600/70' : ''}"
+            />
+            {#if fieldErrors.confirmPassword}
+              <p class="font-mono text-[9px] text-rust-500 mt-1 uppercase tracking-widest">{fieldErrors.confirmPassword}</p>
+            {/if}
+          </div>
+
+          <!-- Error global -->
+          {#if error}
+            <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-start gap-3">
+              <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0 mt-1"></span>
+              <p class="font-mono text-xs text-rust-400">{error}</p>
+            </div>
+          {/if}
+
+          <!-- Submit -->
+          <button
+            type="submit"
+            disabled={loading}
+            class="w-full bg-rust-600 hover:bg-rust-700 disabled:opacity-50 disabled:cursor-not-allowed
+                   text-bone font-display text-xl uppercase tracking-widest py-4 transition-colors"
+            style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)"
+          >
+            {loading ? 'CREANDO CUENTA...' : 'CREAR CUENTA →'}
+          </button>
+
+          <!-- Link login -->
+          <div class="border-t border-steel-600/25 pt-5 text-center">
+            <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+              ¿YA TIENES CUENTA?&nbsp;
+              <a href="/login" class="text-rust-500 hover:text-rust-400 transition-colors">INICIA SESIÓN</a>
+            </p>
+          </div>
+        </form>
       </div>
-
-      <!-- Contraseña -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="password">Contraseña</label>
-        <input id="password" type="password" bind:value={password} autocomplete="new-password"
-          placeholder="Mínimo 8 caracteres"
-          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500
-            {fieldErrors.password ? 'border-red-400' : ''}" />
-        {#if fieldErrors.password}
-          <p class="text-red-500 text-xs mt-1">{fieldErrors.password}</p>
-        {/if}
-      </div>
-
-      <!-- Confirmar contraseña -->
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="confirmPassword">Confirmar contraseña</label>
-        <input id="confirmPassword" type="password" bind:value={confirmPassword} autocomplete="new-password"
-          placeholder="Repite tu contraseña"
-          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500
-            {fieldErrors.confirmPassword ? 'border-red-400' : ''}" />
-        {#if fieldErrors.confirmPassword}
-          <p class="text-red-500 text-xs mt-1">{fieldErrors.confirmPassword}</p>
-        {/if}
-      </div>
-
-      {#if error}
-        <div class="bg-red-50 text-red-700 rounded-lg p-3 text-sm">{error}</div>
-      {/if}
-
-      <button type="submit" disabled={loading}
-        class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition">
-        {loading ? 'Creando cuenta...' : 'Crear Cuenta'}
-      </button>
-
-      <p class="text-center text-sm text-gray-500">
-        ¿Ya tienes cuenta?
-        <a href="/login" class="text-blue-600 hover:underline font-medium">Inicia sesión</a>
-      </p>
-    </form>
+    </div>
 
   </div>
 </div>

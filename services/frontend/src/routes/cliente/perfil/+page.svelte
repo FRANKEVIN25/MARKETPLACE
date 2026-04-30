@@ -16,7 +16,6 @@
   let mensaje = '';
   let error = '';
 
-  // Formulario editable
   let form: {
     phone: string;
     document_type: 'DNI' | 'RUC' | 'CE' | 'PASSPORT';
@@ -84,54 +83,82 @@
 </script>
 
 <svelte:head>
-  <title>Mi Perfil - ECOMPARTS</title>
+  <title>Mi Perfil — ECOMPARTS</title>
 </svelte:head>
 
-<div class="max-w-3xl mx-auto py-12 px-4">
-  <h1 class="text-3xl font-bold text-gray-900 mb-8">Mi Perfil</h1>
+<div class="container-responsive py-10 max-w-3xl">
+
+  <!-- Header -->
+  <div class="border-b border-steel-600/25 pb-6 mb-8">
+    <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// MI CUENTA</p>
+    <h1 class="font-display text-5xl text-bone uppercase leading-none">MI PERFIL</h1>
+  </div>
 
   {#if loading}
-    <div class="text-gray-500 text-center py-12">Cargando perfil...</div>
-  {:else if error && !customer}
-    <div class="bg-red-50 text-red-700 rounded-lg p-4">{error}</div>
-  {:else if customer}
-    <div class="bg-white rounded-xl shadow p-8 space-y-6">
+    <div class="bg-iron-900 border border-steel-600/25 p-16 text-center">
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest animate-pulse">CARGANDO PERFIL...</p>
+    </div>
 
-      <!-- Info de solo lectura -->
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 border-b border-gray-100">
-        <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide">ID Cliente</p>
-          <p class="font-mono font-semibold text-gray-800">{customer.customer_id}</p>
+  {:else if error && !customer}
+    <div class="border border-rust-700/50 bg-rust-600/10 px-5 py-4 flex items-center gap-3">
+      <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+      <p class="font-mono text-xs text-rust-400">{error}</p>
+    </div>
+
+  {:else if customer}
+
+    <!-- Info de solo lectura -->
+    <div class="bg-iron-900 border border-steel-600/25 mb-6"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// DATOS DE CUENTA</p>
+      </div>
+      <div class="grid grid-cols-2 md:grid-cols-4 divide-x divide-steel-600/20 p-0">
+        <div class="px-6 py-5">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">ID CLIENTE</p>
+          <p class="font-mono text-sm text-bone">{customer.customer_id}</p>
         </div>
-        <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide">Usuario</p>
-          <p class="font-semibold text-gray-800">{customer.username}</p>
+        <div class="px-6 py-5">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">USUARIO</p>
+          <p class="font-mono text-sm text-bone">{customer.username}</p>
         </div>
-        <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide">Email</p>
-          <p class="font-semibold text-gray-800">{customer.email}</p>
+        <div class="px-6 py-5">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">EMAIL</p>
+          <p class="font-mono text-sm text-bone truncate">{customer.email}</p>
         </div>
-        <div>
-          <p class="text-xs text-gray-500 uppercase tracking-wide">Tipo de Cliente</p>
-          <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded-full font-medium">
-            {customer.customer_type === 'company' ? 'Empresa' : 'Individual'}
+        <div class="px-6 py-5">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">TIPO</p>
+          <span class="font-mono text-[10px] uppercase tracking-widest border px-2 py-0.5
+            {customer.customer_type === 'company'
+              ? 'border-rust-600/50 text-rust-500'
+              : 'border-steel-600/40 text-steel-300'}">
+            {customer.customer_type === 'company' ? 'EMPRESA' : 'INDIVIDUAL'}
           </span>
         </div>
       </div>
+    </div>
 
-      <!-- Formulario editable -->
-      <form on:submit|preventDefault={guardarPerfil} class="space-y-5">
+    <!-- Formulario editable -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// DATOS EDITABLES</p>
+      </div>
+
+      <form on:submit|preventDefault={guardarPerfil} class="p-6 space-y-5">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="phone">Teléfono</label>
-            <input id="phone" type="tel" bind:value={form.phone}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="phone">
+              // TELÉFONO
+            </label>
+            <input id="phone" type="tel" bind:value={form.phone} class="input-industrial" />
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="document_type">Tipo de Documento</label>
-            <select id="document_type" bind:value={form.document_type}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="document_type">
+              // TIPO DE DOCUMENTO
+            </label>
+            <select id="document_type" bind:value={form.document_type} class="input-industrial">
               <option value="DNI">DNI</option>
               <option value="RUC">RUC</option>
               <option value="CE">Carnet de Extranjería</option>
@@ -140,122 +167,146 @@
           </div>
 
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="document_number">Número de Documento</label>
-            <input id="document_number" type="text" bind:value={form.document_number}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="document_number">
+              // NÚMERO DE DOCUMENTO
+            </label>
+            <input id="document_number" type="text" bind:value={form.document_number} class="input-industrial" />
           </div>
 
           {#if customer.customer_type === 'company'}
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="company_name">Razón Social</label>
-              <input id="company_name" type="text" bind:value={form.company_name}
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="company_name">
+                // RAZÓN SOCIAL
+              </label>
+              <input id="company_name" type="text" bind:value={form.company_name} class="input-industrial" />
             </div>
             <div class="md:col-span-2">
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="business_activity">Actividad Económica</label>
-              <select id="business_activity" bind:value={form.business_activity}
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="business_activity">
+                // ACTIVIDAD ECONÓMICA
+              </label>
+              <select id="business_activity" bind:value={form.business_activity} class="input-industrial">
                 <option value="">Selecciona el tipo de empresa</option>
                 {#each BUSINESS_ACTIVITY_OPTIONS as option}
                   <option value={option.value}>{option.label}</option>
                 {/each}
               </select>
-              <p class="text-xs text-gray-500 mt-1">La configuración de taller se habilita solo cuando la actividad económica es Taller mecánico.</p>
-            </div>
-          {/if}
-        </div>
-
-        <!-- Preferencias -->
-        <div class="pt-4 border-t border-gray-100 space-y-3">
-          <p class="text-sm font-medium text-gray-700">Preferencias de comunicación</p>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.receive_newsletter}
-              class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Recibir Newsletter</span>
-          </label>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.receive_promotions}
-              class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Recibir Promociones</span>
-          </label>
-        </div>
-
-        {#if mensaje}
-          <div class="bg-green-50 text-green-700 rounded-lg p-3 text-sm">{mensaje}</div>
-        {/if}
-        {#if error}
-          <div class="bg-red-50 text-red-700 rounded-lg p-3 text-sm">{error}</div>
-        {/if}
-
-        <div class="flex gap-4 pt-2">
-          <button type="submit" disabled={guardando}
-            class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2 rounded-lg transition">
-            {guardando ? 'Guardando...' : 'Guardar Cambios'}
-          </button>
-          {#if isWorkshopCompany}
-            <a href="/taller/perfil"
-              class="border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-medium px-6 py-2 rounded-lg transition">
-              Configurar taller
-            </a>
-            <a href="/taller/servicios"
-              class="border border-indigo-200 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 font-medium px-6 py-2 rounded-lg transition">
-              Configurar servicios
-            </a>
-          {/if}
-          <a href="/cliente/direcciones"
-            class="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-6 py-2 rounded-lg transition">
-            Mis Direcciones
-          </a>
-          <a href="/cliente/historial-compras"
-            class="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-6 py-2 rounded-lg transition">
-            Mis compras
-          </a>
-        </div>
-      </form>
-
-      {#if customer.customer_type === 'company' && !isWorkshopCompany}
-        <section class="pt-6 border-t border-gray-100 space-y-3">
-          <h2 class="text-xl font-bold text-gray-900">Módulos especializados</h2>
-          <p class="text-sm text-gray-600">
-            Tu empresa todavía no tiene habilitado el módulo de taller. Si operas como taller mecánico, cambia la actividad económica y guarda el perfil para activar esas configuraciones.
-          </p>
-          <a href="/servicios" class="inline-flex items-center text-sm font-semibold text-blue-600 hover:text-blue-700">
-            Ver propuesta de servicios →
-          </a>
-        </section>
-      {/if}
-
-      {#if isWorkshopCompany}
-        <section class="pt-6 border-t border-gray-100 space-y-4">
-          <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h2 class="text-xl font-bold text-gray-900">Panel de taller</h2>
-              <p class="text-sm text-gray-600">
-                Usa tus datos de empresa como base y completa la configuración operativa de tu taller.
+              <p class="font-mono text-[9px] text-steel-600 mt-1 uppercase tracking-widest">
+                EL MÓDULO DE TALLER SE HABILITA SOLO PARA TALLERES MECÁNICOS
               </p>
             </div>
-            <a href="/servicios"
-              class="text-sm font-semibold text-blue-600 hover:text-blue-700">
-              Ver propuesta de servicios →
-            </a>
-          </div>
+          {/if}
+        </div>
 
-          <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <a href="/taller/perfil" class="rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition">
-              <p class="text-sm font-semibold text-gray-900 mb-1">Perfil comercial</p>
-              <p class="text-sm text-gray-600">Marca del taller, especialidades, cobertura y propuesta de valor.</p>
-            </a>
-            <a href="/taller/servicios" class="rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition">
-              <p class="text-sm font-semibold text-gray-900 mb-1">Catálogo de servicios</p>
-              <p class="text-sm text-gray-600">Precios base, tiempos estimados, garantía y servicios destacados.</p>
-            </a>
-            <a href="/cliente/historial-compras" class="rounded-xl border border-gray-200 p-4 hover:border-blue-300 hover:shadow-sm transition">
-              <p class="text-sm font-semibold text-gray-900 mb-1">Historial conservado</p>
-              <p class="text-sm text-gray-600">Tus compras y beneficios del marketplace siguen ligados al mismo usuario.</p>
-            </a>
+        <!-- Preferencias de comunicación -->
+        <div class="border-t border-steel-600/20 pt-5 space-y-3">
+          <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">// PREFERENCIAS DE COMUNICACIÓN</p>
+          <label class="flex items-center gap-3 cursor-pointer group">
+            <div class="relative w-4 h-4 border border-steel-600/50 flex items-center justify-center
+                        {form.receive_newsletter ? 'border-rust-600 bg-rust-600/20' : 'hover:border-steel-400'}">
+              <input type="checkbox" bind:checked={form.receive_newsletter} class="sr-only" />
+              {#if form.receive_newsletter}
+                <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              {/if}
+            </div>
+            <span class="font-mono text-xs text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">
+              RECIBIR NEWSLETTER
+            </span>
+          </label>
+          <label class="flex items-center gap-3 cursor-pointer group">
+            <div class="relative w-4 h-4 border border-steel-600/50 flex items-center justify-center
+                        {form.receive_promotions ? 'border-rust-600 bg-rust-600/20' : 'hover:border-steel-400'}">
+              <input type="checkbox" bind:checked={form.receive_promotions} class="sr-only" />
+              {#if form.receive_promotions}
+                <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                  <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                </svg>
+              {/if}
+            </div>
+            <span class="font-mono text-xs text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">
+              RECIBIR PROMOCIONES
+            </span>
+          </label>
+        </div>
+
+        <!-- Mensajes -->
+        {#if mensaje}
+          <div class="border border-green-700/50 bg-green-600/10 px-4 py-3 flex items-center gap-3">
+            <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0"></span>
+            <p class="font-mono text-xs text-green-400 uppercase tracking-widest">{mensaje}</p>
           </div>
-        </section>
-      {/if}
+        {/if}
+        {#if error}
+          <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+            <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+            <p class="font-mono text-xs text-rust-400">{error}</p>
+          </div>
+        {/if}
+
+        <!-- Acciones -->
+        <div class="flex flex-wrap gap-3 pt-2 border-t border-steel-600/20">
+          <button type="submit" disabled={guardando}
+            class="btn-rust disabled:opacity-50 disabled:cursor-not-allowed">
+            {guardando ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
+          </button>
+          {#if isWorkshopCompany}
+            <a href="/taller/perfil" class="btn-outline">CONFIGURAR TALLER</a>
+            <a href="/taller/servicios" class="btn-ghost">MIS SERVICIOS</a>
+          {/if}
+          <a href="/cliente/direcciones" class="btn-ghost">DIRECCIONES</a>
+          <a href="/cliente/historial-compras" class="btn-ghost">MIS COMPRAS</a>
+        </div>
+      </form>
     </div>
+
+    <!-- Módulos especializados (si no es taller) -->
+    {#if customer.customer_type === 'company' && !isWorkshopCompany}
+      <div class="mt-6 bg-iron-900 border border-steel-600/25 p-6"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-3">// MÓDULOS ESPECIALIZADOS</p>
+        <h2 class="font-display text-2xl text-bone uppercase mb-2">MÓDULO DE TALLER</h2>
+        <p class="font-mono text-xs text-steel-500 leading-relaxed mb-4">
+          Tu empresa aún no tiene habilitado el módulo de taller. Si operas como taller mecánico, cambia la actividad económica y guarda el perfil para activar estas configuraciones.
+        </p>
+        <a href="/servicios" class="font-mono text-xs text-rust-500 hover:text-rust-400 uppercase tracking-widest transition-colors">
+          VER PROPUESTA DE SERVICIOS →
+        </a>
+      </div>
+    {/if}
+
+    <!-- Panel de taller activo -->
+    {#if isWorkshopCompany}
+      <div class="mt-6 bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <div class="border-b border-steel-600/25 px-6 py-4 flex items-center justify-between">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PANEL DE TALLER</p>
+          <a href="/servicios" class="font-mono text-[10px] text-rust-500 hover:text-rust-400 uppercase tracking-widest transition-colors">
+            VER SERVICIOS →
+          </a>
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-3 divide-x divide-steel-600/20">
+          <a href="/taller/perfil"
+             class="px-6 py-5 hover:bg-iron-800 transition-colors group">
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">MÓDULO 01</p>
+            <p class="font-display text-lg text-bone uppercase group-hover:text-rust-400 transition-colors">PERFIL COMERCIAL</p>
+            <p class="font-mono text-[10px] text-steel-500 mt-1">Marca, especialidades y cobertura.</p>
+          </a>
+          <a href="/taller/servicios"
+             class="px-6 py-5 hover:bg-iron-800 transition-colors group">
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">MÓDULO 02</p>
+            <p class="font-display text-lg text-bone uppercase group-hover:text-rust-400 transition-colors">CATÁLOGO DE SERVICIOS</p>
+            <p class="font-mono text-[10px] text-steel-500 mt-1">Precios, tiempos y garantía.</p>
+          </a>
+          <a href="/cliente/historial-compras"
+             class="px-6 py-5 hover:bg-iron-800 transition-colors group">
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">MÓDULO 03</p>
+            <p class="font-display text-lg text-bone uppercase group-hover:text-rust-400 transition-colors">HISTORIAL</p>
+            <p class="font-mono text-[10px] text-steel-500 mt-1">Compras y beneficios del marketplace.</p>
+          </a>
+        </div>
+      </div>
+    {/if}
+
   {/if}
 </div>

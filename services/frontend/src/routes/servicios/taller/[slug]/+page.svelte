@@ -14,23 +14,23 @@
 
   const capabilityBlocks = [
     {
-      label: 'Servicios publicados',
+      label: 'SERVICIOS PUBLICADOS',
       value: `${workshop.services.length}`,
-      description: 'Oferta activa visible para cliente final.',
+      description: 'Oferta activa visible para el cliente final.',
     },
     {
-      label: 'Demanda acumulada',
+      label: 'DEMANDA ACUMULADA',
       value: `${workshop.totalJobs}`,
       description: 'Historial agregado para medir consistencia.',
     },
     {
-      label: 'Rating más alto',
+      label: 'RATING MÁS ALTO',
       value: `${(workshop.highestSuccessRate / 20).toFixed(1)}/5`,
-      description: 'Mejor valoración observada en el catálogo publicado.',
+      description: 'Mejor valoración observada en el catálogo.',
     },
     {
-      label: 'Experiencia',
-      value: `${workshop.yearsExperience} años`,
+      label: 'EXPERIENCIA',
+      value: `${workshop.yearsExperience} AÑOS`,
       description: 'Tiempo operativo comunicado al usuario.',
     },
   ];
@@ -44,198 +44,252 @@
 </script>
 
 <svelte:head>
-  <title>{workshop.workshopName} | Plantilla de Taller | ECOMPARTS</title>
+  <title>{workshop.workshopName} — Taller — ECOMPARTS</title>
   <meta
     name="description"
     content={`Detalle de taller para ${workshop.workshopName}, con expertise por vehículo, catálogo y señales de confianza.`}
   />
 </svelte:head>
 
-<section class="bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white">
-  <div class="max-w-7xl mx-auto px-6 py-16 md:py-20 space-y-8">
-    <div class="flex flex-wrap items-center gap-3 text-sm text-blue-100">
-      <a href="/servicios" class="hover:text-white transition">Servicios</a>
-      <span class="text-white/40">/</span>
-      <a href="/servicios/resultados" class="hover:text-white transition">Resultados</a>
-      <span class="text-white/40">/</span>
-      <span>{workshop.workshopName}</span>
+<!-- Breadcrumb -->
+<div class="bg-iron-900 border-b border-steel-600/30">
+  <div class="container-responsive py-3">
+    <div class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-steel-500">
+      <a href="/servicios" class="hover:text-rust-500 transition-colors">SERVICIOS</a>
+      <span class="text-steel-700">/</span>
+      <a href="/servicios/resultados" class="hover:text-rust-500 transition-colors">RESULTADOS</a>
+      <span class="text-steel-700">/</span>
+      <span class="text-bone truncate">{workshop.workshopName}</span>
     </div>
+  </div>
+</div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-[1.05fr,0.95fr] gap-10 items-start">
-      <div class="space-y-7">
-        <div class="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2 text-sm text-blue-100">
-          <span>Plantilla 3</span>
-          <span class="text-white/40">•</span>
-          <span>Perfil del taller</span>
-        </div>
+<!-- Hero del taller -->
+<div class="bg-iron-900 border-b border-steel-600/30">
+  <div class="container-responsive py-10">
+    <div class="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-8 items-start">
 
-        <div>
-          <p class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-3">Ficha pro del taller</p>
-          <h1 class="text-4xl md:text-5xl font-black leading-tight max-w-4xl">{workshop.workshopName}</h1>
-          <p class="text-xl text-blue-100 mt-3 max-w-3xl">{workshop.workshopHeadline}</p>
-          <p class="text-blue-100/80 mt-5 max-w-3xl leading-relaxed">
-            La plantilla del taller consolida confianza real: experiencia por vehículo, catálogo activo, métricas de desempeño y señales operativas que ayudan al cliente a decidir sin depender de ratings vacíos.
-          </p>
-        </div>
-
-        <div class="flex flex-wrap gap-3">
-          <span class="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">{workshop.district}</span>
-          <span class="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">{serviceLevelLabels[workshop.serviceLevel]}</span>
+      <!-- Info principal -->
+      <div>
+        <div class="flex flex-wrap gap-2 mb-5">
+          <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 text-steel-400 px-3 py-1">
+            FICHA DE TALLER
+          </span>
           {#if workshop.verified}
-            <span class="rounded-full bg-emerald-500/15 px-4 py-2 text-sm font-semibold text-emerald-200">✔ Verificado</span>
+            <span class="font-mono text-[9px] uppercase tracking-widest border border-green-700/50 text-green-400 bg-green-600/10 px-3 py-1">
+              ✓ VERIFICADO
+            </span>
           {/if}
           {#if workshop.erpIntegrated}
-            <span class="rounded-full bg-indigo-500/15 px-4 py-2 text-sm font-semibold text-indigo-200">🧠 ERP integrado</span>
+            <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 text-steel-400 px-3 py-1">
+              ERP INTEGRADO
+            </span>
           {/if}
           {#if workshop.certified}
-            <span class="rounded-full bg-blue-500/15 px-4 py-2 text-sm font-semibold text-blue-200">🏅 Certificado</span>
+            <span class="font-mono text-[9px] uppercase tracking-widest border border-rust-700/50 text-rust-500 px-3 py-1">
+              CERTIFICADO
+            </span>
           {/if}
+        </div>
+
+        <h1 class="font-display text-5xl md:text-6xl text-bone uppercase leading-none mb-3">
+          {workshop.workshopName}
+        </h1>
+        <p class="font-mono text-sm text-steel-400 mb-5 max-w-2xl leading-relaxed">
+          {workshop.workshopHeadline}
+        </p>
+
+        <div class="flex flex-wrap gap-3">
+          <span class="font-mono text-[10px] uppercase tracking-widest border border-steel-600/40 text-steel-400 px-3 py-1.5">
+            📍 {workshop.district}
+          </span>
+          <span class="font-mono text-[10px] uppercase tracking-widest border border-steel-600/40 text-steel-400 px-3 py-1.5">
+            {serviceLevelLabels[workshop.serviceLevel]}
+          </span>
         </div>
       </div>
 
-      <aside class="rounded-3xl bg-white text-slate-900 p-6 md:p-7 shadow-2xl">
-        <p class="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-2">Snapshot del taller</p>
-        <h2 class="text-2xl font-bold mb-3">KPIs visibles para el cliente</h2>
-        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-5">
-          {#each capabilityBlocks as item}
-            <div class="rounded-2xl border border-gray-200 bg-slate-50 p-4">
-              <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">{item.label}</p>
-              <p class="text-2xl font-bold text-gray-900">{item.value}</p>
-              <p class="text-sm text-gray-600 mt-1">{item.description}</p>
+      <!-- KPIs snapshot -->
+      <div class="bg-iron-800 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <div class="border-b border-steel-600/25 px-5 py-3">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// KPIs DEL TALLER</p>
+        </div>
+        <div class="grid grid-cols-2 divide-x divide-steel-600/20">
+          {#each capabilityBlocks as item, i}
+            <div class="px-5 py-4 {i < 2 ? 'border-b border-steel-600/20' : ''}">
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">{item.label}</p>
+              <p class="font-display text-3xl text-rust-600 leading-none mb-1">{item.value}</p>
+              <p class="font-mono text-[9px] text-steel-600 leading-relaxed">{item.description}</p>
             </div>
           {/each}
         </div>
-
-        <div class="rounded-2xl border border-gray-200 p-5">
-          <p class="text-sm font-semibold text-gray-900 mb-2">Cobertura de precios</p>
-          <p class="text-lg font-bold text-blue-700">{formatPriceRange(workshop.lowestPrice, workshop.highestPrice)}</p>
-          <p class="text-sm text-gray-600 mt-2">Rating tope del catálogo: {(workshop.highestSuccessRate / 20).toFixed(1)}/5</p>
+        <div class="border-t border-steel-600/25 px-5 py-4">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">COBERTURA DE PRECIOS</p>
+          <p class="font-display text-2xl text-bone leading-none">
+            {formatPriceRange(workshop.lowestPrice, workshop.highestPrice)}
+          </p>
+          <p class="font-mono text-[9px] text-steel-600 mt-1">
+            RATING TOPE: {(workshop.highestSuccessRate / 20).toFixed(1)}/5
+          </p>
         </div>
-      </aside>
+      </div>
     </div>
   </div>
-</section>
+</div>
 
-<section class="max-w-7xl mx-auto px-6 py-16 space-y-10">
+<!-- Contenido principal -->
+<div class="container-responsive py-10">
+
   {#if data.error}
-    <div class="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-      <h3 class="text-xl font-bold mb-2">No se pudo refrescar el perfil desde el backend</h3>
-      <p class="text-sm">{data.error}</p>
+    <div class="border border-rust-700/50 bg-rust-600/10 p-6 mb-8 flex items-start gap-3">
+      <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0 mt-1"></span>
+      <div>
+        <p class="font-mono text-xs text-rust-400 uppercase tracking-widest mb-1">ERROR AL CARGAR PERFIL</p>
+        <p class="font-mono text-xs text-steel-400">{data.error}</p>
+      </div>
     </div>
   {/if}
 
-  <section class="grid grid-cols-1 lg:grid-cols-[1.02fr,0.98fr] gap-8">
-    <article class="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-      <div class="flex items-center justify-between gap-4 mb-6">
+  <div class="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-8">
+
+    <!-- Catálogo de servicios -->
+    <div>
+      <div class="border-b border-steel-600/25 pb-4 mb-6 flex items-center justify-between">
         <div>
-          <p class="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-2">Servicios publicados</p>
-          <h2 class="text-3xl font-bold text-gray-900">Catálogo activo del taller</h2>
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// CATÁLOGO ACTIVO</p>
+          <h2 class="font-display text-3xl text-bone uppercase leading-none">SERVICIOS PUBLICADOS</h2>
         </div>
-        <a href="/servicios/resultados" class="text-sm font-semibold text-blue-600 hover:text-blue-700">Volver a resultados</a>
+        <a href="/servicios/resultados"
+           class="font-mono text-[10px] uppercase tracking-widest text-rust-500 hover:text-rust-400 transition-colors">
+          ← VOLVER
+        </a>
       </div>
 
       <div class="space-y-4">
         {#each workshop.services as service}
-          <article class="rounded-3xl border border-gray-200 p-6">
-            <div class="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4 mb-4">
+          <div class="bg-iron-900 border border-steel-600/25"
+               style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+
+            <div class="border-b border-steel-600/25 px-5 py-3 flex items-start justify-between gap-3">
               <div>
-                <p class="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-1">
+                <p class="font-mono text-[9px] text-rust-600 uppercase tracking-widest mb-1">
                   {service.category} · {serviceTypeLabels[service.serviceType]}
                 </p>
-                <h3 class="text-2xl font-bold text-gray-900">{service.serviceName}</h3>
-                <p class="text-gray-600 mt-2">{formatPriceRange(service.priceMin, service.priceMax)} · {formatDuration(service.durationMin)}</p>
+                <h3 class="font-display text-2xl text-bone uppercase leading-none">{service.serviceName}</h3>
               </div>
-              <div class="flex flex-wrap gap-2">
+              <div class="flex flex-wrap gap-2 flex-shrink-0">
                 {#if service.verified}
-                  <span class="rounded-full bg-emerald-50 text-emerald-700 px-3 py-1 text-xs font-semibold">✔ Verificado</span>
+                  <span class="font-mono text-[9px] uppercase border border-green-700/50 text-green-400 px-2 py-0.5">✓ VERIF.</span>
                 {/if}
                 {#if service.specialized}
-                  <span class="rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-semibold">🏆 Especializado</span>
+                  <span class="font-mono text-[9px] uppercase border border-rust-700/50 text-rust-500 px-2 py-0.5">★ ESPEC.</span>
                 {/if}
               </div>
             </div>
 
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
-              <div class="rounded-2xl bg-slate-50 p-4">
-                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">Demanda</p>
-                <p class="font-bold text-gray-900">{service.totalJobs}</p>
-              </div>
-              <div class="rounded-2xl bg-slate-50 p-4">
-                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">Rating</p>
-                <p class="font-bold text-gray-900">{service.avgRating.toFixed(1)}/5</p>
-              </div>
-              <div class="rounded-2xl bg-slate-50 p-4">
-                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">Variación</p>
-                <p class="font-bold text-gray-900">{service.repeatFailureRate.toFixed(1)}</p>
-              </div>
-              <div class="rounded-2xl bg-slate-50 p-4">
-                <p class="text-xs uppercase tracking-wide text-gray-500 mb-1">Vehículos</p>
-                <p class="font-bold text-gray-900">{service.vehicleExpertise.length}</p>
-              </div>
-            </div>
+            <div class="p-5">
+              <p class="font-mono text-xs text-steel-400 mb-4">
+                {formatPriceRange(service.priceMin, service.priceMax)} · {formatDuration(service.durationMin)}
+              </p>
 
-            <div class="flex flex-wrap gap-2 mb-5">
-              {#each service.trustNotes as note}
-                <span class="rounded-full bg-slate-100 text-slate-700 px-3 py-1 text-xs font-semibold">{note}</span>
-              {/each}
-            </div>
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-4">
+                {#each [
+                  { label: 'DEMANDA', value: service.totalJobs },
+                  { label: 'RATING', value: `${service.avgRating.toFixed(1)}/5` },
+                  { label: 'VARIACIÓN', value: service.repeatFailureRate.toFixed(1) },
+                  { label: 'VEHÍCULOS', value: service.vehicleExpertise.length },
+                ] as kpi}
+                  <div class="bg-iron-800 border border-steel-600/20 p-3">
+                    <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">{kpi.label}</p>
+                    <p class="font-display text-xl text-bone leading-none">{kpi.value}</p>
+                  </div>
+                {/each}
+              </div>
 
-            <a href={`/servicios/servicio/${service.serviceSlug}`} class="inline-flex rounded-xl bg-blue-600 text-white font-semibold px-5 py-3 hover:bg-blue-700 transition">
-              Ver detalle del servicio
-            </a>
-          </article>
+              {#if service.trustNotes.length > 0}
+                <div class="flex flex-wrap gap-2 mb-4">
+                  {#each service.trustNotes as note}
+                    <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/30 text-steel-400 px-2 py-0.5">{note}</span>
+                  {/each}
+                </div>
+              {/if}
+
+              <a href={`/servicios/servicio/${service.serviceSlug}`}
+                 class="inline-flex items-center gap-2 font-mono text-xs uppercase tracking-industrial text-bone
+                        border border-steel-600/50 px-5 py-2.5 hover:border-rust-600 hover:text-rust-500 transition-colors">
+                VER DETALLE →
+              </a>
+            </div>
+          </div>
         {/each}
       </div>
-    </article>
+    </div>
 
-    <div class="space-y-8">
-      <article class="rounded-3xl border border-gray-200 bg-slate-950 p-8 text-white shadow-sm">
-        <p class="text-sm font-semibold uppercase tracking-wide text-blue-300 mb-3">Señales operativas</p>
-        <h2 class="text-3xl font-bold mb-6">Cómo se comunica la confianza real</h2>
-        <div class="space-y-3">
+    <!-- Sidebar: señales + expertise -->
+    <div class="space-y-5">
+
+      <!-- Señales operativas -->
+      <div class="bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+        <div class="border-b border-steel-600/25 px-5 py-3">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// SEÑALES OPERATIVAS</p>
+        </div>
+        <div class="p-5 space-y-2">
           {#each operatingSignals as signal}
-            <div class="flex items-start gap-3 rounded-2xl border border-white/10 bg-white/5 p-4">
-              <span class="text-emerald-300">✓</span>
-              <p class="text-blue-100">{signal}</p>
+            <div class="flex items-start gap-3 border border-steel-600/20 bg-iron-800/50 p-3">
+              <span class="text-green-400 font-mono text-xs flex-shrink-0">✓</span>
+              <p class="font-mono text-xs text-steel-400 leading-relaxed">{signal}</p>
             </div>
           {/each}
         </div>
-      </article>
-
-      <article class="rounded-3xl border border-gray-200 bg-white p-8 shadow-sm">
-        <p class="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-3">Expertise vehicular</p>
-        <h2 class="text-3xl font-bold text-gray-900 mb-6">Vehículos donde este taller tiene más tracción</h2>
-        <div class="flex flex-wrap gap-3 mb-6">
-          {#each workshop.vehicleExpertise as vehicle}
-            <span class="rounded-full bg-blue-50 text-blue-700 px-4 py-2 text-sm font-semibold">{vehicle}</span>
-          {/each}
-        </div>
-        <div class="rounded-2xl bg-slate-50 p-5 text-sm text-gray-700">
-          <p>
-            El detalle del taller debe reforzar que no solo publica servicios: también demuestra en qué combinaciones de marca/modelo ya tiene experiencia real.
-          </p>
-        </div>
-      </article>
-    </div>
-  </section>
-
-  {#if data.relatedListings.length > 0}
-    <section class="space-y-5">
-      <div>
-        <p class="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-2">Siguiente navegación</p>
-        <h2 class="text-3xl font-bold text-gray-900">Otros servicios para seguir explorando</h2>
       </div>
 
-      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5">
+      <!-- Expertise vehicular -->
+      <div class="bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+        <div class="border-b border-steel-600/25 px-5 py-3">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// EXPERTISE VEHICULAR</p>
+        </div>
+        <div class="p-5">
+          <div class="flex flex-wrap gap-2 mb-4">
+            {#each workshop.vehicleExpertise as vehicle}
+              <span class="font-mono text-[10px] uppercase tracking-widest border border-steel-600/40 text-steel-300 px-3 py-1">
+                {vehicle}
+              </span>
+            {/each}
+          </div>
+          <p class="font-mono text-[9px] text-steel-600 leading-relaxed">
+            ESTE TALLER TIENE EXPERIENCIA REAL EN ESTAS COMBINACIONES DE MARCA/MODELO.
+          </p>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Otros servicios relacionados -->
+  {#if data.relatedListings.length > 0}
+    <div class="mt-12 border-t border-steel-600/25 pt-10">
+      <div class="border-b border-steel-600/25 pb-4 mb-6">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// SEGUIR EXPLORANDO</p>
+        <h2 class="font-display text-3xl text-bone uppercase leading-none">OTROS SERVICIOS</h2>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {#each data.relatedListings as listing}
-          <a href={`/servicios/servicio/${listing.serviceSlug}`} class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition block">
-            <p class="text-sm font-semibold uppercase tracking-wide text-blue-600 mb-2">{listing.category}</p>
-            <h3 class="text-xl font-bold text-gray-900 mb-2">{listing.serviceName}</h3>
-            <p class="text-sm text-gray-600 mb-4">{listing.workshopName}</p>
-            <p class="text-sm text-gray-700">{formatPriceRange(listing.priceMin, listing.priceMax)}</p>
+          <a href={`/servicios/servicio/${listing.serviceSlug}`}
+             class="bg-iron-900 border border-steel-600/25 p-5 hover:border-rust-600/60 transition-colors group"
+             style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)">
+            <p class="font-mono text-[9px] text-rust-600 uppercase tracking-widest mb-2">{listing.category}</p>
+            <h3 class="font-display text-xl text-bone uppercase leading-tight mb-2 group-hover:text-rust-400 transition-colors">
+              {listing.serviceName}
+            </h3>
+            <p class="font-mono text-[10px] text-steel-500 mb-3">{listing.workshopName}</p>
+            <p class="font-mono text-xs text-steel-400">{formatPriceRange(listing.priceMin, listing.priceMax)}</p>
           </a>
         {/each}
       </div>
-    </section>
+    </div>
   {/if}
-</section>
+
+</div>

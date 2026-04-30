@@ -11,9 +11,9 @@
 
 <div class="flex flex-col items-center justify-center p-8">
   <div
-    class="animate-spin rounded-full border-b-2 border-primary-600 {sizeClasses[size]}"
+    class="animate-spin border-2 border-steel-600/30 border-t-rust-600 {sizeClasses[size]}"
   ></div>
   {#if message}
-    <p class="mt-4 text-gray-600">{message}</p>
+    <p class="mt-4 font-mono text-[10px] text-steel-500 uppercase tracking-widest">{message}</p>
   {/if}
 </div>

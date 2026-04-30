@@ -27,46 +27,94 @@
 </script>
 
 <svelte:head>
-  <title>Iniciar Sesión - ECOMPARTS</title>
+  <title>Iniciar Sesión — ECOMPARTS</title>
 </svelte:head>
 
-<div class="min-h-screen bg-gray-50 flex items-center justify-center px-4">
-  <div class="bg-white rounded-2xl shadow-lg p-8 w-full max-w-md">
-    <div class="text-center mb-8">
-      <div class="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center mx-auto mb-3">
-        <span class="text-white font-bold text-2xl">E</span>
+<div class="min-h-screen flex items-center justify-center px-4 py-16">
+  <div class="w-full max-w-md">
+
+    <!-- Logo + header -->
+    <div class="text-center mb-10">
+      <a href="/" class="inline-flex flex-col items-center gap-2 group">
+        <div class="w-14 h-14 bg-rust-600 flex items-center justify-center group-hover:bg-rust-700 transition-colors"
+             style="clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)">
+          <span class="font-display text-3xl text-bone leading-none">E</span>
+        </div>
+        <span class="font-display text-2xl text-bone uppercase tracking-widest group-hover:text-rust-400 transition-colors">ECOMPARTS</span>
+      </a>
+      <div class="mt-6 border-b border-steel-600/30 pb-6">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// ACCESO</p>
+        <h1 class="font-display text-4xl text-bone uppercase leading-none">INICIAR SESIÓN</h1>
       </div>
-      <h1 class="text-2xl font-bold text-gray-900">Iniciar Sesión</h1>
-      <p class="text-gray-500 text-sm mt-1">Accede a tu cuenta ECOMPARTS</p>
     </div>
 
-    <form on:submit|preventDefault={login} class="space-y-5">
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="username">Usuario</label>
-        <input id="username" type="text" bind:value={username} required autocomplete="username"
-          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="Tu nombre de usuario" />
+    <!-- Card -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%)">
+      <div class="p-8">
+        <form on:submit|preventDefault={login} class="space-y-5">
+
+          <!-- Usuario -->
+          <div>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="username">
+              // USUARIO
+            </label>
+            <input
+              id="username"
+              type="text"
+              bind:value={username}
+              required
+              autocomplete="username"
+              placeholder="Tu nombre de usuario"
+              class="input-industrial"
+            />
+          </div>
+
+          <!-- Contraseña -->
+          <div>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="password">
+              // CONTRASEÑA
+            </label>
+            <input
+              id="password"
+              type="password"
+              bind:value={password}
+              required
+              autocomplete="current-password"
+              placeholder="••••••••"
+              class="input-industrial"
+            />
+          </div>
+
+          <!-- Error -->
+          {#if error}
+            <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+              <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+              <p class="font-mono text-xs text-rust-400">{error}</p>
+            </div>
+          {/if}
+
+          <!-- Submit -->
+          <button
+            type="submit"
+            disabled={loading}
+            class="w-full bg-rust-600 hover:bg-rust-700 disabled:opacity-50 disabled:cursor-not-allowed
+                   text-bone font-display text-xl uppercase tracking-widest py-4 transition-colors"
+            style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)"
+          >
+            {loading ? 'VERIFICANDO...' : 'INGRESAR →'}
+          </button>
+
+          <!-- Link registro -->
+          <div class="border-t border-steel-600/25 pt-5 text-center">
+            <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+              ¿SIN CUENTA?&nbsp;
+              <a href="/registro" class="text-rust-500 hover:text-rust-400 transition-colors">REGÍSTRATE</a>
+            </p>
+          </div>
+        </form>
       </div>
-      <div>
-        <label class="block text-sm font-medium text-gray-700 mb-1" for="password">Contraseña</label>
-        <input id="password" type="password" bind:value={password} required autocomplete="current-password"
-          class="w-full border border-gray-300 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          placeholder="••••••••" />
-      </div>
+    </div>
 
-      {#if error}
-        <div class="bg-red-50 text-red-700 rounded-lg p-3 text-sm">{error}</div>
-      {/if}
-
-      <button type="submit" disabled={loading}
-        class="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold py-2.5 rounded-lg transition">
-        {loading ? 'Iniciando sesión...' : 'Iniciar Sesión'}
-      </button>
-
-      <p class="text-center text-sm text-gray-500">
-        ¿No tienes cuenta?
-        <a href="/registro" class="text-blue-600 hover:underline font-medium">Regístrate</a>
-      </p>
-    </form>
   </div>
 </div>

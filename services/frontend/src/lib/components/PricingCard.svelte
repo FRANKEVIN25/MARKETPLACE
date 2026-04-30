@@ -1,129 +1,68 @@
-<!--
-  COMPONENTE: PricingCard.svelte
-  
-  ¿QUÉ HACE?
-  Muestra una tarjeta con la información de un plan (Starter, Pro, Premium)
-  
-  ¿CÓMO FUNCIONA?
-  - Recibe la información del plan como "prop" (parámetro)
-  - Muestra el nombre, precio y características
-  - Tiene un botón para seleccionar ese plan
-  - Si está seleccionado, se muestra diferente (con border azul)
-  
-  ANALOGÍA:
-  Es como una tarjeta de producto en una tienda online, pero para planes de suscripción
--->
-
 <script lang="ts">
-  /**
-   * IMPORTS
-   * Importamos el tipo TierInfo que definimos en types.ts
-   * Esto nos ayuda a que TypeScript verifique que los datos sean correctos
-   */
   import type { TierInfo } from '$lib/api/types';
-  
-  /**
-   * PROPS (Parámetros que recibe el componente)
-   * 
-   * tier: La información del plan (nombre, precio, características)
-   * selected: ¿Este plan está seleccionado? (true/false)
-   * onSelect: Función que se ejecuta cuando el usuario hace clic en "Seleccionar"
-   */
+
   interface Props {
-    tier: TierInfo;         // Información del plan
-    selected: boolean;      // ¿Está seleccionado?
-    onSelect: () => void;   // Función a ejecutar al hacer clic
+    tier: TierInfo;
+    selected: boolean;
+    onSelect: () => void;
   }
-  
-  // Declaramos las props para que el componente las pueda usar
+
   let { tier, selected, onSelect }: Props = $props();
 </script>
 
-<!--
-  HTML DEL COMPONENTE
-  
-  ESTRUCTURA:
-  - Un <div> principal (la tarjeta)
-  - Badge de "RECOMENDADO" (si aplica)
-  - Nombre del plan
-  - Precio
-  - Lista de características
-  - Botón de selección
--->
-
-<div 
-  class="relative rounded-lg border-2 p-6 transition-all hover:shadow-lg
-         {selected ? 'border-blue-500 bg-blue-50' : 'border-gray-200 bg-white'}"
+<div
+  class="relative bg-iron-900 border transition-all duration-150 p-6
+         {selected ? 'border-rust-600' : 'border-steel-600/25 hover:border-steel-400'}"
+  style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)"
 >
-  <!-- Badge "RECOMENDADO" -->
-  <!-- Se muestra SOLO si tier.recommended es true -->
+  <!-- Badge RECOMENDADO -->
   {#if tier.recommended}
-    <div class="absolute -top-3 left-1/2 -translate-x-1/2">
-      <span class="bg-blue-500 text-white text-xs font-bold px-3 py-1 rounded-full">
+    <div class="absolute -top-3 left-5">
+      <span class="font-mono text-[9px] uppercase tracking-widest bg-rust-600 text-bone px-3 py-1">
         RECOMENDADO
       </span>
     </div>
   {/if}
-  
+
   <!-- Nombre del plan -->
-  <h3 class="text-xl font-bold text-gray-900 mb-2">
+  <h3 class="font-display text-3xl {selected ? 'text-rust-600' : 'text-bone'} uppercase leading-none mb-4">
     {tier.name}
   </h3>
-  
+
   <!-- Precio -->
-  <div class="mb-4">
+  <div class="mb-5">
     {#if tier.price === 0}
-      <!-- Si el precio es 0, mostrar "GRATIS" -->
-      <span class="text-4xl font-bold text-gray-900">GRATIS</span>
+      <span class="font-display text-4xl text-bone">GRATIS</span>
     {:else}
-      <!-- Si tiene precio, mostrar con formato S/ -->
-      <span class="text-4xl font-bold text-gray-900">S/ {tier.price}</span>
-      <span class="text-gray-600">/mes</span>
+      <span class="font-display text-4xl text-bone">S/. {tier.price}</span>
+      <span class="font-mono text-xs text-steel-500 ml-1 uppercase">/MES</span>
     {/if}
   </div>
-  
-  <!-- Línea separadora -->
-  <div class="border-t border-gray-200 my-4"></div>
-  
-  <!-- Lista de características -->
-  <ul class="space-y-3 mb-6">
-    <!-- Iteramos sobre cada característica del plan -->
+
+  <!-- Separador -->
+  <div class="border-t border-steel-600/25 my-4"></div>
+
+  <!-- Características -->
+  <ul class="space-y-2.5 mb-6">
     {#each tier.features as feature}
-      <li class="flex items-start">
-        <!-- Icono de check (✓) -->
-        <svg 
-          class="w-5 h-5 text-green-500 mr-2 flex-shrink-0 mt-0.5" 
-          fill="currentColor" 
-          viewBox="0 0 20 20"
-        >
-          <path 
-            fill-rule="evenodd" 
-            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" 
-            clip-rule="evenodd"
-          />
+      <li class="flex items-start gap-2.5">
+        <svg class="w-4 h-4 text-rust-600 flex-shrink-0 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
         </svg>
-        <!-- Texto de la característica -->
-        <span class="text-gray-700">{feature}</span>
+        <span class="font-mono text-xs text-steel-400 leading-relaxed">{feature}</span>
       </li>
     {/each}
   </ul>
-  
-  <!-- Botón de selección -->
+
+  <!-- Botón -->
   <button
     type="button"
     onclick={onSelect}
-    class="w-full py-3 px-4 rounded-lg font-medium transition-colors
-           {selected 
-             ? 'bg-blue-500 text-white hover:bg-blue-600' 
-             : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}"
+    class="w-full font-mono text-xs uppercase tracking-industrial py-3 px-4 transition-all duration-150
+           {selected
+             ? 'bg-rust-600 text-bone border border-rust-600 hover:bg-rust-700'
+             : 'bg-transparent text-steel-300 border border-steel-600/50 hover:border-rust-600 hover:text-rust-500'}"
   >
-    {selected ? '✓ Seleccionado' : 'Seleccionar'}
+    {selected ? '✓ SELECCIONADO' : 'SELECCIONAR PLAN'}
   </button>
 </div>
-
-<!--
-  ESTILOS (opcional)
-  
-  En este caso usamos Tailwind CSS directamente en las clases,
-  así que no necesitamos un bloque <style>
--->

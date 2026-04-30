@@ -62,23 +62,19 @@
   let selectedProvince   = data.initialFilters?.province   || 'all';
   let selectedDistrict   = data.initialFilters?.district   || 'all';
 
-  // Categoría: inicializar por ID si viene del wizard, sino 'all'
   const _initCatId = data.initialFilters?.category_id ?? null;
   let selectedCategory: string = _initCatId
     ? (serviceCategories.find((c: ServiceCategoryItem) => c.id === _initCatId)?.name ?? 'all')
     : 'all';
 
-  // Categoría seleccionada completa (para mostrar descripción)
   $: activeCategoryItem = serviceCategories.find(
     (c: ServiceCategoryItem) => c.name === selectedCategory
   ) ?? null;
 
-  // Listas dinámicas para filtros de ubicación
   $: districts   = ['all', ...Array.from(new Set(serviceListings.map((l) => l.district)))];
   $: provinces   = ['all', ...Array.from(new Set(serviceListings.map((l) => l.province)))];
   $: departments = ['all', ...Array.from(new Set(serviceListings.map((l) => l.department)))];
 
-  // Listings con score + filtros aplicados
   $: scoredListings = (() => {
     const withScore = serviceListings.map((listing) => ({
       ...listing,
@@ -92,7 +88,6 @@
       }),
     }));
 
-    // Filtro de confianza
     const trustPredicate = (l: typeof withScore[number]) => {
       if (selectedTrust === 'verified')      return l.verified;
       if (selectedTrust === 'mostRequested') return l.totalJobs >= 50;
@@ -109,7 +104,6 @@
       trustPredicate(listing)
     );
 
-    // Filtro de ubicación con fallback: distrito → provincia → departamento
     let locationFiltered = base;
     if (selectedDistrict !== 'all') {
       const byDistrict = base.filter((l) => l.district.toLowerCase() === selectedDistrict.toLowerCase());
@@ -137,11 +131,11 @@
     return byDistrict.length === 0 && selectedProvince !== 'all';
   })();
 
-  const trustOptions: { value: TrustFilter; label: string; icon: string }[] = [
-    { value: 'all',           label: 'Todos',             icon: '🔍' },
-    { value: 'verified',      label: 'Verificados',       icon: '✔'  },
-    { value: 'mostRequested', label: 'Más solicitados',   icon: '🔥' },
-    { value: 'topRated',      label: 'Mejor calificados', icon: '⭐' },
+  const trustOptions: { value: TrustFilter; label: string }[] = [
+    { value: 'all',           label: 'TODOS' },
+    { value: 'verified',      label: 'VERIFICADOS' },
+    { value: 'mostRequested', label: 'MÁS SOLICITADOS' },
+    { value: 'topRated',      label: 'MEJOR CALIFICADOS' },
   ];
 </script>
 
@@ -150,93 +144,96 @@
   <meta name="description" content="Encuentra talleres verificados para tu vehículo. Filtra por categoría, ubicación, presupuesto y criterios de confianza." />
 </svelte:head>
 
-<!-- ── LAYOUT PRINCIPAL: aside + contenido ── -->
-<div class="max-w-7xl mx-auto px-4 sm:px-6 py-10 flex flex-col xl:flex-row gap-8 items-start">
+<div class="container-responsive py-8 flex flex-col xl:flex-row gap-8 items-start">
 
   <!-- ══════════════════════════════════════
        ASIDE — FILTROS
   ══════════════════════════════════════ -->
-  <aside class="w-full xl:w-72 shrink-0 space-y-6 xl:sticky xl:top-6">
+  <aside class="w-full xl:w-64 shrink-0 space-y-4 xl:sticky xl:top-6">
 
-    <!-- Categoría (reemplaza problema + categoría) -->
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Categoría</p>
-
-      <div class="space-y-1">
-        <label class="block">
-          <select
-            bind:value={selectedCategory}
-            class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="all">Todas las categorías</option>
-            {#each serviceCategories as cat}
-              <option value={cat.name}>{cat.name}</option>
-            {/each}
-          </select>
-        </label>
+    <!-- Categoría -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-4 py-3">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// CATEGORÍA</p>
       </div>
-
-      <!-- Descripción de la categoría activa (síntomas / problemas) -->
-      {#if activeCategoryItem?.description}
-        <div class="rounded-xl bg-blue-50 border border-blue-100 px-3 py-2.5 text-xs text-blue-800 leading-relaxed">
-          {activeCategoryItem.description}
-        </div>
-      {/if}
+      <div class="p-4 space-y-3">
+        <select
+          bind:value={selectedCategory}
+          class="input-industrial text-xs"
+        >
+          <option value="all">TODAS LAS CATEGORÍAS</option>
+          {#each serviceCategories as cat}
+            <option value={cat.name}>{cat.name.toUpperCase()}</option>
+          {/each}
+        </select>
+        {#if activeCategoryItem?.description}
+          <div class="border border-steel-600/20 bg-iron-800/50 px-3 py-2">
+            <p class="font-mono text-[10px] text-steel-400 leading-relaxed">{activeCategoryItem.description}</p>
+          </div>
+        {/if}
+      </div>
     </div>
 
     <!-- Vehículo -->
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Vehículo</p>
-
-      <label class="block">
-        <span class="block text-xs font-medium text-gray-600 mb-1">Marca</span>
-        <select
-          bind:value={selectedMarcaId}
-          onchange={handleMarcaChange}
-          class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value={null}>Todas las marcas</option>
-          {#each marcas as marca (marca.id)}
-            <option value={marca.id}>{marca.nombre}</option>
-          {/each}
-        </select>
-      </label>
-
-      <label class="block">
-        <span class="block text-xs font-medium text-gray-600 mb-1">Modelo</span>
-        <select
-          bind:value={selectedModeloId}
-          disabled={!selectedMarcaId || loadingModelos || modelos.length === 0}
-          class="w-full rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-        >
-          {#if !selectedMarcaId}
-            <option value={null}>Todos los modelos</option>
-          {:else if loadingModelos}
-            <option value={null}>Cargando...</option>
-          {:else if modelos.length === 0}
-            <option value={null}>Sin modelos</option>
-          {:else}
-            <option value={null}>Todos los modelos</option>
-            {#each modelos as modelo (modelo.id)}
-              <option value={modelo.id}>{modelo.nombre}</option>
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-4 py-3">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// VEHÍCULO</p>
+      </div>
+      <div class="p-4 space-y-3">
+        <div>
+          <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">MARCA</label>
+          <select
+            bind:value={selectedMarcaId}
+            onchange={handleMarcaChange}
+            class="input-industrial text-xs"
+          >
+            <option value={null}>TODAS LAS MARCAS</option>
+            {#each marcas as marca (marca.id)}
+              <option value={marca.id}>{marca.nombre.toUpperCase()}</option>
             {/each}
-          {/if}
-        </select>
-      </label>
+          </select>
+        </div>
+        <div>
+          <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">MODELO</label>
+          <select
+            bind:value={selectedModeloId}
+            disabled={!selectedMarcaId || loadingModelos || modelos.length === 0}
+            class="input-industrial text-xs disabled:opacity-50"
+          >
+            {#if !selectedMarcaId}
+              <option value={null}>TODOS LOS MODELOS</option>
+            {:else if loadingModelos}
+              <option value={null}>CARGANDO...</option>
+            {:else if modelos.length === 0}
+              <option value={null}>SIN MODELOS</option>
+            {:else}
+              <option value={null}>TODOS LOS MODELOS</option>
+              {#each modelos as modelo (modelo.id)}
+                <option value={modelo.id}>{modelo.nombre.toUpperCase()}</option>
+              {/each}
+            {/if}
+          </select>
+        </div>
+      </div>
     </div>
 
     <!-- Presupuesto -->
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Presupuesto</p>
-      <div class="space-y-1">
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-4 py-3">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PRESUPUESTO</p>
+      </div>
+      <div class="p-3 space-y-1">
         {#each budgetOptions as option}
           <button
             type="button"
-            onclick={() => (selectedBudget = option.value)}
-            class={`w-full text-left rounded-xl px-3 py-2.5 text-sm font-medium transition
-              ${selectedBudget === option.value
-                ? 'bg-slate-900 text-white'
-                : 'text-gray-700 hover:bg-gray-50'}`}
+            on:click={() => (selectedBudget = option.value)}
+            class="w-full text-left px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
+              {selectedBudget === option.value
+                ? 'bg-rust-600/20 border border-rust-600/60 text-rust-400'
+                : 'border border-transparent text-steel-500 hover:text-bone hover:border-steel-600/40'}"
           >
             {option.label}
           </button>
@@ -245,19 +242,21 @@
     </div>
 
     <!-- Confianza -->
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-3">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Confianza</p>
-      <div class="space-y-1">
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-4 py-3">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// CONFIANZA</p>
+      </div>
+      <div class="p-3 space-y-1">
         {#each trustOptions as opt}
           <button
             type="button"
-            onclick={() => (selectedTrust = opt.value)}
-            class={`w-full text-left rounded-xl px-3 py-2.5 text-sm font-medium transition flex items-center gap-2
-              ${selectedTrust === opt.value
-                ? 'bg-emerald-600 text-white'
-                : 'text-gray-700 hover:bg-gray-50'}`}
+            on:click={() => (selectedTrust = opt.value)}
+            class="w-full text-left px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
+              {selectedTrust === opt.value
+                ? 'bg-rust-600/20 border border-rust-600/60 text-rust-400'
+                : 'border border-transparent text-steel-500 hover:text-bone hover:border-steel-600/40'}"
           >
-            <span>{opt.icon}</span>
             {opt.label}
           </button>
         {/each}
@@ -265,75 +264,82 @@
     </div>
 
     <!-- Ubicación -->
-    <div class="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm space-y-4">
-      <p class="text-xs font-bold uppercase tracking-widest text-gray-500">Ubicación</p>
-
-      <!-- Departamento -->
-      <div>
-        <span class="block text-xs font-medium text-gray-600 mb-2">Departamento</span>
-        <div class="flex flex-wrap gap-1.5">
-          {#each departments as dept}
-            <button
-              type="button"
-              onclick={() => { selectedDepartment = dept; selectedProvince = 'all'; selectedDistrict = 'all'; }}
-              class={`rounded-full px-3 py-1.5 text-xs font-medium border transition
-                ${selectedDepartment === dept
-                  ? 'bg-blue-600 text-white border-blue-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-            >
-              {dept === 'all' ? 'Todos' : dept}
-            </button>
-          {/each}
-        </div>
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-4 py-3">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// UBICACIÓN</p>
       </div>
+      <div class="p-4 space-y-4">
 
-      <!-- Provincia (solo si hay más de una) -->
-      {#if provinces.length > 1}
+        <!-- Departamento -->
         <div>
-          <span class="block text-xs font-medium text-gray-600 mb-2">Provincia</span>
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">DEPARTAMENTO</p>
           <div class="flex flex-wrap gap-1.5">
-            {#each provinces as prov}
-              {#if selectedDepartment === 'all' || serviceListings.some((l) => l.department === selectedDepartment && l.province === prov) || prov === 'all'}
-                <button
-                  type="button"
-                  onclick={() => { selectedProvince = prov; selectedDistrict = 'all'; }}
-                  class={`rounded-full px-3 py-1.5 text-xs font-medium border transition
-                    ${selectedProvince === prov
-                      ? 'bg-indigo-600 text-white border-indigo-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-                >
-                  {prov === 'all' ? 'Todas' : prov}
-                </button>
-              {/if}
+            {#each departments as dept}
+              <button
+                type="button"
+                on:click={() => { selectedDepartment = dept; selectedProvince = 'all'; selectedDistrict = 'all'; }}
+                class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border transition-colors
+                  {selectedDepartment === dept
+                    ? 'border-rust-600 text-rust-400 bg-rust-600/10'
+                    : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
+              >
+                {dept === 'all' ? 'TODOS' : dept.toUpperCase()}
+              </button>
             {/each}
           </div>
         </div>
-      {/if}
 
-      <!-- Distrito -->
-      <div>
-        <span class="block text-xs font-medium text-gray-600 mb-2">Distrito</span>
-        <div class="flex flex-wrap gap-1.5">
-          {#each districts as district}
-            <button
-              type="button"
-              onclick={() => (selectedDistrict = district)}
-              class={`rounded-full px-3 py-1.5 text-xs font-medium border transition
-                ${selectedDistrict === district
-                  ? 'bg-emerald-600 text-white border-emerald-600'
-                  : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'}`}
-            >
-              {district === 'all' ? 'Todos' : district}
-            </button>
-          {/each}
+        <!-- Provincia -->
+        {#if provinces.length > 1}
+          <div>
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">PROVINCIA</p>
+            <div class="flex flex-wrap gap-1.5">
+              {#each provinces as prov}
+                {#if selectedDepartment === 'all' || serviceListings.some((l) => l.department === selectedDepartment && l.province === prov) || prov === 'all'}
+                  <button
+                    type="button"
+                    on:click={() => { selectedProvince = prov; selectedDistrict = 'all'; }}
+                    class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border transition-colors
+                      {selectedProvince === prov
+                        ? 'border-rust-600 text-rust-400 bg-rust-600/10'
+                        : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
+                  >
+                    {prov === 'all' ? 'TODAS' : prov.toUpperCase()}
+                  </button>
+                {/if}
+              {/each}
+            </div>
+          </div>
+        {/if}
+
+        <!-- Distrito -->
+        <div>
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">DISTRITO</p>
+          <div class="flex flex-wrap gap-1.5">
+            {#each districts as district}
+              <button
+                type="button"
+                on:click={() => (selectedDistrict = district)}
+                class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border transition-colors
+                  {selectedDistrict === district
+                    ? 'border-rust-600 text-rust-400 bg-rust-600/10'
+                    : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
+              >
+                {district === 'all' ? 'TODOS' : district.toUpperCase()}
+              </button>
+            {/each}
+          </div>
         </div>
+
+        {#if usingProvinceFallback}
+          <div class="border border-yellow-700/50 bg-yellow-600/10 px-3 py-2">
+            <p class="font-mono text-[10px] text-yellow-400 leading-relaxed">
+              SIN RESULTADOS EN {selectedDistrict.toUpperCase()}. MOSTRANDO TALLERES EN {selectedProvince.toUpperCase()}.
+            </p>
+          </div>
+        {/if}
       </div>
-
-      {#if usingProvinceFallback}
-        <div class="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 text-xs text-amber-800">
-          Sin resultados en <strong>{selectedDistrict}</strong>. Mostrando talleres en la provincia <strong>{selectedProvince}</strong>.
-        </div>
-      {/if}
     </div>
 
   </aside>
@@ -341,47 +347,57 @@
   <!-- ══════════════════════════════════════
        CONTENIDO PRINCIPAL
   ══════════════════════════════════════ -->
-  <main class="flex-1 min-w-0 space-y-10">
+  <main class="flex-1 min-w-0 space-y-8">
 
-    <!-- Aviso de error -->
+    <!-- Error -->
     {#if data.error}
-      <div class="rounded-3xl border border-amber-200 bg-amber-50 p-6 text-amber-900">
-        <h3 class="text-xl font-bold mb-2">No se pudo leer el backend en este momento</h3>
-        <p class="text-sm">{data.error}</p>
+      <div class="border border-rust-700/50 bg-rust-600/10 p-5 flex items-start gap-3">
+        <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0 mt-1"></span>
+        <div>
+          <p class="font-mono text-xs text-rust-400 uppercase tracking-widest mb-1">ERROR AL CARGAR DATOS</p>
+          <p class="font-mono text-xs text-steel-400">{data.error}</p>
+        </div>
       </div>
     {/if}
 
     <!-- Encabezado + toggle de vista -->
-    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+    <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 border-b border-steel-600/25 pb-5">
       <div>
-        <h2 class="text-2xl md:text-3xl font-bold text-gray-900">
-          {selectedCategory === 'all' ? 'Todos los servicios' : selectedCategory}
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// SERVICIOS / RESULTADOS</p>
+        <h2 class="font-display text-4xl text-bone uppercase leading-none">
+          {selectedCategory === 'all' ? 'TODOS LOS SERVICIOS' : selectedCategory.toUpperCase()}
         </h2>
         {#if activeCategoryItem?.description}
-          <p class="text-sm text-gray-500 mt-1 max-w-lg">{activeCategoryItem.description}</p>
+          <p class="font-mono text-xs text-steel-500 mt-2 max-w-lg">{activeCategoryItem.description}</p>
         {:else}
-          <p class="text-sm text-gray-500 mt-1">
-            {scoredListings.length} resultado{scoredListings.length !== 1 ? 's' : ''}{selectedBrandName ? ` para ${selectedBrandName}${selectedModelName ? ' ' + selectedModelName : ''}` : ''}
+          <p class="font-mono text-xs text-steel-500 mt-2">
+            {scoredListings.length} RESULTADO{scoredListings.length !== 1 ? 'S' : ''}
+            {selectedBrandName ? ` PARA ${selectedBrandName.toUpperCase()}${selectedModelName ? ' ' + selectedModelName.toUpperCase() : ''}` : ''}
           </p>
         {/if}
       </div>
 
-      <div class="inline-flex rounded-2xl border border-gray-200 bg-white p-1 shadow-sm shrink-0">
+      <!-- Toggle vista -->
+      <div class="inline-flex border border-steel-600/40 shrink-0">
         <button
           type="button"
-          onclick={() => (viewMode = 'service')}
-          class={`rounded-xl px-4 py-2 text-sm font-semibold transition
-            ${viewMode === 'service' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+          on:click={() => (viewMode = 'service')}
+          class="px-4 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
+            {viewMode === 'service'
+              ? 'bg-rust-600/20 text-rust-400 border-r border-rust-600/60'
+              : 'text-steel-500 hover:text-bone border-r border-steel-600/40'}"
         >
-          Por servicio
+          POR SERVICIO
         </button>
         <button
           type="button"
-          onclick={() => (viewMode = 'workshop')}
-          class={`rounded-xl px-4 py-2 text-sm font-semibold transition
-            ${viewMode === 'workshop' ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-gray-50'}`}
+          on:click={() => (viewMode = 'workshop')}
+          class="px-4 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
+            {viewMode === 'workshop'
+              ? 'bg-rust-600/20 text-rust-400'
+              : 'text-steel-500 hover:text-bone'}"
         >
-          Por taller
+          POR TALLER
         </button>
       </div>
     </div>
@@ -391,73 +407,73 @@
       <section class="space-y-4">
         <div class="flex items-end justify-between gap-3">
           <div>
-            <p class="text-xs font-bold uppercase tracking-widest text-emerald-600">Recomendaciones principales</p>
-            <h3 class="text-xl font-bold text-gray-900">Mejor match para {selectedBrandName} {selectedModelName}</h3>
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// RECOMENDACIONES PRINCIPALES</p>
+            <h3 class="font-display text-2xl text-bone uppercase leading-none">
+              MEJOR MATCH PARA {selectedBrandName ? `${selectedBrandName.toUpperCase()} ${selectedModelName.toUpperCase()}` : 'TU BÚSQUEDA'}
+            </h3>
           </div>
-          <a href="/servicios" class="text-sm font-semibold text-blue-600 hover:text-blue-700 shrink-0">
-            Cambiar búsqueda
+          <a href="/servicios" class="btn-ghost font-mono text-[10px] uppercase tracking-widest shrink-0">
+            CAMBIAR BÚSQUEDA
           </a>
         </div>
 
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
           {#each topRecommendations as rec}
-            <article class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition">
-              <div class="flex items-start justify-between gap-3 mb-4">
+            <div class="bg-iron-900 border border-steel-600/25 hover:border-rust-600/50 transition-colors"
+                 style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+              <div class="border-b border-steel-600/25 px-5 py-3 flex items-start justify-between gap-2">
                 <div>
-                  <p class="text-xs font-semibold text-blue-600 uppercase tracking-wide">{rec.category}</p>
-                  <h4 class="text-lg font-bold text-gray-900 mt-1">{rec.serviceName}</h4>
+                  <p class="font-mono text-[9px] text-rust-600 uppercase tracking-widest">{rec.category}</p>
+                  <h4 class="font-display text-xl text-bone uppercase leading-none">{rec.serviceName}</h4>
                 </div>
-                <span class="rounded-full bg-emerald-50 text-emerald-700 text-xs font-semibold px-3 py-1.5 shrink-0">
+                <span class="font-mono text-[9px] uppercase tracking-widest border border-green-700/50 text-green-400 px-2 py-0.5 flex-shrink-0">
                   {confidenceLabel(rec.score)}
                 </span>
               </div>
+              <div class="p-5">
+                <p class="font-mono text-xs text-bone mb-0.5">{rec.workshopName}</p>
+                <p class="font-mono text-[10px] text-steel-500 mb-4">{rec.workshopHeadline}</p>
 
-              <p class="font-semibold text-gray-800 mb-0.5">{rec.workshopName}</p>
-              <p class="text-xs text-gray-500 mb-4">{rec.workshopHeadline}</p>
-
-              <div class="grid grid-cols-2 gap-3 mb-4">
-                <div class="rounded-2xl bg-slate-50 p-3">
-                  <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Confianza</p>
-                  <p class="font-bold text-gray-900">{rec.avgRating.toFixed(1)}/5 rating</p>
-                  <p class="text-xs text-gray-500 mt-0.5">{rec.totalJobs} solicitudes</p>
+                <div class="grid grid-cols-2 gap-2 mb-4">
+                  <div class="bg-iron-800/50 border border-steel-600/20 p-3">
+                    <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CONFIANZA</p>
+                    <p class="font-mono text-xs text-bone">{rec.avgRating.toFixed(1)}/5</p>
+                    <p class="font-mono text-[9px] text-steel-600">{rec.totalJobs} SOLICITUDES</p>
+                  </div>
+                  <div class="bg-iron-800/50 border border-steel-600/20 p-3">
+                    <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">ESTIMACIÓN</p>
+                    <p class="font-mono text-xs text-bone">{formatPriceRange(rec.priceMin, rec.priceMax)}</p>
+                    <p class="font-mono text-[9px] text-steel-600">{formatDuration(rec.durationMin)}</p>
+                  </div>
                 </div>
-                <div class="rounded-2xl bg-slate-50 p-3">
-                  <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Estimación</p>
-                  <p class="font-bold text-gray-900">{formatPriceRange(rec.priceMin, rec.priceMax)}</p>
-                  <p class="text-xs text-gray-500 mt-0.5">{formatDuration(rec.durationMin)}</p>
+
+                <div class="space-y-1 mb-4">
+                  {#each [
+                    `${rec.avgRating.toFixed(1)}/5 VALORACIÓN PROMEDIO`,
+                    `EXPERTISE: ${rec.vehicleExpertise.slice(0, 2).join(' · ')}`,
+                    `${serviceLevelLabels[rec.serviceLevel]}${rec.erpIntegrated ? ' · ERP' : ''}`,
+                  ] as signal}
+                    <div class="flex items-center gap-2">
+                      <span class="text-green-400 font-mono text-xs">✓</span>
+                      <span class="font-mono text-[10px] text-steel-400 uppercase tracking-widest">{signal}</span>
+                    </div>
+                  {/each}
+                </div>
+
+                {#if rec.trustNotes.length > 0}
+                  <div class="flex flex-wrap gap-1.5 mb-4">
+                    {#each rec.trustNotes as note}
+                      <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/30 text-steel-500 px-2 py-0.5">{note}</span>
+                    {/each}
+                  </div>
+                {/if}
+
+                <div class="flex gap-2">
+                  <a href={`/servicios/servicio/${rec.serviceSlug}`} class="btn-rust flex-1 text-center text-xs">VER SERVICIO</a>
+                  <a href={`/servicios/taller/${rec.workshopSlug}`} class="btn-outline text-xs">TALLER</a>
                 </div>
               </div>
-
-              <div class="space-y-1.5 text-sm text-gray-700 mb-4">
-                <div class="flex items-center gap-2">
-                  <span class="text-emerald-600">✔</span>
-                  <span>{rec.avgRating.toFixed(1)}/5 valoración promedio</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-emerald-600">✔</span>
-                  <span>Expertise: {rec.vehicleExpertise.slice(0, 2).join(' · ')}</span>
-                </div>
-                <div class="flex items-center gap-2">
-                  <span class="text-emerald-600">✔</span>
-                  <span>{serviceLevelLabels[rec.serviceLevel]} {rec.erpIntegrated ? '· ERP' : ''}</span>
-                </div>
-              </div>
-
-              <div class="flex flex-wrap gap-1.5 mb-4">
-                {#each rec.trustNotes as note}
-                  <span class="rounded-full bg-blue-50 text-blue-700 px-3 py-1 text-xs font-semibold">{note}</span>
-                {/each}
-              </div>
-
-              <div class="flex gap-2">
-                <a href={`/servicios/servicio/${rec.serviceSlug}`} class="flex-1 rounded-xl bg-blue-600 text-white text-center font-semibold px-4 py-2.5 text-sm hover:bg-blue-700 transition">
-                  Ver servicio
-                </a>
-                <a href={`/servicios/taller/${rec.workshopSlug}`} class="rounded-xl border border-gray-300 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition">
-                  Taller
-                </a>
-              </div>
-            </article>
+            </div>
           {/each}
         </div>
       </section>
@@ -465,181 +481,172 @@
 
     <!-- ── LISTA COMPLETA ── -->
     {#if viewMode === 'service'}
-      <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {#each scoredListings as listing}
-          <article class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition">
-            <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="bg-iron-900 border border-steel-600/25 hover:border-steel-600/50 transition-colors"
+               style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+
+            <div class="border-b border-steel-600/25 px-5 py-3 flex items-start justify-between gap-3">
               <div>
-                <p class="text-xs font-semibold uppercase tracking-wide text-blue-600 mb-1">
+                <p class="font-mono text-[9px] text-rust-600 uppercase tracking-widest mb-1">
                   {listing.category} · {serviceTypeLabels[listing.serviceType]}
                 </p>
-                <h3 class="text-xl font-bold text-gray-900">{listing.serviceName}</h3>
+                <h3 class="font-display text-2xl text-bone uppercase leading-none">{listing.serviceName}</h3>
               </div>
-              <div class="text-right shrink-0">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Score</p>
-                <p class="text-xl font-bold text-gray-900">{listing.score}</p>
+              <div class="text-right flex-shrink-0">
+                <p class="font-mono text-[9px] text-steel-600 uppercase">SCORE</p>
+                <p class="font-display text-2xl text-rust-600 leading-none">{listing.score}</p>
               </div>
             </div>
 
-            <div class="rounded-2xl bg-slate-50 p-4 mb-5">
-              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                <div>
-                  <p class="font-semibold text-gray-900">{listing.workshopName}</p>
-                  <p class="text-sm text-gray-600">{listing.workshopHeadline}</p>
+            <div class="border-b border-steel-600/20 px-5 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 bg-iron-800/30">
+              <div>
+                <p class="font-mono text-xs text-bone">{listing.workshopName}</p>
+                <p class="font-mono text-[10px] text-steel-500">{listing.workshopHeadline}</p>
+              </div>
+              <div class="flex flex-wrap gap-1.5">
+                {#if listing.verified}
+                  <span class="font-mono text-[9px] uppercase border border-green-700/50 text-green-400 px-2 py-0.5">✓ VERIF.</span>
+                {/if}
+                {#if listing.specialized}
+                  <span class="font-mono text-[9px] uppercase border border-rust-700/50 text-rust-500 px-2 py-0.5">★ ESPEC.</span>
+                {/if}
+                {#if listing.erpIntegrated}
+                  <span class="font-mono text-[9px] uppercase border border-steel-600/40 text-steel-400 px-2 py-0.5">ERP</span>
+                {/if}
+              </div>
+            </div>
+
+            <div class="px-5 py-4">
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+                {#each [
+                  { label: 'PRECIO',   value: formatPriceRange(listing.priceMin, listing.priceMax) },
+                  { label: 'TIEMPO',   value: formatDuration(listing.durationMin) },
+                  { label: 'CONFIANZA',value: `${listing.avgRating.toFixed(1)}/5` },
+                  { label: 'DEMANDA',  value: `${listing.totalJobs}` },
+                ] as kpi}
+                  <div class="bg-iron-800/50 border border-steel-600/20 p-3">
+                    <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">{kpi.label}</p>
+                    <p class="font-mono text-xs text-bone">{kpi.value}</p>
+                  </div>
+                {/each}
+              </div>
+
+              <div class="space-y-0.5 mb-3">
+                <p class="font-mono text-[10px] text-steel-500 uppercase">VEHÍCULOS: {listing.vehicleExpertise.join(' · ')}</p>
+                <p class="font-mono text-[10px] text-steel-500 uppercase">UBICACIÓN: {listing.district.toUpperCase()}</p>
+              </div>
+
+              {#if listing.trustNotes.length > 0}
+                <div class="flex flex-wrap gap-1.5 mb-4">
+                  {#each listing.trustNotes as note}
+                    <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/30 text-steel-500 px-2 py-0.5">{note}</span>
+                  {/each}
                 </div>
-                <div class="flex flex-wrap gap-1.5">
-                  {#if listing.verified}
-                    <span class="rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs font-semibold">✔ Verificado</span>
-                  {/if}
-                  {#if listing.specialized}
-                    <span class="rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-xs font-semibold">🏆 Especializado</span>
-                  {/if}
-                  {#if listing.erpIntegrated}
-                    <span class="rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-1 text-xs font-semibold">🧠 ERP</span>
-                  {/if}
-                </div>
-              </div>
-            </div>
+              {/if}
 
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-              <div class="rounded-2xl border border-gray-200 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Precio</p>
-                <p class="font-bold text-gray-900 text-sm">{formatPriceRange(listing.priceMin, listing.priceMax)}</p>
-              </div>
-              <div class="rounded-2xl border border-gray-200 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Tiempo</p>
-                <p class="font-bold text-gray-900 text-sm">{formatDuration(listing.durationMin)}</p>
-              </div>
-              <div class="rounded-2xl border border-gray-200 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Confianza</p>
-                <p class="font-bold text-gray-900 text-sm">{listing.avgRating.toFixed(1)}/5</p>
-              </div>
-              <div class="rounded-2xl border border-gray-200 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Demanda</p>
-                <p class="font-bold text-gray-900 text-sm">{listing.totalJobs} solicitudes</p>
+              <div class="flex gap-3">
+                <a href={`/servicios/servicio/${listing.serviceSlug}`} class="btn-rust flex-1 text-center text-xs">VER SERVICIO</a>
+                <a href={`/servicios/taller/${listing.workshopSlug}`} class="btn-outline text-xs">VER TALLER</a>
               </div>
             </div>
-
-            <div class="space-y-1.5 text-sm text-gray-700 mb-4">
-              <p><span class="font-semibold text-gray-900">Vehículos:</span> {listing.vehicleExpertise.join(' · ')}</p>
-              <p><span class="font-semibold text-gray-900">Ubicación:</span> {listing.district}</p>
-              <p><span class="font-semibold text-gray-900">Valoración:</span> {listing.avgRating.toFixed(1)}/5</p>
-            </div>
-
-            <div class="flex flex-wrap gap-1.5 mb-5">
-              {#each listing.trustNotes as note}
-                <span class="rounded-full bg-slate-100 text-slate-700 px-2.5 py-1 text-xs font-semibold">{note}</span>
-              {/each}
-            </div>
-
-            <div class="flex gap-3">
-              <a href={`/servicios/servicio/${listing.serviceSlug}`} class="flex-1 rounded-xl bg-slate-900 text-white text-center font-semibold px-4 py-3 hover:bg-slate-800 transition text-sm">
-                Ver servicio
-              </a>
-              <a href={`/servicios/taller/${listing.workshopSlug}`} class="rounded-xl border border-gray-300 px-4 py-3 font-semibold text-gray-700 hover:bg-gray-50 transition text-sm">
-                Ver taller
-              </a>
-            </div>
-          </article>
+          </div>
         {/each}
       </section>
 
     {:else}
       <!-- Vista por taller -->
-      <section class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <section class="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {#each workshopResults as workshop}
-          <article class="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm hover:shadow-md transition">
-            <div class="flex items-start justify-between gap-4 mb-4">
+          <div class="bg-iron-900 border border-steel-600/25 hover:border-steel-600/50 transition-colors"
+               style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+
+            <div class="border-b border-steel-600/25 px-5 py-3 flex items-start justify-between gap-3">
               <div>
-                <h3 class="text-xl font-bold text-gray-900">{workshop.workshopName}</h3>
-                <p class="text-gray-600 mt-0.5 text-sm">{workshop.workshopHeadline}</p>
+                <h3 class="font-display text-2xl text-bone uppercase leading-none">{workshop.workshopName}</h3>
+                <p class="font-mono text-[10px] text-steel-500">{workshop.workshopHeadline}</p>
               </div>
               <div class="flex flex-col items-end gap-1.5">
                 {#if workshop.verified}
-                  <span class="rounded-full bg-emerald-50 text-emerald-700 px-2.5 py-1 text-xs font-semibold">✔ Verificado</span>
+                  <span class="font-mono text-[9px] uppercase border border-green-700/50 text-green-400 px-2 py-0.5">✓ VERIF.</span>
                 {/if}
                 {#if workshop.erpIntegrated}
-                  <span class="rounded-full bg-indigo-50 text-indigo-700 px-2.5 py-1 text-xs font-semibold">🧠 ERP</span>
+                  <span class="font-mono text-[9px] uppercase border border-steel-600/40 text-steel-400 px-2 py-0.5">ERP</span>
                 {/if}
               </div>
             </div>
 
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-5">
-              <div class="rounded-2xl bg-slate-50 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Desde</p>
-                <p class="font-bold text-gray-900 text-sm">{formatPriceRange(workshop.lowestPrice, workshop.highestPrice)}</p>
+            <div class="px-5 py-4">
+              <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-4">
+                {#each [
+                  { label: 'DESDE',      value: formatPriceRange(workshop.lowestPrice, workshop.highestPrice) },
+                  { label: 'RATING MÁX.', value: `${(workshop.highestSuccessRate / 20).toFixed(1)}/5` },
+                  { label: 'DEMANDA',    value: `${workshop.totalJobs}` },
+                  { label: 'PERFIL',     value: serviceLevelLabels[workshop.serviceLevel] },
+                ] as kpi}
+                  <div class="bg-iron-800/50 border border-steel-600/20 p-3">
+                    <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">{kpi.label}</p>
+                    <p class="font-mono text-xs text-bone">{kpi.value}</p>
+                  </div>
+                {/each}
               </div>
-              <div class="rounded-2xl bg-slate-50 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Rating máx.</p>
-                <p class="font-bold text-gray-900 text-sm">{(workshop.highestSuccessRate / 20).toFixed(1)}/5</p>
-              </div>
-              <div class="rounded-2xl bg-slate-50 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Demanda</p>
-                <p class="font-bold text-gray-900 text-sm">{workshop.totalJobs}</p>
-              </div>
-              <div class="rounded-2xl bg-slate-50 p-3">
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-1">Perfil</p>
-                <p class="font-bold text-gray-900 text-sm">{serviceLevelLabels[workshop.serviceLevel]}</p>
-              </div>
-            </div>
 
-            <div class="space-y-3 mb-5">
-              <div>
-                <p class="text-sm font-semibold text-gray-900 mb-2">Servicios destacados</p>
-                <div class="flex flex-wrap gap-1.5">
-                  {#each workshop.featuredServices as service}
-                    <span class="rounded-full bg-blue-50 text-blue-700 px-2.5 py-1 text-xs font-semibold">{service}</span>
-                  {/each}
+              <div class="space-y-3 mb-4">
+                <div>
+                  <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">SERVICIOS DESTACADOS</p>
+                  <div class="flex flex-wrap gap-1.5">
+                    {#each workshop.featuredServices as service}
+                      <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 text-steel-400 px-2 py-0.5">{service}</span>
+                    {/each}
+                  </div>
+                </div>
+                <div>
+                  <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">EXPERTISE VEHICULAR</p>
+                  <div class="flex flex-wrap gap-1.5">
+                    {#each workshop.vehicleExpertise as vehicle}
+                      <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/30 text-steel-500 px-2 py-0.5">{vehicle}</span>
+                    {/each}
+                  </div>
                 </div>
               </div>
-              <div>
-                <p class="text-sm font-semibold text-gray-900 mb-2">Expertise vehicular</p>
-                <div class="flex flex-wrap gap-1.5">
-                  {#each workshop.vehicleExpertise as vehicle}
-                    <span class="rounded-full bg-slate-100 text-slate-700 px-2.5 py-1 text-xs font-semibold">{vehicle}</span>
-                  {/each}
-                </div>
-              </div>
-            </div>
 
-            <div class="flex items-center justify-between gap-4 pt-4 border-t border-gray-100">
-              <div class="text-sm text-gray-600">
-                <p><span class="font-semibold text-gray-900">Distrito:</span> {workshop.district}</p>
-                <p><span class="font-semibold text-gray-900">Experiencia:</span> {workshop.yearsExperience} años</p>
+              <div class="border-t border-steel-600/20 pt-4 flex items-center justify-between gap-4">
+                <div>
+                  <p class="font-mono text-[10px] text-steel-500 uppercase">DISTRITO: {workshop.district.toUpperCase()}</p>
+                  <p class="font-mono text-[10px] text-steel-500 uppercase">EXPERIENCIA: {workshop.yearsExperience} AÑOS</p>
+                </div>
+                <a href={`/servicios/taller/${workshop.workshopSlug}`} class="btn-rust text-xs shrink-0">
+                  VER PERFIL →
+                </a>
               </div>
-              <a href={`/servicios/taller/${workshop.workshopSlug}`} class="rounded-xl bg-blue-600 text-white font-semibold px-5 py-3 text-sm hover:bg-blue-700 transition">
-                Ver perfil
-              </a>
             </div>
-          </article>
+          </div>
         {/each}
       </section>
     {/if}
 
     <!-- Sin resultados -->
     {#if scoredListings.length === 0}
-      <div class="rounded-3xl border border-amber-200 bg-amber-50 p-8 text-amber-900">
-        <h3 class="text-2xl font-bold mb-2">No encontramos coincidencias exactas</h3>
-        <p class="text-sm">
-          Prueba ampliar el presupuesto, cambiar la categoría o desactivar el filtro de confianza. Solo se muestran resultados reales publicados por el backend.
+      <div class="bg-iron-900 border border-steel-600/25 p-8 text-center"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <p class="font-display text-3xl text-steel-600 uppercase mb-2">SIN RESULTADOS</p>
+        <p class="font-mono text-xs text-steel-700 uppercase tracking-widest">
+          PRUEBA AMPLIAR EL PRESUPUESTO, CAMBIAR LA CATEGORÍA O DESACTIVAR EL FILTRO DE CONFIANZA.
         </p>
       </div>
     {/if}
 
     <!-- Footer CTA -->
-    <div class="rounded-3xl border border-gray-200 bg-slate-950 p-8 text-white shadow-sm">
+    <div class="bg-iron-900 border border-steel-600/25 p-8"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
       <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
         <div>
-          <p class="text-sm font-semibold uppercase tracking-wide text-blue-300 mb-2">Plantillas conectadas</p>
-          <h2 class="text-2xl font-bold">Desde aquí ya puedes entrar al detalle del taller o del servicio</h2>
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// SEGUIR EXPLORANDO</p>
+          <h2 class="font-display text-3xl text-bone uppercase leading-none">DETALLE DE TALLER O SERVICIO</h2>
         </div>
         <div class="flex flex-wrap gap-3">
-          <a href="/servicios" class="rounded-2xl border border-white/20 px-5 py-3 text-sm font-semibold hover:bg-white/10 transition">
-            Nueva búsqueda
-          </a>
-          <a href="/servicios" class="rounded-2xl bg-white text-slate-900 px-5 py-3 text-sm font-semibold hover:bg-blue-50 transition">
-            Volver al overview
-          </a>
+          <a href="/servicios" class="btn-ghost font-mono text-[10px] uppercase tracking-widest">NUEVA BÚSQUEDA</a>
+          <a href="/servicios" class="btn-rust">VOLVER AL OVERVIEW →</a>
         </div>
       </div>
     </div>

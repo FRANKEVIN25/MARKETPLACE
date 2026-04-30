@@ -308,419 +308,310 @@
   <title>Checkout — ECOMPARTS</title>
 </svelte:head>
 
-<!-- ════════════════════════════════════════════════════════════════════════════
-     LAYOUT PRINCIPAL
-     ═══════════════════════════════════════════════════════════════════════════ -->
-<div class="min-h-screen bg-gray-100">
+<!-- LAYOUT PRINCIPAL -->
+<div class="min-h-screen bg-iron-950">
 
-  <!-- ── Cabecera del checkout ─────────────────────────────────────────────── -->
-  <header class="bg-white border-b border-gray-200 sticky top-0 z-30">
-    <div class="max-w-6xl mx-auto px-4 py-3 flex flex-col items-center gap-3">
-
-      <!-- Stepper ─────────────────────────────────────────────────────────── -->
-      <nav class="flex items-center gap-1 text-sm select-none" aria-label="Pasos del checkout">
+  <!-- Cabecera sticky con stepper -->
+  <header class="bg-iron-900 border-b border-steel-600/30 sticky top-0 z-30">
+    <div class="max-w-6xl mx-auto px-4 py-3 flex items-center justify-center">
+      <nav class="flex items-center gap-1 select-none" aria-label="Pasos del checkout">
         {#each CHECKOUT_STEPS as step, i}
-          {@const active   = i === stepIdx}
-          {@const done     = i < stepIdx}
+          {@const active    = i === stepIdx}
+          {@const done      = i < stepIdx}
           {@const reachable = i <= stepIdx}
-
-          <!-- Step pill -->
           <button
-            class="flex items-center gap-1.5 px-3 py-1 rounded-full font-medium transition-colors
-              {active   ? 'bg-primary-600 text-white'          : ''}
-              {done     ? 'text-primary-600 cursor-pointer'    : ''}
-              {!active && !done ? 'text-gray-400 cursor-default' : ''}"
+            class="flex items-center gap-2 px-3 py-1.5 font-mono text-[10px] uppercase tracking-widest transition-colors
+              {active   ? 'text-bone border border-steel-600/50 bg-iron-800'   : ''}
+              {done     ? 'text-rust-500 cursor-pointer'                        : ''}
+              {!active && !done ? 'text-steel-600 cursor-default'               : ''}"
             disabled={!reachable && step !== 'carrito'}
             on:click={() => {
               if (step === 'carrito') { goto('/carrito'); }
               else if (reachable) { checkout.goTo(step); }
             }}
           >
-            <span class="flex items-center justify-center w-5 h-5 rounded-full text-xs font-bold
-              {active ? 'bg-white text-primary-700' : done ? 'bg-primary-100 text-primary-700' : 'bg-gray-200 text-gray-500'}">
+            <span class="font-display text-sm leading-none
+              {active ? 'text-rust-600' : done ? 'text-rust-700' : 'text-steel-700'}">
               {done ? '✓' : i + 1}
             </span>
-            <span class="hidden sm:inline">{STEP_LABELS[step]}</span>
+            <span class="hidden sm:inline">{STEP_LABELS[step].toUpperCase()}</span>
           </button>
-
-          <!-- Separador -->
           {#if i < CHECKOUT_STEPS.length - 1}
-            <span class="text-gray-300">›</span>
+            <span class="text-steel-700 font-mono text-xs">›</span>
           {/if}
         {/each}
       </nav>
-
     </div>
   </header>
 
-  <!-- ── Cuerpo ────────────────────────────────────────────────────────────── -->
   {#if state.items.length > 0}
-  <main class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+  <main class="max-w-6xl mx-auto px-4 py-8 grid grid-cols-1 lg:grid-cols-3 gap-5 items-start">
 
-    <!-- Columna izquierda: contenido del paso actual ─────────────────────── -->
+    <!-- Columna izquierda: paso actual -->
     <section class="lg:col-span-2 space-y-4">
 
-      <!-- ══ PASO: CARRITO ══════════════════════════════════════════════════ -->
+      <!-- PASO: CARRITO -->
       {#if state.step === 'carrito'}
-        <div class="bg-white rounded-xl shadow-sm p-6">
-          <div class="flex items-center justify-between mb-5">
-            <h2 class="text-xl font-bold text-gray-900">Revisión del pedido</h2>
-            <a href="/carrito" class="text-sm text-primary-600 hover:underline">
-              ← Editar carrito
-            </a>
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4 flex items-center justify-between">
+            <div>
+              <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 01</p>
+              <h2 class="font-display text-2xl text-bone uppercase leading-none">REVISIÓN DEL PEDIDO</h2>
+            </div>
+            <a href="/carrito" class="btn-ghost font-mono text-[10px] uppercase tracking-widest">← EDITAR</a>
           </div>
 
-          <!-- Items agrupados por proveedor -->
-          {#each Object.entries(byProvider) as [providerName, items]}
-            <div class="mb-6 last:mb-0">
-              <!-- Cabecera proveedor -->
-              <div class="flex items-center gap-2 mb-3 pb-2 border-b border-gray-100">
-                <span class="text-xs font-semibold uppercase tracking-wide text-primary-600
-                             bg-primary-50 px-2 py-0.5 rounded-full">
-                  {providerName}
-                </span>
-              </div>
-
-              <!-- Lista de items -->
-              <div class="space-y-3">
-                {#each items as item}
-                  <div class="flex gap-4 items-start">
-                    <!-- Imagen -->
-                    <div class="w-16 h-16 rounded-lg bg-gray-100 flex-shrink-0 overflow-hidden border border-gray-200">
-                      {#if item.product.image_url}
-                        <img src={item.product.image_url} alt={item.product.name}
-                             class="w-full h-full object-cover" />
-                      {:else}
-                        <div class="w-full h-full flex items-center justify-center text-gray-400 text-2xl">📦</div>
-                      {/if}
-                    </div>
-
-                    <!-- Datos -->
-                    <div class="flex-1 min-w-0">
-                      <p class="font-semibold text-gray-900 text-sm leading-tight truncate">
-                        {item.product.name}
-                      </p>
-                      <p class="text-xs text-gray-500 mt-0.5">{item.product.reference ?? ''}</p>
-                      <div class="flex items-center gap-2 mt-2">
-                        <button
-                          class="w-6 h-6 rounded border border-gray-300 text-gray-600
-                                 hover:bg-gray-100 flex items-center justify-center text-sm
-                                 disabled:opacity-40 disabled:cursor-not-allowed"
-                          disabled={item.cantidad <= 1}
-                          on:click={() => cart.updateCantidad(item.product.id, item.cantidad - 1)}
-                        >−</button>
-                        <span class="text-sm font-medium w-6 text-center">{item.cantidad}</span>
-                        <button
-                          class="w-6 h-6 rounded border border-gray-300 text-gray-600
-                                 hover:bg-gray-100 flex items-center justify-center text-sm
-                                 disabled:opacity-40 disabled:cursor-not-allowed"
-                          on:click={() => cart.updateCantidad(item.product.id, item.cantidad + 1)}
-                        >+</button>
-                        <button
-                          class="ml-2 text-xs text-red-400 hover:text-red-600"
-                          on:click={() => cart.removeItem(item.product.id)}
-                        >Eliminar</button>
+          <div class="divide-y divide-steel-600/15">
+            {#each Object.entries(byProvider) as [providerName, items]}
+              <div class="p-5">
+                <p class="font-mono text-[9px] text-rust-600 uppercase tracking-widest mb-3">{providerName}</p>
+                <div class="space-y-4">
+                  {#each items as item}
+                    <div class="flex gap-4 items-start">
+                      <div class="w-14 h-14 bg-iron-800 border border-steel-600/40 flex-shrink-0 overflow-hidden">
+                        {#if item.product.image_url}
+                          <img src={item.product.image_url} alt={item.product.name} class="w-full h-full object-cover" />
+                        {:else}
+                          <div class="w-full h-full flex items-center justify-center text-steel-600 text-xl">▪</div>
+                        {/if}
+                      </div>
+                      <div class="flex-1 min-w-0">
+                        <p class="font-mono text-xs text-bone truncate">{item.product.name}</p>
+                        <p class="font-mono text-[10px] text-steel-600">{item.product.reference ?? ''}</p>
+                        <div class="flex items-center gap-2 mt-2">
+                          <button class="w-6 h-6 border border-steel-600/40 text-steel-400 hover:text-bone hover:border-steel-400 flex items-center justify-center font-mono text-sm transition-colors disabled:opacity-40"
+                            disabled={item.cantidad <= 1}
+                            on:click={() => cart.updateCantidad(item.product.id, item.cantidad - 1)}>−</button>
+                          <span class="font-mono text-xs text-bone w-5 text-center">{item.cantidad}</span>
+                          <button class="w-6 h-6 border border-steel-600/40 text-steel-400 hover:text-bone hover:border-steel-400 flex items-center justify-center font-mono text-sm transition-colors"
+                            on:click={() => cart.updateCantidad(item.product.id, item.cantidad + 1)}>+</button>
+                          <button class="font-mono text-[9px] text-rust-600 hover:text-rust-400 uppercase tracking-widest ml-2 transition-colors"
+                            on:click={() => cart.removeItem(item.product.id)}>ELIMINAR</button>
+                        </div>
+                      </div>
+                      <div class="text-right flex-shrink-0">
+                        <p class="font-mono text-xs text-bone">{fmt(item.precioTotal)}</p>
+                        <p class="font-mono text-[10px] text-steel-600">{fmt(item.precioUnitario)} c/u</p>
                       </div>
                     </div>
-
-                    <!-- Precio -->
-                    <div class="text-right flex-shrink-0">
-                      <p class="font-bold text-gray-900 text-sm">{fmt(item.precioTotal)}</p>
-                      <p class="text-xs text-gray-400 mt-0.5">{fmt(item.precioUnitario)} c/u</p>
-                    </div>
-                  </div>
-                {/each}
-              </div>
-
-              <!-- Subtotal por proveedor -->
-              <div class="mt-3 pt-3 border-t border-dashed border-gray-200 flex justify-between text-sm">
-                <span class="text-gray-500">Subtotal {providerName}</span>
-                <span class="font-semibold text-gray-800">
-                  {fmt(items.reduce((s, i) => s + i.precioTotal, 0))}
-                </span>
-              </div>
-            </div>
-          {/each}
-
-          <!-- Error global -->
-          {#if state.error}
-            <div class="mt-4 bg-red-50 text-red-700 rounded-lg px-4 py-3 text-sm">
-              {state.error}
-            </div>
-          {/if}
-
-          <!-- Acciones -->
-          <div class="mt-6 flex justify-between items-center pt-4 border-t border-gray-100">
-            <a href="/carrito"
-               class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1">
-              ← Volver al carrito
-            </a>
-            <button
-              class="bg-primary-600 hover:bg-primary-700 text-white font-semibold
-                     px-6 py-2.5 rounded-lg transition-colors text-sm"
-              on:click={() => checkout.nextStep()}
-            >
-              Continuar → Perfil
-            </button>
-          </div>
-        </div>
-
-      <!-- ══ PASO: PERFIL ════════════════════════════════════════════════════ -->
-      {:else if state.step === 'perfil'}
-        <div class="bg-white rounded-xl shadow-sm p-6 space-y-5">
-          <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold text-gray-900">Datos de contacto</h2>
-            <span class="text-xs text-gray-400">Paso 2 de 4</span>
-          </div>
-
-          <!-- Datos del cliente (solo lectura) -->
-          {#if state.customer}
-            <div class="bg-gray-50 rounded-lg p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-              <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Correo electrónico</p>
-                <p class="font-semibold text-gray-800">{state.customer.email}</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Usuario</p>
-                <p class="font-semibold text-gray-800">{state.customer.username}</p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Nombre / Razón social</p>
-                <p class="font-semibold text-gray-800">
-                  {state.customer.customer_type === 'company'
-                    ? (state.customer.company_name || state.customer.full_name)
-                    : state.customer.full_name}
-                </p>
-              </div>
-              <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Documento</p>
-                <p class="font-semibold text-gray-800">{state.customer.full_document}</p>
-              </div>
-              {#if state.customer.phone}
-                <div>
-                  <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Teléfono</p>
-                  <p class="font-semibold text-gray-800">{state.customer.phone}</p>
+                  {/each}
                 </div>
-              {/if}
-              <div>
-                <p class="text-xs text-gray-500 uppercase tracking-wide mb-0.5">Tipo de cliente</p>
-                <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded-full font-medium">
-                  {state.customer.customer_type === 'company' ? 'Empresa' : 'Individual'}
-                </span>
+                <div class="mt-3 pt-3 border-t border-steel-600/20 flex justify-between">
+                  <span class="font-mono text-[10px] text-steel-600 uppercase">SUBTOTAL {providerName}</span>
+                  <span class="font-mono text-xs text-bone">{fmt(items.reduce((s, i) => s + i.precioTotal, 0))}</span>
+                </div>
               </div>
-            </div>
-            <p class="text-xs text-gray-400">
-              ¿Datos incorrectos?
-              <a href="/cliente/perfil" target="_blank" class="text-primary-600 hover:underline">Editar perfil</a>
-            </p>
-          {/if}
-
-          <!-- Términos y condiciones -->
-          <div class="space-y-3 pt-2">
-            <label class="flex items-start gap-3 cursor-pointer group">
-              <input type="checkbox" bind:checked={termsAccepted}
-                class="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary-600
-                       focus:ring-primary-500 accent-primary-600 flex-shrink-0" />
-              <span class="text-sm text-gray-700 group-hover:text-gray-900">
-                He leído y acepto los
-                <a href="/terminos" target="_blank" class="text-primary-600 hover:underline">términos y condiciones</a>
-                y las
-                <a href="/privacidad" target="_blank" class="text-primary-600 hover:underline">políticas de privacidad</a>.
-                <span class="text-red-500">*</span>
-              </span>
-            </label>
-            <label class="flex items-start gap-3 cursor-pointer group">
-              <input type="checkbox" bind:checked={dataAccepted}
-                class="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary-600
-                       focus:ring-primary-500 accent-primary-600 flex-shrink-0" />
-              <span class="text-sm text-gray-700 group-hover:text-gray-900">
-                Autorizo el tratamiento de mis datos para fines de prospección y promoción comercial.
-              </span>
-            </label>
+            {/each}
           </div>
 
-          <!-- Error -->
           {#if state.error}
-            <div class="bg-red-50 text-red-700 rounded-lg px-4 py-3 text-sm">{state.error}</div>
+            <div class="mx-5 mb-4 border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+              <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+              <p class="font-mono text-xs text-rust-400">{state.error}</p>
+            </div>
           {/if}
 
-          <!-- Acciones -->
-          <div class="flex justify-between items-center pt-4 border-t border-gray-100">
-            <button class="text-sm text-gray-500 hover:text-gray-700"
-                    on:click={() => checkout.prevStep()}>← Carrito</button>
-            <button
-              class="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed
-                     text-white font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm"
-              disabled={!termsAccepted}
-              on:click={continuarAEntrega}>
-              Continuar → Entrega
+          <div class="border-t border-steel-600/25 px-5 py-4 flex justify-between items-center">
+            <a href="/carrito" class="btn-ghost font-mono text-[10px] uppercase tracking-widest">← CARRITO</a>
+            <button class="btn-rust" on:click={() => checkout.nextStep()}>CONTINUAR → PERFIL</button>
+          </div>
+        </div>
+
+      <!-- PASO: PERFIL -->
+      {:else if state.step === 'perfil'}
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 02</p>
+            <h2 class="font-display text-2xl text-bone uppercase leading-none">DATOS DE CONTACTO</h2>
+          </div>
+
+          {#if state.customer}
+            <div class="p-5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {#each [
+                { label: 'CORREO', value: state.customer.email },
+                { label: 'USUARIO', value: state.customer.username },
+                { label: 'NOMBRE / RAZÓN SOCIAL', value: state.customer.customer_type === 'company'
+                    ? (state.customer.company_name || state.customer.full_name)
+                    : state.customer.full_name },
+                { label: 'DOCUMENTO', value: state.customer.full_document },
+                ...(state.customer.phone ? [{ label: 'TELÉFONO', value: state.customer.phone }] : []),
+                { label: 'TIPO', value: state.customer.customer_type === 'company' ? 'EMPRESA' : 'INDIVIDUAL' },
+              ] as row}
+                <div class="bg-iron-800/50 border border-steel-600/20 px-4 py-3">
+                  <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">{row.label}</p>
+                  <p class="font-mono text-xs text-bone">{row.value}</p>
+                </div>
+              {/each}
+            </div>
+            <div class="px-5 pb-2">
+              <p class="font-mono text-[10px] text-steel-600">
+                ¿DATOS INCORRECTOS?
+                <a href="/cliente/perfil" target="_blank" class="text-rust-500 hover:text-rust-400 transition-colors">EDITAR PERFIL →</a>
+              </p>
+            </div>
+          {/if}
+
+          <div class="border-t border-steel-600/20 px-5 py-4 space-y-3">
+            {#each [
+              { key: 'terms', label: 'HE LEÍDO Y ACEPTO LOS TÉRMINOS Y CONDICIONES Y LAS POLÍTICAS DE PRIVACIDAD *', bind: 'termsAccepted' },
+              { key: 'data',  label: 'AUTORIZO EL TRATAMIENTO DE MIS DATOS PARA FINES DE PROSPECCIÓN COMERCIAL.', bind: 'dataAccepted' },
+            ] as opt}
+              <label class="flex items-start gap-3 cursor-pointer group">
+                <div class="relative w-4 h-4 border flex items-center justify-center flex-shrink-0 mt-0.5
+                  {opt.key === 'terms'
+                    ? (termsAccepted ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50')
+                    : (dataAccepted  ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50')}">
+                  {#if opt.key === 'terms'}
+                    <input type="checkbox" bind:checked={termsAccepted} class="sr-only" />
+                    {#if termsAccepted}
+                      <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    {/if}
+                  {:else}
+                    <input type="checkbox" bind:checked={dataAccepted} class="sr-only" />
+                    {#if dataAccepted}
+                      <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    {/if}
+                  {/if}
+                </div>
+                <span class="font-mono text-[10px] text-steel-500 uppercase tracking-widest group-hover:text-bone transition-colors leading-relaxed">
+                  {opt.label}
+                </span>
+              </label>
+            {/each}
+          </div>
+
+          {#if state.error}
+            <div class="mx-5 mb-3 border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+              <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+              <p class="font-mono text-xs text-rust-400">{state.error}</p>
+            </div>
+          {/if}
+
+          <div class="border-t border-steel-600/25 px-5 py-4 flex justify-between items-center">
+            <button class="btn-ghost font-mono text-[10px] uppercase tracking-widest" on:click={() => checkout.prevStep()}>← CARRITO</button>
+            <button class="btn-rust disabled:opacity-40 disabled:cursor-not-allowed"
+              disabled={!termsAccepted} on:click={continuarAEntrega}>
+              CONTINUAR → ENTREGA
             </button>
           </div>
         </div>
 
-      <!-- ══ PASO: ENTREGA ═══════════════════════════════════════════════════ -->
+      <!-- PASO: ENTREGA -->
       {:else if state.step === 'entrega'}
-        <div class="bg-white rounded-xl shadow-sm p-6 space-y-6">
-          <div class="flex items-center justify-between">
-            <h2 class="text-xl font-bold text-gray-900">Método de entrega</h2>
-            <span class="text-xs text-gray-400">Paso 3 de 4</span>
+        <div class="bg-iron-900 border border-steel-600/25 space-y-0"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 03</p>
+            <h2 class="font-display text-2xl text-bone uppercase leading-none">MÉTODO DE ENTREGA</h2>
           </div>
 
-          <!-- Selector de método ─────────────────────────────────────────── -->
-          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <!-- Selector método -->
+          <div class="p-5 grid grid-cols-1 sm:grid-cols-3 gap-3">
             {#each [
-              { value: 'domicilio', label: 'Envío a domicilio', icon: '🏠', desc: 'Recibe en tu dirección' },
-              { value: 'agencia',  label: 'Agencia de transporte', icon: '🏢', desc: 'Retira en agencia' },
-              { value: 'tienda',   label: 'Recojo en tienda', icon: '🏪', desc: 'Sin costo de envío' },
+              { value: 'domicilio', label: 'ENVÍO A DOMICILIO',      desc: 'Recibe en tu dirección' },
+              { value: 'agencia',  label: 'AGENCIA DE TRANSPORTE',   desc: 'Retira en agencia' },
+              { value: 'tienda',   label: 'RECOJO EN TIENDA',        desc: 'Sin costo de envío' },
             ] as opt}
               <button
-                class="rounded-xl border-2 p-4 text-left transition-all
+                class="border p-4 text-left transition-colors
                   {state.deliveryMethod === opt.value
-                    ? 'border-primary-500 bg-primary-50'
-                    : 'border-gray-200 hover:border-gray-300 bg-white'}"
+                    ? 'border-rust-600 bg-rust-600/10'
+                    : 'border-steel-600/40 hover:border-steel-400'}"
                 on:click={() => checkout.setDeliveryMethod(opt.value as any)}
               >
-                <span class="text-2xl">{opt.icon}</span>
-                <p class="font-semibold text-gray-900 mt-1 text-sm">{opt.label}</p>
-                <p class="text-xs text-gray-500">{opt.desc}</p>
+                <p class="font-mono text-xs text-bone uppercase">{opt.label}</p>
+                <p class="font-mono text-[10px] text-steel-500 mt-1">{opt.desc}</p>
               </button>
             {/each}
           </div>
 
-          <!-- Direcciones (solo si no es tienda) ─────────────────────────── -->
+          <!-- Direcciones -->
           {#if state.deliveryMethod !== 'tienda'}
-            <div>
-              <div class="flex items-center justify-between mb-3">
-                <h3 class="font-semibold text-gray-800 text-sm">
-                  {state.deliveryMethod === 'agencia' ? 'Dirección de agencia' : 'Dirección de envío'}
-                </h3>
-                <button
-                  class="text-xs text-primary-600 hover:underline"
-                  on:click={() => { mostrarFormDireccion = !mostrarFormDireccion; }}
-                >
-                  {mostrarFormDireccion ? '✕ Cancelar' : '+ Nueva dirección'}
+            <div class="border-t border-steel-600/20 px-5 py-4">
+              <div class="flex items-center justify-between mb-4">
+                <p class="font-mono text-[10px] text-steel-400 uppercase tracking-widest">
+                  {state.deliveryMethod === 'agencia' ? '// DIRECCIÓN DE AGENCIA' : '// DIRECCIÓN DE ENVÍO'}
+                </p>
+                <button class="btn-ghost font-mono text-[10px] uppercase tracking-widest"
+                  on:click={() => { mostrarFormDireccion = !mostrarFormDireccion; }}>
+                  {mostrarFormDireccion ? '✕ CANCELAR' : '+ NUEVA DIRECCIÓN'}
                 </button>
               </div>
 
-              <!-- Formulario nueva dirección (colapsable) -->
               {#if mostrarFormDireccion}
-                <div class="border border-primary-200 rounded-xl p-4 mb-4 bg-primary-50/30 space-y-3">
-                  <h4 class="text-sm font-semibold text-gray-700">Nueva dirección</h4>
+                <div class="bg-iron-800/50 border border-steel-600/25 p-4 mb-4 space-y-3">
+                  <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// NUEVA DIRECCIÓN</p>
                   <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                      <label for="addr-contact-name" class="block text-xs text-gray-500 mb-1">Nombre de contacto *</label>
-                      <input id="addr-contact-name" type="text" bind:value={nuevaDir.contact_name} placeholder="Juan Pérez"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div>
-                      <label for="addr-contact-phone" class="block text-xs text-gray-500 mb-1">Teléfono *</label>
-                      <input id="addr-contact-phone" type="tel" bind:value={nuevaDir.contact_phone} placeholder="987654321"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div class="sm:col-span-2">
-                      <label for="addr-street" class="block text-xs text-gray-500 mb-1">Calle / Avenida *</label>
-                      <input id="addr-street" type="text" bind:value={nuevaDir.street} placeholder="Av. Los Olivos"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div>
-                      <label for="addr-street-number" class="block text-xs text-gray-500 mb-1">Número</label>
-                      <input id="addr-street-number" type="text" bind:value={nuevaDir.street_number} placeholder="123"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div>
-                      <label for="addr-apartment" class="block text-xs text-gray-500 mb-1">Dpto / Piso</label>
-                      <input id="addr-apartment" type="text" bind:value={nuevaDir.apartment} placeholder="Dpto 4B"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div>
-                      <label for="addr-district" class="block text-xs text-gray-500 mb-1">Distrito *</label>
-                      <input id="addr-district" type="text" bind:value={nuevaDir.district} placeholder="Miraflores"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div>
-                      <label for="addr-city" class="block text-xs text-gray-500 mb-1">Ciudad / Provincia *</label>
-                      <input id="addr-city" type="text" bind:value={nuevaDir.city} placeholder="Lima"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div>
-                      <label for="addr-state" class="block text-xs text-gray-500 mb-1">Departamento *</label>
-                      <input id="addr-state" type="text" bind:value={nuevaDir.state} placeholder="Lima"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
-                    <div class="sm:col-span-2">
-                      <label for="addr-reference" class="block text-xs text-gray-500 mb-1">Referencia</label>
-                      <input id="addr-reference" type="text" bind:value={nuevaDir.reference}
-                        placeholder="Cerca al parque, portón azul…"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                               focus:outline-none focus:ring-2 focus:ring-primary-400" />
-                    </div>
+                    {#each [
+                      { id: 'addr-contact-name',   label: 'NOMBRE DE CONTACTO *', bind: 'contact_name',   ph: 'Juan Pérez',          type: 'text', span: false },
+                      { id: 'addr-contact-phone',  label: 'TELÉFONO *',           bind: 'contact_phone',  ph: '987654321',            type: 'tel',  span: false },
+                      { id: 'addr-street',         label: 'CALLE / AVENIDA *',    bind: 'street',         ph: 'Av. Los Olivos',       type: 'text', span: true  },
+                      { id: 'addr-street-number',  label: 'NÚMERO',               bind: 'street_number',  ph: '123',                  type: 'text', span: false },
+                      { id: 'addr-apartment',      label: 'DPTO / PISO',          bind: 'apartment',      ph: 'Dpto 4B',              type: 'text', span: false },
+                      { id: 'addr-district',       label: 'DISTRITO *',           bind: 'district',       ph: 'Miraflores',           type: 'text', span: false },
+                      { id: 'addr-city',           label: 'CIUDAD / PROVINCIA *', bind: 'city',           ph: 'Lima',                 type: 'text', span: false },
+                      { id: 'addr-state',          label: 'DEPARTAMENTO *',       bind: 'state',          ph: 'Lima',                 type: 'text', span: false },
+                      { id: 'addr-reference',      label: 'REFERENCIA',           bind: 'reference',      ph: 'Cerca al parque…',     type: 'text', span: true  },
+                    ] as f}
+                      <div class="{f.span ? 'sm:col-span-2' : ''}">
+                        <label for={f.id} class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">// {f.label}</label>
+                        <input id={f.id} type={f.type} bind:value={nuevaDir[f.bind as keyof typeof nuevaDir]}
+                          placeholder={f.ph} class="input-industrial text-xs" />
+                      </div>
+                    {/each}
                   </div>
-                  <div class="flex justify-end pt-1">
-                    <button
-                      class="bg-primary-600 hover:bg-primary-700 disabled:opacity-40
-                             text-white text-sm font-semibold px-5 py-2 rounded-lg transition-colors"
+                  <div class="flex justify-end">
+                    <button class="btn-rust disabled:opacity-40"
                       disabled={guardandoDireccion || !nuevaDir.contact_name || !nuevaDir.street || !nuevaDir.district}
-                      on:click={agregarNuevaDireccion}
-                    >
-                      {guardandoDireccion ? 'Guardando…' : 'Guardar dirección'}
+                      on:click={agregarNuevaDireccion}>
+                      {guardandoDireccion ? 'GUARDANDO...' : 'GUARDAR DIRECCIÓN'}
                     </button>
                   </div>
                 </div>
               {/if}
 
-              <!-- Lista de direcciones guardadas -->
               {#if loadingAddresses}
-                <p class="text-sm text-gray-400 py-4 text-center">Cargando direcciones…</p>
+                <p class="font-mono text-[10px] text-steel-600 uppercase tracking-widest text-center py-4 animate-pulse">CARGANDO DIRECCIONES...</p>
               {:else if addresses.length === 0}
-                <div class="text-center py-6 bg-gray-50 rounded-xl border border-dashed border-gray-300">
-                  <p class="text-sm text-gray-500">No tienes direcciones guardadas.</p>
-                  <button class="mt-2 text-sm text-primary-600 hover:underline"
-                          on:click={() => { mostrarFormDireccion = true; }}>
-                    + Agregar una dirección
-                  </button>
+                <div class="border border-dashed border-steel-600/30 p-6 text-center">
+                  <p class="font-mono text-xs text-steel-600 uppercase">SIN DIRECCIONES GUARDADAS</p>
+                  <button class="font-mono text-[10px] text-rust-500 hover:text-rust-400 uppercase tracking-widest mt-2 transition-colors"
+                    on:click={() => { mostrarFormDireccion = true; }}>+ AGREGAR DIRECCIÓN</button>
                 </div>
               {:else}
                 <div class="space-y-2">
                   {#each addresses as addr}
-                    <button
-                      class="w-full text-left rounded-xl border-2 p-4 transition-all
-                        {selectedAddressId === addr.id
-                          ? 'border-primary-500 bg-primary-50'
-                          : 'border-gray-200 hover:border-gray-300 bg-white'}"
-                      on:click={() => seleccionarDireccion(addr)}
-                    >
+                    <button class="w-full text-left border p-4 transition-colors
+                        {selectedAddressId === addr.id ? 'border-rust-600 bg-rust-600/10' : 'border-steel-600/40 hover:border-steel-400'}"
+                      on:click={() => seleccionarDireccion(addr)}>
                       <div class="flex items-start justify-between gap-2">
                         <div class="flex-1 min-w-0">
-                          <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-sm font-semibold text-gray-800">
-                              {addr.contact_name}
-                            </span>
+                          <div class="flex items-center gap-2 flex-wrap mb-1">
+                            <span class="font-mono text-xs text-bone">{addr.contact_name}</span>
                             {#if addr.is_default}
-                              <span class="text-xs bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Predeterminada</span>
+                              <span class="font-mono text-[9px] border border-steel-600/40 text-steel-400 px-1.5 py-0.5">PREDETERMINADA</span>
                             {/if}
-                            <span class="text-xs text-gray-500">
-                              {addr.address_type === 'agency' ? '🏢 Agencia' : addr.address_type === 'business' ? '🏬 Negocio' : '🏠 Domicilio'}
+                            <span class="font-mono text-[9px] text-steel-600 uppercase">
+                              {addr.address_type === 'agency' ? 'AGENCIA' : addr.address_type === 'business' ? 'NEGOCIO' : 'DOMICILIO'}
                             </span>
                           </div>
-                          <p class="text-xs text-gray-600 mt-0.5">{addr.contact_phone}</p>
-                          <p class="text-sm text-gray-700 mt-1">{addr.full_address}</p>
+                          <p class="font-mono text-[10px] text-steel-500">{addr.contact_phone}</p>
+                          <p class="font-mono text-[10px] text-steel-400 mt-0.5">{addr.full_address}</p>
                           {#if addr.reference}
-                            <p class="text-xs text-gray-400 mt-0.5">Ref: {addr.reference}</p>
+                            <p class="font-mono text-[10px] text-steel-600 mt-0.5">REF: {addr.reference}</p>
                           {/if}
                         </div>
                         <div class="flex-shrink-0 mt-0.5">
                           {#if selectedAddressId === addr.id}
-                            <span class="w-5 h-5 rounded-full bg-primary-500 flex items-center justify-center text-white text-xs">✓</span>
+                            <span class="w-5 h-5 bg-rust-600/20 border border-rust-600 flex items-center justify-center text-rust-500 text-xs">✓</span>
                           {:else}
-                            <span class="w-5 h-5 rounded-full border-2 border-gray-300"></span>
+                            <span class="w-5 h-5 border border-steel-600/40"></span>
                           {/if}
                         </div>
                       </div>
@@ -730,358 +621,291 @@
               {/if}
             </div>
           {:else}
-            <!-- Recojo en tienda -->
-            <div class="bg-green-50 border border-green-200 rounded-xl p-4 text-sm text-green-800">
-              🏪 <strong>Recojo en tienda:</strong> Un asesor te contactará para coordinar la entrega.
+            <div class="border-t border-steel-600/20 px-5 py-4">
+              <div class="border border-green-700/50 bg-green-600/10 px-4 py-3 flex items-center gap-3">
+                <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0"></span>
+                <p class="font-mono text-xs text-green-400 uppercase tracking-widest">RECOJO EN TIENDA — UN ASESOR TE CONTACTARÁ.</p>
+              </div>
             </div>
           {/if}
 
-          <!-- Notas del pedido -->
-          <div>
-            <label for="order-notes" class="block text-sm font-medium text-gray-700 mb-1">Notas del pedido (opcional)</label>
-            <textarea
-              id="order-notes"
-              rows="2"
+          <!-- Notas -->
+          <div class="border-t border-steel-600/20 px-5 py-4">
+            <label for="order-notes" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// NOTAS DEL PEDIDO (OPCIONAL)</label>
+            <textarea id="order-notes" rows="2"
               placeholder="Instrucciones especiales, horario de recepción, etc."
               value={state.customerNotes}
               on:input={(e) => checkout.setNotes((e.target as HTMLTextAreaElement).value)}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                     focus:outline-none focus:ring-2 focus:ring-primary-400 resize-none"
-            ></textarea>
+              class="input-industrial resize-none text-xs w-full"></textarea>
           </div>
 
-          <!-- Error -->
           {#if state.error}
-            <div class="bg-red-50 text-red-700 rounded-lg px-4 py-3 text-sm">{state.error}</div>
+            <div class="mx-5 mb-3 border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+              <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+              <p class="font-mono text-xs text-rust-400">{state.error}</p>
+            </div>
           {/if}
 
-          <!-- Acciones -->
-          <div class="flex justify-between items-center pt-4 border-t border-gray-100">
-            <button class="text-sm text-gray-500 hover:text-gray-700"
-                    on:click={() => checkout.prevStep()}>← Perfil</button>
-            <button
-              class="bg-primary-600 hover:bg-primary-700 disabled:opacity-40 disabled:cursor-not-allowed
-                     text-white font-semibold px-6 py-2.5 rounded-lg transition-colors text-sm
-                     flex items-center gap-2"
+          <div class="border-t border-steel-600/25 px-5 py-4 flex justify-between items-center">
+            <button class="btn-ghost font-mono text-[10px] uppercase tracking-widest" on:click={() => checkout.prevStep()}>← PERFIL</button>
+            <button class="btn-rust disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-2"
               disabled={state.loading || (state.deliveryMethod !== 'tienda' && !selectedAddressId)}
-              on:click={crearOrden}
-            >
+              on:click={crearOrden}>
               {#if state.loading}
                 <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                   <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                   <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                 </svg>
-                Creando orden…
+                CREANDO ORDEN...
               {:else}
-                Confirmar y continuar al pago →
+                CONFIRMAR → PAGO
               {/if}
             </button>
           </div>
         </div>
 
-      <!-- ══ PASO: PAGO ═══════════════════════════════════════════════════════ -->
+      <!-- PASO: PAGO -->
       {:else if state.step === 'pago'}
         <div class="space-y-4">
 
           <!-- Cabecera -->
-          <div class="bg-white rounded-xl shadow-sm p-5">
-            <div class="flex items-center justify-between">
+          <div class="bg-iron-900 border border-steel-600/25"
+               style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+            <div class="border-b border-steel-600/25 px-6 py-4 flex items-center justify-between">
               <div>
-                <h2 class="text-xl font-bold text-gray-900">Pago y Confirmación</h2>
+                <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 04</p>
+                <h2 class="font-display text-2xl text-bone uppercase leading-none">PAGO Y CONFIRMACIÓN</h2>
                 {#if state.order}
-                  <p class="text-xs text-gray-500 mt-0.5">Orden <span class="font-mono font-semibold">{state.order.order_number}</span></p>
+                  <p class="font-mono text-[10px] text-steel-500 mt-1">ORDEN {state.order.order_number}</p>
                 {/if}
               </div>
-              <span class="text-xs text-gray-400">Paso 4 de 4</span>
             </div>
             {#if (state.order?.sub_orders.length ?? 0) > 1}
-              <div class="mt-3 bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm text-amber-800">
-                ⚠️ Tu pedido tiene <strong>{state.order?.sub_orders.length} proveedores</strong>.
-                Debes realizar un pago <strong>separado</strong> a cada uno y subir su comprobante.
+              <div class="px-6 py-3 border border-yellow-700/50 bg-yellow-600/10 m-4 flex items-center gap-3">
+                <span class="w-1.5 h-1.5 bg-yellow-500 flex-shrink-0"></span>
+                <p class="font-mono text-[10px] text-yellow-400 uppercase tracking-widest">
+                  TU PEDIDO TIENE {state.order?.sub_orders.length} PROVEEDORES — REALIZA UN PAGO SEPARADO A CADA UNO.
+                </p>
               </div>
             {/if}
           </div>
 
-          <!-- Banner de reserva con countdown (solo si hay pagos realmente pendientes o la reserva expiró) -->
+          <!-- Banner countdown -->
           {#if state.order?.payment_deadline && (hayPagosPendientes || deadlineExpired)}
-            <div class="rounded-xl border px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
-              {deadlineExpired
-                ? 'bg-red-50 border-red-200'
-                : 'bg-amber-50 border-amber-200'}"
-            >
-              <div class="flex items-center gap-3">
-                <span class="text-2xl">{deadlineExpired ? '⏰' : '⏱️'}</span>
-                <div>
-                  {#if deadlineExpired}
-                    <p class="text-sm font-semibold text-red-700">La reserva de stock ha expirado.</p>
-                    <p class="text-xs text-red-600">Los artículos pendientes de pago fueron liberados.</p>
-                  {:else}
-                    <p class="text-sm font-semibold text-amber-800">
-                      Por favor realiza el pago pendiente.
-                    </p>
-                    <p class="text-xs text-amber-700">
-                      La reserva de stock expira en
-                      <span class="font-mono font-bold">{countdown || '…'}</span>
-                    </p>
-                  {/if}
-                </div>
+            <div class="border px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3
+              {deadlineExpired ? 'border-rust-700/50 bg-rust-600/10' : 'border-yellow-700/50 bg-yellow-600/10'}">
+              <div>
+                {#if deadlineExpired}
+                  <p class="font-mono text-xs text-rust-400 uppercase tracking-widest">LA RESERVA DE STOCK HA EXPIRADO</p>
+                  <p class="font-mono text-[10px] text-steel-500 mt-1">LOS ARTÍCULOS PENDIENTES FUERON LIBERADOS.</p>
+                {:else}
+                  <p class="font-mono text-xs text-yellow-400 uppercase tracking-widest">TIEMPO PARA PAGAR</p>
+                  <p class="font-display text-2xl text-yellow-400 leading-none">{countdown || '...'}</p>
+                {/if}
               </div>
-              <!-- Botón Pagar más tarde -->
               {#if !deadlineExpired && !todosSubidos}
-                <a
-                  href="/cliente/historial-compras"
-                  class="flex-shrink-0 text-sm text-amber-700 border border-amber-300
-                         bg-white hover:bg-amber-50 font-medium px-4 py-2 rounded-lg transition-colors"
-                >
-                  Pagar más tarde →
+                <a href="/cliente/historial-compras" class="btn-ghost font-mono text-[10px] uppercase tracking-widest shrink-0">
+                  PAGAR MÁS TARDE →
                 </a>
               {/if}
             </div>
           {/if}
 
-          <!-- Card por cada sub-orden -->
+          <!-- Sub-órdenes -->
           {#if state.order}
             {#each state.order.sub_orders as sub (sub.id)}
               {@const form = proofForms[sub.id]}
               {@const pay  = sub.provider_payment_info}
 
-              <div class="bg-white rounded-xl shadow-sm overflow-hidden
-                {form?.uploaded ? 'ring-2 ring-green-400' : ''}">
+              <div class="bg-iron-900 border {form?.uploaded ? 'border-green-700/60' : 'border-steel-600/25'}"
+                   style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
 
-                <!-- Header sub-orden -->
-                <div class="flex items-center justify-between px-5 py-4
-                            border-b border-gray-100 bg-gray-50">
+                <div class="border-b border-steel-600/25 px-5 py-3 flex items-center justify-between bg-iron-800/30">
                   <div>
-                    <p class="font-semibold text-gray-900">{sub.provider_name}</p>
-                    <p class="text-xs text-gray-500 font-mono">{sub.sub_order_number}</p>
+                    <p class="font-mono text-xs text-bone">{sub.provider_name}</p>
+                    <p class="font-mono text-[9px] text-steel-600">{sub.sub_order_number}</p>
                   </div>
                   <div class="text-right">
-                    <p class="font-bold text-gray-900">S/ {parseFloat(sub.total).toFixed(2)}</p>
+                    <p class="font-display text-xl text-bone leading-none">S/ {parseFloat(sub.total).toFixed(2)}</p>
                     {#if form?.uploaded}
-                      <span class="text-xs text-green-600 font-semibold">✓ Comprobante enviado</span>
+                      <p class="font-mono text-[9px] text-green-400">✓ COMPROBANTE ENVIADO</p>
                     {:else}
-                      <span class="text-xs text-amber-600">Pendiente de pago</span>
+                      <p class="font-mono text-[9px] text-yellow-500">PENDIENTE DE PAGO</p>
                     {/if}
                   </div>
                 </div>
 
-                <div class="p-5 space-y-5">
-
-                  <!-- Items de esta sub-orden -->
-                  <div class="space-y-2">
+                <div class="p-5 space-y-4">
+                  <!-- Items -->
+                  <div class="space-y-1.5">
                     {#each sub.items as item}
-                      <div class="flex justify-between text-sm text-gray-700">
-                        <span>{item.quantity}× {item.product_name}</span>
-                        <span class="font-medium">S/ {parseFloat(item.subtotal).toFixed(2)}</span>
+                      <div class="flex justify-between">
+                        <span class="font-mono text-[10px] text-steel-400">{item.quantity}× {item.product_name}</span>
+                        <span class="font-mono text-[10px] text-bone">S/ {parseFloat(item.subtotal).toFixed(2)}</span>
                       </div>
                     {/each}
-
-                    <!-- Desglose financiero: subtotal, descuento, IGV, total -->
-                    <div class="mt-3 pt-3 border-t border-dashed border-gray-200 space-y-1.5 text-xs">
-                      <div class="flex justify-between text-gray-500">
-                        <span>Subtotal</span>
-                        <span>S/ {parseFloat(sub.subtotal).toFixed(2)}</span>
+                    <div class="border-t border-steel-600/20 pt-2 space-y-1">
+                      <div class="flex justify-between">
+                        <span class="font-mono text-[9px] text-steel-600 uppercase">SUBTOTAL</span>
+                        <span class="font-mono text-[10px] text-steel-400">S/ {parseFloat(sub.subtotal).toFixed(2)}</span>
                       </div>
-
                       {#if parseFloat(sub.discount) > 0}
-                        <div class="flex justify-between text-green-600 font-medium">
-                          <span>Descuento cliente ({sub.discount_percent}%)</span>
-                          <span>− S/ {parseFloat(sub.discount).toFixed(2)}</span>
+                        <div class="flex justify-between">
+                          <span class="font-mono text-[9px] text-steel-600 uppercase">DESCUENTO ({sub.discount_percent}%)</span>
+                          <span class="font-mono text-[10px] text-green-400">−S/ {parseFloat(sub.discount).toFixed(2)}</span>
                         </div>
                       {/if}
-
                       {#if parseFloat(sub.igv_amount) > 0}
-                        <div class="flex justify-between text-gray-400">
-                          <span>IGV ({sub.igv_rate}%)</span>
-                          <span>S/ {parseFloat(sub.igv_amount).toFixed(2)}</span>
+                        <div class="flex justify-between">
+                          <span class="font-mono text-[9px] text-steel-600 uppercase">IGV ({sub.igv_rate}%)</span>
+                          <span class="font-mono text-[10px] text-steel-500">S/ {parseFloat(sub.igv_amount).toFixed(2)}</span>
                         </div>
                       {/if}
-
-                      <div class="flex justify-between font-semibold text-gray-800 pt-1 border-t border-gray-200">
-                        <span>Total a pagar</span>
-                        <span>S/ {parseFloat(sub.total).toFixed(2)}</span>
+                      <div class="flex justify-between border-t border-steel-600/20 pt-1">
+                        <span class="font-mono text-[10px] text-bone uppercase">TOTAL A PAGAR</span>
+                        <span class="font-display text-lg text-rust-600 leading-none">S/ {parseFloat(sub.total).toFixed(2)}</span>
                       </div>
                     </div>
                   </div>
 
                   <!-- Datos de pago del proveedor -->
-                  <div class="bg-blue-50 border border-blue-100 rounded-xl p-4 space-y-3">
-                    <p class="text-sm font-semibold text-blue-900">💳 Datos de pago — {sub.provider_name}</p>
-
+                  <div class="bg-iron-800 border border-steel-600/25 p-4">
+                    <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-3">// DATOS DE PAGO — {sub.provider_name}</p>
                     {#if pay.banco_nombre || pay.banco_cuenta}
-                      <div class="bg-white rounded-lg p-3 border border-blue-100 space-y-1.5">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide">🏦 Transferencia Bancaria</p>
-                        {#if pay.banco_nombre}
-                          <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">Banco</span>
-                            <span class="font-semibold text-gray-800">{pay.banco_nombre}</span>
+                      <div class="border border-steel-600/20 bg-iron-900/50 p-3 mb-3 space-y-2">
+                        <p class="font-mono text-[9px] text-steel-600 uppercase">TRANSFERENCIA BANCARIA</p>
+                        {#each [
+                          { label: 'BANCO', value: pay.banco_nombre },
+                          { label: 'N° CUENTA', value: pay.banco_cuenta },
+                          { label: 'CCI', value: pay.banco_cci },
+                        ].filter(r => r.value) as row}
+                          <div class="flex justify-between">
+                            <span class="font-mono text-[10px] text-steel-500 uppercase">{row.label}</span>
+                            <span class="font-mono text-xs text-bone select-all">{row.value}</span>
                           </div>
-                        {/if}
-                        {#if pay.banco_cuenta}
-                          <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">N° Cuenta</span>
-                            <span class="font-mono font-semibold text-gray-800 select-all">{pay.banco_cuenta}</span>
-                          </div>
-                        {/if}
-                        {#if pay.banco_cci}
-                          <div class="flex justify-between text-sm">
-                            <span class="text-gray-500">CCI</span>
-                            <span class="font-mono font-semibold text-gray-800 select-all">{pay.banco_cci}</span>
-                          </div>
-                        {/if}
+                        {/each}
                       </div>
                     {/if}
-
                     {#if pay.yape_numero || pay.plin_numero}
                       <div class="flex gap-3 flex-wrap">
                         {#if pay.yape_numero}
-                          <div class="flex-1 min-w-[120px] bg-white rounded-lg p-3 border border-blue-100 text-center">
-                            <p class="text-xs font-semibold text-purple-600 mb-1">💜 Yape</p>
-                            <p class="font-mono font-bold text-gray-800 select-all">{pay.yape_numero}</p>
+                          <div class="flex-1 min-w-[120px] border border-steel-600/25 bg-iron-900/50 p-3 text-center">
+                            <p class="font-mono text-[9px] text-steel-600 uppercase mb-1">YAPE</p>
+                            <p class="font-mono text-sm text-bone select-all">{pay.yape_numero}</p>
                           </div>
                         {/if}
                         {#if pay.plin_numero}
-                          <div class="flex-1 min-w-[120px] bg-white rounded-lg p-3 border border-blue-100 text-center">
-                            <p class="text-xs font-semibold text-green-600 mb-1">💚 Plin</p>
-                            <p class="font-mono font-bold text-gray-800 select-all">{pay.plin_numero}</p>
+                          <div class="flex-1 min-w-[120px] border border-steel-600/25 bg-iron-900/50 p-3 text-center">
+                            <p class="font-mono text-[9px] text-steel-600 uppercase mb-1">PLIN</p>
+                            <p class="font-mono text-sm text-bone select-all">{pay.plin_numero}</p>
                           </div>
                         {/if}
                       </div>
                     {/if}
-
                     {#if !pay.banco_nombre && !pay.banco_cuenta && !pay.yape_numero && !pay.plin_numero}
-                      <p class="text-sm text-gray-500 italic">El proveedor coordinará el método de pago contigo.</p>
+                      <p class="font-mono text-[10px] text-steel-600 uppercase">EL PROVEEDOR COORDINARÁ EL MÉTODO DE PAGO CONTIGO.</p>
                     {/if}
                   </div>
 
-                  <!-- SubOrder expirada ──────────────────────────────────── -->
+                  <!-- SubOrder expirada -->
                   {#if sub.expired || sub.status === 'cancelado'}
-                    <div class="bg-gray-50 border border-gray-200 rounded-xl p-4 flex items-center gap-3">
-                      <span class="text-xl">⏰</span>
+                    <div class="border border-steel-600/30 bg-iron-800/30 px-4 py-3 flex items-start gap-3">
+                      <span class="w-1.5 h-1.5 bg-steel-600 flex-shrink-0 mt-1"></span>
                       <div>
-                        <p class="text-sm font-semibold text-gray-700">La reserva de este artículo ha expirado y fue liberado.</p>
-                        <p class="text-xs text-gray-500 mt-0.5">
-                          Puedes volver a agregarlo al
-                          <a href="/carrito" class="text-primary-600 hover:underline">carrito</a>
-                          si aún está disponible.
+                        <p class="font-mono text-[10px] text-steel-400 uppercase">LA RESERVA EXPIRÓ Y FUE LIBERADA.</p>
+                        <p class="font-mono text-[10px] text-steel-600 mt-0.5">
+                          PUEDES VOLVER A AGREGARLO AL <a href="/carrito" class="text-rust-500 hover:text-rust-400">CARRITO</a> SI AÚN ESTÁ DISPONIBLE.
                         </p>
                       </div>
                     </div>
 
-                  <!-- Comprobante ya enviado ──────────────────────────────── -->
+                  <!-- Comprobante enviado -->
                   {:else if form?.uploaded}
-                    <div class="bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-3">
-                      <span class="text-2xl">✅</span>
+                    <div class="border border-green-700/50 bg-green-600/10 px-4 py-3 flex items-start gap-3">
+                      <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0 mt-1"></span>
                       <div>
-                        <p class="text-sm font-semibold text-green-800">Comprobante enviado correctamente</p>
-                        <p class="text-xs text-green-600">
+                        <p class="font-mono text-xs text-green-400 uppercase tracking-widest">COMPROBANTE ENVIADO CORRECTAMENTE</p>
+                        <p class="font-mono text-[10px] text-steel-400 mt-0.5">
                           {PAYMENT_METHOD_LABELS[form.payment_method]} · S/ {parseFloat(form.amount).toFixed(2)}
-                          {form.operation_number ? ` · Op. ${form.operation_number}` : ''}
+                          {form.operation_number ? ` · OP. ${form.operation_number}` : ''}
                         </p>
-                        <p class="text-xs text-green-500 mt-0.5">El proveedor verificará tu pago y confirmará la orden.</p>
+                        <p class="font-mono text-[10px] text-steel-600 mt-0.5">EL PROVEEDOR VERIFICARÁ TU PAGO Y CONFIRMARÁ.</p>
                       </div>
                     </div>
 
                   <!-- Formulario comprobante -->
                   {:else if form}
-                    <div class="space-y-4 pt-1">
-                      <p class="text-sm font-semibold text-gray-800">📎 Sube tu comprobante de pago</p>
+                    <div class="space-y-4">
+                      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// SUBE TU COMPROBANTE DE PAGO</p>
 
-                      <!-- Método de pago -->
+                      <!-- Método -->
                       <div class="grid grid-cols-2 sm:grid-cols-3 gap-2">
                         {#each [
-                          { value: 'transferencia',          label: 'Transferencia', icon: '🏦' },
-                          { value: 'yape',                   label: 'Yape',          icon: '💜' },
-                          { value: 'plin',                   label: 'Plin',          icon: '💚' },
-                          { value: 'efectivo_contraentrega', label: 'Contraentrega', icon: '🚚' },
-                          { value: 'efectivo_tienda',        label: 'En tienda',     icon: '🏪' },
+                          { value: 'transferencia',          label: 'TRANSFERENCIA' },
+                          { value: 'yape',                   label: 'YAPE' },
+                          { value: 'plin',                   label: 'PLIN' },
+                          { value: 'efectivo_contraentrega', label: 'CONTRAENTREGA' },
+                          { value: 'efectivo_tienda',        label: 'EN TIENDA' },
                         ] as m}
-                          <button
-                            class="rounded-lg border-2 py-2 px-3 text-xs font-medium text-center transition-all
-                              {form.payment_method === m.value
-                                ? 'border-primary-500 bg-primary-50 text-primary-700'
-                                : 'border-gray-200 hover:border-gray-300 text-gray-600'}"
+                          <button class="border py-2 px-3 font-mono text-[10px] uppercase tracking-widest transition-colors
+                            {form.payment_method === m.value
+                              ? 'border-rust-600 bg-rust-600/20 text-rust-400'
+                              : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
                             on:click={() => { proofForms[sub.id] = { ...form, payment_method: m.value as PaymentMethod }; }}
-                          >{m.icon} {m.label}</button>
+                          >{m.label}</button>
                         {/each}
                       </div>
 
-                      <!-- Monto y número de operación -->
+                      <!-- Monto y número -->
                       <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label for="amount-{sub.id}" class="block text-xs text-gray-500 mb-1">Monto pagado (S/) *</label>
-                          <input
-                            id="amount-{sub.id}"
-                            type="number"
-                            step="0.01"
-                            min="0.01"
-                            bind:value={proofForms[sub.id].amount}
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                          <label for="amount-{sub.id}" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// MONTO PAGADO (S/) *</label>
+                          <input id="amount-{sub.id}" type="number" step="0.01" min="0.01"
+                            bind:value={proofForms[sub.id].amount} class="input-industrial" />
                         </div>
                         <div>
-                          <label for="opnum-{sub.id}" class="block text-xs text-gray-500 mb-1">N° de operación</label>
-                          <input
-                            id="opnum-{sub.id}"
-                            type="text"
-                            bind:value={proofForms[sub.id].operation_number}
-                            placeholder="Ej: 123456789"
-                            class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm
-                                   focus:outline-none focus:ring-2 focus:ring-primary-400" />
+                          <label for="opnum-{sub.id}" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// N° DE OPERACIÓN</label>
+                          <input id="opnum-{sub.id}" type="text" bind:value={proofForms[sub.id].operation_number}
+                            placeholder="Ej: 123456789" class="input-industrial" />
                         </div>
                       </div>
 
-                      <!-- Adjuntar archivo -->
+                      <!-- Archivo -->
                       <div>
-                        <label for="file-{sub.id}" class="block text-xs text-gray-500 mb-1">
-                          Captura / voucher * (JPG, PNG, PDF)
-                        </label>
+                        <label for="file-{sub.id}" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// CAPTURA / VOUCHER * (JPG, PNG, PDF)</label>
                         <label for="file-{sub.id}"
-                          class="flex flex-col items-center justify-center w-full border-2 border-dashed
-                                 rounded-xl cursor-pointer py-5 transition-colors
-                                 {form.file
-                                   ? 'border-green-400 bg-green-50'
-                                   : 'border-gray-300 hover:border-primary-400 hover:bg-primary-50/30'}">
+                          class="flex flex-col items-center justify-center w-full border-2 border-dashed cursor-pointer py-6 transition-colors
+                            {form.file ? 'border-green-700/50 bg-green-600/5' : 'border-steel-600/40 hover:border-rust-600/50 hover:bg-rust-600/5'}">
                           {#if form.file}
-                            <span class="text-2xl">📄</span>
-                            <span class="text-sm font-medium text-green-700 mt-1">{form.file.name}</span>
-                            <span class="text-xs text-gray-400 mt-0.5">{(form.file.size / 1024).toFixed(1)} KB</span>
+                            <p class="font-mono text-xs text-green-400 uppercase tracking-widest">{form.file.name}</p>
+                            <p class="font-mono text-[10px] text-steel-600 mt-1">{(form.file.size / 1024).toFixed(1)} KB</p>
                           {:else}
-                            <span class="text-2xl text-gray-300">📎</span>
-                            <span class="text-sm text-gray-500 mt-1">Haz clic para adjuntar</span>
-                            <span class="text-xs text-gray-400">o arrastra aquí</span>
+                            <p class="font-mono text-xs text-steel-500 uppercase tracking-widest">ADJUNTAR ARCHIVO</p>
+                            <p class="font-mono text-[10px] text-steel-700 mt-1">HAZ CLIC O ARRASTRA AQUÍ</p>
                           {/if}
                         </label>
-                        <input
-                          id="file-{sub.id}"
-                          type="file"
-                          accept="image/*,application/pdf"
-                          class="hidden"
-                          on:change={(e) => onFileChange(sub.id, e)}
-                        />
+                        <input id="file-{sub.id}" type="file" accept="image/*,application/pdf" class="hidden"
+                          on:change={(e) => onFileChange(sub.id, e)} />
                       </div>
 
-                      <!-- Error -->
                       {#if form.error}
-                        <div class="bg-red-50 text-red-700 rounded-lg px-4 py-3 text-sm">{form.error}</div>
+                        <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+                          <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+                          <p class="font-mono text-xs text-rust-400">{form.error}</p>
+                        </div>
                       {/if}
 
-                      <!-- Botón subir -->
-                      <button
-                        class="w-full bg-primary-600 hover:bg-primary-700 disabled:opacity-40
-                               disabled:cursor-not-allowed text-white font-semibold py-2.5 rounded-lg
-                               transition-colors text-sm flex items-center justify-center gap-2"
+                      <button class="w-full btn-rust disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                         disabled={form.uploading || !form.file || !form.amount}
-                        on:click={() => subirComprobante(sub)}
-                      >
+                        on:click={() => subirComprobante(sub)}>
                         {#if form.uploading}
                           <svg class="animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24">
                             <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
                             <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"></path>
                           </svg>
-                          Subiendo comprobante…
+                          SUBIENDO COMPROBANTE...
                         {:else}
-                          ↑ Enviar comprobante a {sub.provider_name}
+                          ENVIAR COMPROBANTE A {sub.provider_name.toUpperCase()}
                         {/if}
                       </button>
                     </div>
@@ -1092,151 +916,136 @@
             {/each}
           {/if}
 
-          <!-- Panel de progreso y confirmación final -->
+          <!-- Progreso / Confirmación final -->
           {#if !todosSubidos && activeSubs.length > 0}
-            <div class="bg-white rounded-xl shadow-sm p-5">
-              <p class="text-sm text-gray-500">
-                {activeSubs.filter(s => proofForms[s.id]?.uploaded).length}
-                de {activeSubs.length} comprobante(s) enviado(s). Sube todos para confirmar tu pedido.
+            <div class="bg-iron-900 border border-steel-600/25 px-5 py-4">
+              <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+                {activeSubs.filter(s => proofForms[s.id]?.uploaded).length} DE {activeSubs.length} COMPROBANTE(S) ENVIADO(S).
+                SUBE TODOS PARA CONFIRMAR.
               </p>
             </div>
           {:else}
-            <!-- Confirmación inline: todos los comprobantes enviados -->
-            <div class="bg-white rounded-xl shadow-sm p-8 text-center space-y-4">
-              <div class="text-6xl">&#x2705;</div>
-              <h2 class="text-2xl font-bold text-gray-900">¡Pedido confirmado!</h2>
-              <p class="text-gray-600 text-sm max-w-md mx-auto">
-                Tus comprobantes han sido enviados correctamente. Los proveedores verificarán los pagos
-                y actualizarán el estado de tu pedido.
-              </p>
+            <div class="bg-iron-900 border border-green-700/50 p-8 text-center"
+                 style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+              <p class="font-mono text-[10px] text-green-400 uppercase tracking-widest mb-3">// PEDIDO CONFIRMADO</p>
+              <h2 class="font-display text-4xl text-bone uppercase leading-none mb-3">COMPROBANTES ENVIADOS</h2>
+              <p class="font-mono text-xs text-steel-400 mb-5">LOS PROVEEDORES VERIFICARÁN LOS PAGOS Y ACTUALIZARÁN EL ESTADO.</p>
               {#if state.order}
-                <div class="inline-block bg-gray-50 border border-gray-200 rounded-xl px-6 py-3 text-sm">
-                  <p class="text-gray-500">Número de orden</p>
-                  <p class="font-mono font-bold text-gray-900 text-lg">{state.order.order_number}</p>
+                <div class="inline-block border border-steel-600/25 bg-iron-800 px-6 py-3 mb-5">
+                  <p class="font-mono text-[9px] text-steel-600 uppercase mb-1">NÚMERO DE ORDEN</p>
+                  <p class="font-display text-2xl text-rust-600 leading-none">{state.order.order_number}</p>
                 </div>
               {/if}
-              <div class="pt-2 flex flex-col sm:flex-row gap-3 justify-center">
-                <a
-                  href="cliente/historial-compras"
-                  class="bg-primary-600 hover:bg-primary-700 text-white font-semibold
-                         px-6 py-3 rounded-lg transition-colors text-sm"
-                >
-                  Ver mis pedidos →
-                </a>
-                <a
-                  href="/"
-                  class="bg-white border border-gray-300 hover:border-gray-400 text-gray-700 font-semibold
-                         px-6 py-3 rounded-lg transition-colors text-sm"
-                >
-                  Seguir comprando
-                </a>
+              <div class="flex flex-col sm:flex-row gap-3 justify-center">
+                <a href="cliente/historial-compras" class="btn-rust">VER MIS PEDIDOS →</a>
+                <a href="/" class="btn-outline">SEGUIR COMPRANDO</a>
               </div>
             </div>
           {/if}
 
         </div>
-
       {/if}
 
     </section>
 
-    <!-- Columna derecha: Resumen de compra (sticky) ──────────────────────── -->
+    <!-- Columna derecha: Resumen sticky -->
     <aside class="lg:col-span-1">
-      <div class="bg-white rounded-xl shadow-sm p-5 sticky top-24 space-y-4">
+      <div class="bg-iron-900 border border-steel-600/25 sticky top-24"
+           style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+        <div class="border-b border-steel-600/25 px-5 py-3">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// RESUMEN DE COMPRA</p>
+        </div>
 
-        <h3 class="font-bold text-gray-900 text-base border-b border-gray-100 pb-3">
-          Resumen de compra
-        </h3>
-
-        <!-- Productos con desglose por proveedor -->
-        <div class="space-y-2 text-sm">
+        <!-- Items por proveedor -->
+        <div class="px-5 py-4 space-y-3">
           {#each Object.entries(byProvider) as [provName, items]}
             <div>
-              <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">{provName}</p>
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">{provName}</p>
               {#each items as item}
-                <div class="flex justify-between text-gray-700 pl-2">
-                  <span class="truncate pr-2 max-w-[150px]">
+                <div class="flex justify-between pl-2">
+                  <span class="font-mono text-[10px] text-steel-400 truncate pr-2 max-w-[140px]">
                     {item.cantidad}× {item.product.name}
                   </span>
-                  <span class="flex-shrink-0">{fmt(item.precioTotal)}</span>
+                  <span class="font-mono text-[10px] text-bone flex-shrink-0">{fmt(item.precioTotal)}</span>
                 </div>
               {/each}
             </div>
           {/each}
         </div>
 
-        <!-- Separador -->
-        <div class="border-t border-dashed border-gray-200 pt-3 space-y-2 text-sm">
+        <!-- Desglose financiero -->
+        <div class="border-t border-steel-600/20 px-5 py-3 space-y-1.5">
           {#if state.order}
-            <!-- Desglose real una vez creada la orden -->
-            <div class="flex justify-between text-gray-600">
-              <span>Subtotal</span>
-              <span>{fmt(parseFloat(state.order.subtotal))}</span>
+            <div class="flex justify-between">
+              <span class="font-mono text-[10px] text-steel-600 uppercase">SUBTOTAL</span>
+              <span class="font-mono text-[10px] text-steel-400">{fmt(parseFloat(state.order.subtotal))}</span>
             </div>
             {#if parseFloat(state.order.discount) > 0}
-              <div class="flex justify-between text-green-600 font-medium">
-                <span>Descuento</span>
-                <span>− {fmt(parseFloat(state.order.discount))}</span>
+              <div class="flex justify-between">
+                <span class="font-mono text-[10px] text-steel-600 uppercase">DESCUENTO</span>
+                <span class="font-mono text-[10px] text-green-400">−{fmt(parseFloat(state.order.discount))}</span>
               </div>
             {/if}
             {#if parseFloat(state.order.tax) > 0}
-              <div class="flex justify-between text-gray-500">
-                <span>IGV (18%)</span>
-                <span>{fmt(parseFloat(state.order.tax))}</span>
+              <div class="flex justify-between">
+                <span class="font-mono text-[10px] text-steel-600 uppercase">IGV (18%)</span>
+                <span class="font-mono text-[10px] text-steel-500">{fmt(parseFloat(state.order.tax))}</span>
               </div>
             {/if}
           {:else}
-            <div class="flex justify-between text-gray-600">
-              <span>Productos ({state.items.length})</span>
-              <span>{fmt(subtotal)}</span>
+            <div class="flex justify-between">
+              <span class="font-mono text-[10px] text-steel-600 uppercase">PRODUCTOS ({state.items.length})</span>
+              <span class="font-mono text-[10px] text-steel-400">{fmt(subtotal)}</span>
             </div>
           {/if}
           {#if provCount > 1}
-            <p class="text-xs text-amber-600 bg-amber-50 rounded px-2 py-1">
-              ⚠️ Pedido con {provCount} proveedores — se generará una sub-orden por cada uno.
-            </p>
+            <div class="border border-yellow-700/50 bg-yellow-600/10 px-3 py-2 mt-2">
+              <p class="font-mono text-[9px] text-yellow-400 uppercase tracking-widest">
+                {provCount} PROVEEDORES — SUB-ORDEN POR CADA UNO
+              </p>
+            </div>
           {/if}
         </div>
 
         <!-- Total -->
-        <div class="border-t border-gray-200 pt-3 flex justify-between items-center">
-          <span class="font-bold text-gray-900">Total</span>
-          <span class="font-bold text-gray-900 text-lg">
+        <div class="border-t border-steel-600/25 px-5 py-4 flex justify-between items-center">
+          <span class="font-mono text-[10px] text-steel-400 uppercase">TOTAL</span>
+          <span class="font-display text-2xl text-rust-600 leading-none">
             {state.order ? fmt(parseFloat(state.order.total)) : fmt(subtotal)}
           </span>
         </div>
 
         {#if !state.order}
-          <p class="text-xs text-gray-400 italic">
-            *El descuento por historial de compras se aplicará al confirmar el pedido.
-          </p>
+          <div class="border-t border-steel-600/20 px-5 py-2">
+            <p class="font-mono text-[9px] text-steel-700">*DESCUENTO POR HISTORIAL SE APLICA AL CONFIRMAR.</p>
+          </div>
         {/if}
 
-        <!-- Indicadores de pasos -->
-        <div class="border-t border-gray-100 pt-4 space-y-2">
+        <!-- Pasos -->
+        <div class="border-t border-steel-600/25 px-5 py-4 space-y-2">
           {#each CHECKOUT_STEPS as step, i}
-            {@const done    = i < stepIdx}
-            {@const active  = i === stepIdx}
-            <div class="flex items-center gap-3 text-sm
-              {active ? 'text-gray-900' : done ? 'text-primary-600' : 'text-gray-400'}">
-              <span class="w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0
-                {active  ? 'bg-primary-600 text-white'    : ''}
-                {done    ? 'bg-primary-100 text-primary-700' : ''}
-                {!active && !done ? 'bg-gray-100 text-gray-400' : ''}">
+            {@const done   = i < stepIdx}
+            {@const active = i === stepIdx}
+            <div class="flex items-start gap-3">
+              <span class="font-display text-lg leading-none flex-shrink-0 mt-0.5
+                {active ? 'text-rust-600' : done ? 'text-rust-700' : 'text-steel-700'}">
                 {done ? '✓' : i + 1}
               </span>
-              <div class="leading-tight">
-                <p class="font-medium">{STEP_LABELS[step]}</p>
+              <div>
+                <p class="font-mono text-[10px] uppercase tracking-widest
+                  {active ? 'text-bone' : done ? 'text-steel-400' : 'text-steel-700'}">
+                  {STEP_LABELS[step].toUpperCase()}
+                </p>
                 {#if active && step === 'carrito'}
-                  <p class="text-xs text-gray-400">{state.items.length} producto(s)</p>
+                  <p class="font-mono text-[9px] text-steel-600">{state.items.length} PRODUCTO(S)</p>
                 {:else if active && step === 'perfil' && state.customer}
-                  <p class="text-xs text-gray-400">{state.customer.email}</p>
+                  <p class="font-mono text-[9px] text-steel-600">{state.customer.email}</p>
                 {:else if active && step === 'entrega'}
-                  <p class="text-xs text-gray-400">
-                    {state.shippingAddress ? state.shippingAddress.full_address : 'Por definir'}
+                  <p class="font-mono text-[9px] text-steel-600">
+                    {state.shippingAddress ? state.shippingAddress.full_address : 'POR DEFINIR'}
                   </p>
                 {:else if !done && !active}
-                  <p class="text-xs text-gray-400">Por definir</p>
+                  <p class="font-mono text-[9px] text-steel-700">POR DEFINIR</p>
                 {/if}
               </div>
             </div>
@@ -1248,11 +1057,10 @@
 
   </main>
   {:else}
-    <!-- Estado vacío / cargando -->
     <div class="flex items-center justify-center min-h-[60vh]">
-      <div class="text-gray-400 text-center">
-        <p class="text-4xl mb-3">🛒</p>
-        <p class="text-lg font-medium">Cargando tu pedido…</p>
+      <div class="text-center">
+        <p class="font-display text-4xl text-steel-700 mb-3">▪</p>
+        <p class="font-mono text-xs text-steel-600 uppercase tracking-widest animate-pulse">CARGANDO TU PEDIDO...</p>
       </div>
     </div>
   {/if}

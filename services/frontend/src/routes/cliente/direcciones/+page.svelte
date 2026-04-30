@@ -129,63 +129,88 @@
   }
 
   const tipoLabel: Record<string, string> = {
-    shipping: '🚚 Envío',
-    agency: '🏢 Agencia',
-    business: '🏬 Negocio',
+    shipping: 'ENVÍO',
+    agency: 'AGENCIA',
+    business: 'NEGOCIO',
   };
 </script>
 
 <svelte:head>
-  <title>Mis Direcciones - ECOMPARTS</title>
+  <title>Mis Direcciones — ECOMPARTS</title>
 </svelte:head>
 
-<div class="max-w-3xl mx-auto py-12 px-4">
-  <div class="flex justify-between items-center mb-8">
+<div class="container-responsive py-10 max-w-3xl">
+
+  <!-- Header -->
+  <div class="border-b border-steel-600/25 pb-6 mb-8 flex items-start justify-between gap-4">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900">Mis Direcciones</h1>
-      <a href="/cliente/perfil" class="text-sm text-blue-600 hover:underline">← Volver al perfil</a>
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// MI CUENTA / DIRECCIONES</p>
+      <h1 class="font-display text-5xl text-bone uppercase leading-none">MIS DIRECCIONES</h1>
     </div>
-    <button on:click={() => abrirFormulario()}
-      class="bg-blue-600 hover:bg-blue-700 text-white font-semibold px-5 py-2 rounded-lg transition">
-      + Nueva Dirección
-    </button>
+    <div class="flex items-center gap-3 mt-1">
+      <a href="/cliente/perfil" class="btn-ghost font-mono text-[10px] uppercase tracking-widest">← PERFIL</a>
+      <button on:click={() => abrirFormulario()} class="btn-rust">+ NUEVA</button>
+    </div>
   </div>
 
+  <!-- Mensajes -->
   {#if mensaje}
-    <div class="bg-green-50 text-green-700 rounded-lg p-3 mb-4 text-sm">{mensaje}</div>
+    <div class="border border-green-700/50 bg-green-600/10 px-4 py-3 flex items-center gap-3 mb-4">
+      <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0"></span>
+      <p class="font-mono text-xs text-green-400 uppercase tracking-widest">{mensaje}</p>
+    </div>
   {/if}
   {#if error}
-    <div class="bg-red-50 text-red-700 rounded-lg p-3 mb-4 text-sm">{error}</div>
+    <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3 mb-4">
+      <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+      <p class="font-mono text-xs text-rust-400">{error}</p>
+    </div>
   {/if}
 
   {#if loading}
-    <div class="text-gray-500 text-center py-12">Cargando direcciones...</div>
+    <div class="text-center py-16">
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest animate-pulse">CARGANDO DIRECCIONES...</p>
+    </div>
   {:else if addresses.length === 0 && !mostrarFormulario}
-    <div class="bg-white rounded-xl shadow p-8 text-center text-gray-500">
-      No tienes direcciones registradas.
+    <div class="bg-iron-900 border border-steel-600/25 p-12 text-center"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <p class="font-display text-3xl text-steel-600 uppercase mb-2">SIN DIRECCIONES</p>
+      <p class="font-mono text-xs text-steel-700 uppercase tracking-widest mb-6">NO TIENES DIRECCIONES REGISTRADAS</p>
+      <button on:click={() => abrirFormulario()} class="btn-rust">AGREGAR DIRECCIÓN →</button>
     </div>
   {:else}
-    <div class="space-y-4 mb-6">
+    <div class="space-y-3 mb-6">
       {#each addresses as addr}
-        <div class="bg-white rounded-xl shadow p-5 flex justify-between items-start">
-          <div>
-            <div class="flex items-center gap-2 mb-1">
-              <span class="text-sm font-semibold text-gray-700">{tipoLabel[addr.address_type] || addr.address_type}</span>
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/20 px-5 py-3 flex items-center justify-between gap-3">
+            <div class="flex items-center gap-3 flex-wrap">
+              <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 text-steel-400 px-2 py-0.5">
+                {tipoLabel[addr.address_type] || addr.address_type}
+              </span>
               {#if addr.is_default}
-                <span class="bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">Predeterminada</span>
+                <span class="font-mono text-[9px] uppercase tracking-widest border border-rust-700/50 text-rust-500 px-2 py-0.5">
+                  PREDETERMINADA
+                </span>
               {/if}
             </div>
-            <p class="text-gray-900 font-medium">{addr.contact_name} · {addr.contact_phone}</p>
-            <p class="text-gray-600 text-sm">{addr.full_address}</p>
-            {#if addr.reference}
-              <p class="text-gray-400 text-xs mt-1">Ref: {addr.reference}</p>
-            {/if}
+            <div class="flex gap-3">
+              <button on:click={() => abrirFormulario(addr)}
+                class="font-mono text-[10px] uppercase tracking-widest text-steel-400 hover:text-bone transition-colors">
+                EDITAR
+              </button>
+              <button on:click={() => eliminar(addr.id)}
+                class="font-mono text-[10px] uppercase tracking-widest text-rust-600 hover:text-rust-400 transition-colors">
+                ELIMINAR
+              </button>
+            </div>
           </div>
-          <div class="flex gap-2 ml-4 shrink-0">
-            <button on:click={() => abrirFormulario(addr)}
-              class="text-blue-600 hover:text-blue-800 text-sm font-medium">Editar</button>
-            <button on:click={() => eliminar(addr.id)}
-              class="text-red-500 hover:text-red-700 text-sm font-medium">Eliminar</button>
+          <div class="px-5 py-4">
+            <p class="font-mono text-sm text-bone mb-1">{addr.contact_name} · {addr.contact_phone}</p>
+            <p class="font-mono text-xs text-steel-400">{addr.full_address}</p>
+            {#if addr.reference}
+              <p class="font-mono text-[10px] text-steel-600 mt-1">REF: {addr.reference}</p>
+            {/if}
           </div>
         </div>
       {/each}
@@ -194,93 +219,118 @@
 
   <!-- Formulario -->
   {#if mostrarFormulario}
-    <div class="bg-white rounded-xl shadow p-6 mt-4">
-      <h2 class="text-lg font-semibold text-gray-800 mb-5">
-        {editandoId ? 'Editar Dirección' : 'Nueva Dirección'}
-      </h2>
-      <form on:submit|preventDefault={guardar} class="space-y-4">
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">
+          // {editandoId ? 'EDITAR DIRECCIÓN' : 'NUEVA DIRECCIÓN'}
+        </p>
+      </div>
+      <form on:submit|preventDefault={guardar} class="p-6 space-y-5">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="address_type">Tipo</label>
-            <select id="address_type" bind:value={form.address_type}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="shipping">Envío</option>
-              <option value="agency">Agencia</option>
-              <option value="business">Negocio</option>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="address_type">
+              // TIPO
+            </label>
+            <select id="address_type" bind:value={form.address_type} class="input-industrial">
+              <option value="shipping">Envío a domicilio</option>
+              <option value="agency">Agencia de transporte</option>
+              <option value="business">Local de negocio</option>
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="contact_name">Nombre de Contacto</label>
-            <input id="contact_name" type="text" bind:value={form.contact_name} required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="contact_name">
+              // NOMBRE DE CONTACTO
+            </label>
+            <input id="contact_name" type="text" bind:value={form.contact_name} required class="input-industrial" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="contact_phone">Teléfono</label>
-            <input id="contact_phone" type="tel" bind:value={form.contact_phone} required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="contact_phone">
+              // TELÉFONO
+            </label>
+            <input id="contact_phone" type="tel" bind:value={form.contact_phone} required class="input-industrial" />
           </div>
           {#if form.address_type === 'agency'}
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-1" for="agency_name">Nombre de Agencia</label>
-              <input id="agency_name" type="text" bind:value={form.agency_name}
-                class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="agency_name">
+                // NOMBRE DE AGENCIA
+              </label>
+              <input id="agency_name" type="text" bind:value={form.agency_name} class="input-industrial" />
             </div>
           {/if}
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="street">Calle / Avenida</label>
-            <input id="street" type="text" bind:value={form.street} required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="street">
+              // CALLE / AVENIDA
+            </label>
+            <input id="street" type="text" bind:value={form.street} required class="input-industrial" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="street_number">Número</label>
-            <input id="street_number" type="text" bind:value={form.street_number}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="street_number">
+              // NÚMERO
+            </label>
+            <input id="street_number" type="text" bind:value={form.street_number} class="input-industrial" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="apartment">Dpto / Oficina</label>
-            <input id="apartment" type="text" bind:value={form.apartment}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="apartment">
+              // DPTO / OFICINA
+            </label>
+            <input id="apartment" type="text" bind:value={form.apartment} class="input-industrial" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="district">Distrito</label>
-            <input id="district" type="text" bind:value={form.district} required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="district">
+              // DISTRITO
+            </label>
+            <input id="district" type="text" bind:value={form.district} required class="input-industrial" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="city">Ciudad / Provincia</label>
-            <input id="city" type="text" bind:value={form.city} required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="city">
+              // CIUDAD / PROVINCIA
+            </label>
+            <input id="city" type="text" bind:value={form.city} required class="input-industrial" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="state">Departamento</label>
-            <input id="state" type="text" bind:value={form.state} required
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="state">
+              // DEPARTAMENTO
+            </label>
+            <input id="state" type="text" bind:value={form.state} required class="input-industrial" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="postal_code">Código Postal</label>
-            <input id="postal_code" type="text" bind:value={form.postal_code}
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="postal_code">
+              // CÓDIGO POSTAL
+            </label>
+            <input id="postal_code" type="text" bind:value={form.postal_code} class="input-industrial" />
           </div>
           <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="reference">Referencia</label>
+            <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="reference">
+              // REFERENCIA
+            </label>
             <input id="reference" type="text" bind:value={form.reference}
               placeholder="Ej: Frente al parque, portón negro..."
-              class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              class="input-industrial" />
           </div>
         </div>
-        <label class="flex items-center gap-3 cursor-pointer">
-          <input type="checkbox" bind:checked={form.is_default} class="w-4 h-4 text-blue-600 rounded" />
-          <span class="text-sm text-gray-700">Establecer como dirección predeterminada</span>
+
+        <!-- Predeterminada -->
+        <label class="flex items-center gap-3 cursor-pointer group">
+          <div class="relative w-4 h-4 border border-steel-600/50 flex items-center justify-center
+                      {form.is_default ? 'border-rust-600 bg-rust-600/20' : 'hover:border-steel-400'}">
+            <input type="checkbox" bind:checked={form.is_default} class="sr-only" />
+            {#if form.is_default}
+              <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+              </svg>
+            {/if}
+          </div>
+          <span class="font-mono text-xs text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">
+            ESTABLECER COMO DIRECCIÓN PREDETERMINADA
+          </span>
         </label>
-        <div class="flex gap-3 pt-2">
-          <button type="submit" disabled={guardando}
-            class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-2 rounded-lg transition">
-            {guardando ? 'Guardando...' : 'Guardar'}
+
+        <div class="flex gap-3 pt-2 border-t border-steel-600/20">
+          <button type="submit" disabled={guardando} class="btn-rust disabled:opacity-50 disabled:cursor-not-allowed">
+            {guardando ? 'GUARDANDO...' : 'GUARDAR'}
           </button>
-          <button type="button" on:click={cancelar}
-            class="border border-gray-300 hover:bg-gray-50 text-gray-700 font-medium px-6 py-2 rounded-lg transition">
-            Cancelar
-          </button>
+          <button type="button" on:click={cancelar} class="btn-outline">CANCELAR</button>
         </div>
       </form>
     </div>

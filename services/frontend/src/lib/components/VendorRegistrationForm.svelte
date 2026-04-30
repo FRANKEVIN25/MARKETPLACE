@@ -250,38 +250,31 @@
   ==========================================
 -->
 
-<div class="max-w-4xl mx-auto p-6">
-  <!-- Título -->
-  <div class="text-center mb-8">
-    <h1 class="text-3xl font-bold text-gray-900 mb-2">
-      Regístrate como Vendor
-    </h1>
-    <p class="text-gray-600">
-      Empieza a vender en ECOMPARTS PERÚ
-    </p>
+<div class="container-responsive py-10 max-w-4xl">
+  <!-- Header -->
+  <div class="border-b border-steel-600/25 pb-6 mb-8">
+    <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// VENDEDOR / REGISTRO</p>
+    <h1 class="font-display text-5xl text-bone uppercase leading-none mb-2">REGÍSTRATE COMO VENDOR</h1>
+    <p class="font-mono text-xs text-steel-500">EMPIEZA A VENDER EN ECOMPARTS PERÚ</p>
   </div>
-  
-  <!-- Mensaje de error general -->
+
   {#if generalError}
-    <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-      <p class="font-medium">Error</p>
-      <p>{generalError}</p>
+    <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3 mb-6">
+      <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+      <p class="font-mono text-xs text-rust-400">{generalError}</p>
     </div>
   {/if}
-  
-  <!-- FORMULARIO -->
+
   <form onsubmit={handleSubmit} class="space-y-8">
-    
-    <!-- ========================================== -->
-    <!-- SECCIÓN 1: SELECCIÓN DE PLAN -->
-    <!-- ========================================== -->
-    <section>
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">
-        1. Selecciona tu plan
-      </h2>
-      
-      <!-- Grid con las 3 tarjetas de planes -->
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+
+    <!-- SECCIÓN 1: PLAN -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 01</p>
+        <h2 class="font-display text-2xl text-bone uppercase leading-none">SELECCIONA TU PLAN</h2>
+      </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-3 gap-4">
         {#each tiers as tier}
           <PricingCard
             {tier}
@@ -290,281 +283,180 @@
           />
         {/each}
       </div>
-    </section>
-    
-    <!-- ========================================== -->
-    <!-- SECCIÓN 2: DATOS DEL USUARIO -->
-    <!-- ========================================== -->
-    <section>
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">
-        2. Datos de acceso
-      </h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Username -->
+    </div>
+
+    <!-- SECCIÓN 2: DATOS DE ACCESO -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 02</p>
+        <h2 class="font-display text-2xl text-bone uppercase leading-none">DATOS DE ACCESO</h2>
+      </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label for="username" class="block text-sm font-medium text-gray-700 mb-1">
-            Nombre de usuario *
-          </label>
-          <input
-            type="text"
-            id="username"
-            bind:value={formData.username}
-            onblur={() => validateField('username')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="juan_autopartes"
-          />
+          <label for="username" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// NOMBRE DE USUARIO *</label>
+          <input type="text" id="username" bind:value={formData.username}
+            onblur={() => validateField('username')} required
+            class="input-industrial" placeholder="juan_autopartes" />
           {#if errors.username}
-            <p class="text-red-600 text-sm mt-1">{errors.username}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.username}</p>
           {/if}
         </div>
-        
-        <!-- Email -->
+
         <div>
-          <label for="email" class="block text-sm font-medium text-gray-700 mb-1">
-            Email *
-          </label>
-          <input
-            type="email"
-            id="email"
-            bind:value={formData.email}
-            onblur={() => validateField('email')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="juan@example.com"
-          />
+          <label for="email" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// EMAIL *</label>
+          <input type="email" id="email" bind:value={formData.email}
+            onblur={() => validateField('email')} required
+            class="input-industrial" placeholder="juan@example.com" />
           {#if errors.email}
-            <p class="text-red-600 text-sm mt-1">{errors.email}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.email}</p>
           {/if}
         </div>
-        
-        <!-- Password -->
+
         <div>
-          <label for="password" class="block text-sm font-medium text-gray-700 mb-1">
-            Contraseña *
-          </label>
-          <input
-            type="password"
-            id="password"
-            bind:value={formData.password}
-            onblur={() => validateField('password')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Mínimo 8 caracteres"
-          />
+          <label for="password" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// CONTRASEÑA *</label>
+          <input type="password" id="password" bind:value={formData.password}
+            onblur={() => validateField('password')} required
+            class="input-industrial" placeholder="Mínimo 8 caracteres" />
           {#if errors.password}
-            <p class="text-red-600 text-sm mt-1">{errors.password}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.password}</p>
           {/if}
         </div>
-        
-        <!-- Confirmar Password -->
+
         <div>
-          <label for="password_confirm" class="block text-sm font-medium text-gray-700 mb-1">
-            Confirmar contraseña *
-          </label>
-          <input
-            type="password"
-            id="password_confirm"
-            bind:value={formData.password_confirm}
-            onblur={() => validateField('password_confirm')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Repetir contraseña"
-          />
+          <label for="password_confirm" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// CONFIRMAR CONTRASEÑA *</label>
+          <input type="password" id="password_confirm" bind:value={formData.password_confirm}
+            onblur={() => validateField('password_confirm')} required
+            class="input-industrial" placeholder="Repetir contraseña" />
           {#if errors.password_confirm}
-            <p class="text-red-600 text-sm mt-1">{errors.password_confirm}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.password_confirm}</p>
           {/if}
         </div>
       </div>
-    </section>
-    
-    <!-- ========================================== -->
+    </div>
+
     <!-- SECCIÓN 3: DATOS DEL NEGOCIO -->
-    <!-- ========================================== -->
-    <section>
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">
-        3. Datos del negocio
-      </h2>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Nombre del negocio -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 03</p>
+        <h2 class="font-display text-2xl text-bone uppercase leading-none">DATOS DEL NEGOCIO</h2>
+      </div>
+      <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div class="md:col-span-2">
-          <label for="business_name" class="block text-sm font-medium text-gray-700 mb-1">
-            Nombre del negocio *
-          </label>
-          <input
-            type="text"
-            id="business_name"
-            bind:value={formData.business_name}
-            onblur={() => validateField('business_name')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="AutoPartes Juan SAC"
-          />
+          <label for="business_name" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// NOMBRE DEL NEGOCIO *</label>
+          <input type="text" id="business_name" bind:value={formData.business_name}
+            onblur={() => validateField('business_name')} required
+            class="input-industrial" placeholder="AutoPartes Juan SAC" />
           {#if errors.business_name}
-            <p class="text-red-600 text-sm mt-1">{errors.business_name}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.business_name}</p>
           {/if}
         </div>
-        
-        <!-- RUC -->
+
         <div>
-          <label for="ruc" class="block text-sm font-medium text-gray-700 mb-1">
-            RUC *
-          </label>
-          <input
-            type="text"
-            id="ruc"
-            bind:value={formData.ruc}
-            onblur={() => validateField('ruc')}
-            required
-            maxlength="11"
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="20123456789"
-          />
+          <label for="ruc" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// RUC *</label>
+          <input type="text" id="ruc" bind:value={formData.ruc}
+            onblur={() => validateField('ruc')} required maxlength="11"
+            class="input-industrial" placeholder="20123456789" />
           {#if errors.ruc}
-            <p class="text-red-600 text-sm mt-1">{errors.ruc}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.ruc}</p>
           {/if}
         </div>
-        
-        <!-- Teléfono -->
+
         <div>
-          <label for="phone" class="block text-sm font-medium text-gray-700 mb-1">
-            Teléfono *
-          </label>
-          <input
-            type="tel"
-            id="phone"
-            bind:value={formData.phone}
-            onblur={() => validateField('phone')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="+51 999 888 777"
-          />
+          <label for="phone" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// TELÉFONO *</label>
+          <input type="tel" id="phone" bind:value={formData.phone}
+            onblur={() => validateField('phone')} required
+            class="input-industrial" placeholder="+51 999 888 777" />
           {#if errors.phone}
-            <p class="text-red-600 text-sm mt-1">{errors.phone}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.phone}</p>
           {/if}
         </div>
-        
-        <!-- Email del negocio -->
+
         <div class="md:col-span-2">
-          <label for="business_email" class="block text-sm font-medium text-gray-700 mb-1">
-            Email del negocio *
-          </label>
-          <input
-            type="email"
-            id="business_email"
-            bind:value={formData.business_email}
-            onblur={() => validateField('business_email')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="ventas@autopartesjuan.com"
-          />
+          <label for="business_email" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// EMAIL DEL NEGOCIO *</label>
+          <input type="email" id="business_email" bind:value={formData.business_email}
+            onblur={() => validateField('business_email')} required
+            class="input-industrial" placeholder="ventas@autopartesjuan.com" />
           {#if errors.business_email}
-            <p class="text-red-600 text-sm mt-1">{errors.business_email}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.business_email}</p>
           {/if}
         </div>
       </div>
-    </section>
-    
-    <!-- ========================================== -->
+    </div>
+
     <!-- SECCIÓN 4: ACCESO A ODOO -->
-    <!-- ========================================== -->
-    <section>
-      <h2 class="text-2xl font-bold text-gray-900 mb-4">
-        4. Acceso a Odoo (ERP)
-      </h2>
-      
-      <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
-        <p class="text-sm text-blue-800">
-          💡 <strong>Odoo</strong> es el sistema donde gestionarás tu inventario y productos.
-          Esta contraseña es diferente a tu contraseña de login del marketplace.
-        </p>
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4">
+        <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// PASO 04</p>
+        <h2 class="font-display text-2xl text-bone uppercase leading-none">ACCESO A ODOO (ERP)</h2>
       </div>
-      
-      <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <!-- Password Odoo -->
+      <div class="px-6 pt-4 pb-2">
+        <div class="border border-steel-600/25 bg-iron-800/50 px-4 py-3 flex items-start gap-3 mb-4">
+          <span class="w-1.5 h-1.5 bg-steel-400 flex-shrink-0 mt-1"></span>
+          <p class="font-mono text-[10px] text-steel-400 leading-relaxed">
+            ODOO ES EL SISTEMA DONDE GESTIONARÁS TU INVENTARIO Y PRODUCTOS. ESTA CONTRASEÑA ES DIFERENTE A TU CONTRASEÑA DE LOGIN DEL MARKETPLACE.
+          </p>
+        </div>
+      </div>
+      <div class="px-5 pb-5 grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <label for="odoo_password" class="block text-sm font-medium text-gray-700 mb-1">
-            Contraseña Odoo *
-          </label>
-          <input
-            type="password"
-            id="odoo_password"
-            bind:value={formData.odoo_password}
-            onblur={() => validateField('odoo_password')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Mínimo 8 caracteres"
-          />
+          <label for="odoo_password" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// CONTRASEÑA ODOO *</label>
+          <input type="password" id="odoo_password" bind:value={formData.odoo_password}
+            onblur={() => validateField('odoo_password')} required
+            class="input-industrial" placeholder="Mínimo 8 caracteres" />
           {#if errors.odoo_password}
-            <p class="text-red-600 text-sm mt-1">{errors.odoo_password}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.odoo_password}</p>
           {/if}
         </div>
-        
-        <!-- Confirmar Password Odoo -->
+
         <div>
-          <label for="odoo_password_confirm" class="block text-sm font-medium text-gray-700 mb-1">
-            Confirmar contraseña Odoo *
-          </label>
-          <input
-            type="password"
-            id="odoo_password_confirm"
-            bind:value={formData.odoo_password_confirm}
-            onblur={() => validateField('odoo_password_confirm')}
-            required
-            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Repetir contraseña"
-          />
+          <label for="odoo_password_confirm" class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// CONFIRMAR CONTRASEÑA ODOO *</label>
+          <input type="password" id="odoo_password_confirm" bind:value={formData.odoo_password_confirm}
+            onblur={() => validateField('odoo_password_confirm')} required
+            class="input-industrial" placeholder="Repetir contraseña" />
           {#if errors.odoo_password_confirm}
-            <p class="text-red-600 text-sm mt-1">{errors.odoo_password_confirm}</p>
+            <p class="font-mono text-[10px] text-rust-400 mt-1">{errors.odoo_password_confirm}</p>
           {/if}
         </div>
       </div>
-    </section>
-    
-    <!-- ========================================== -->
-    <!-- TÉRMINOS Y CONDICIONES -->
-    <!-- ========================================== -->
-    <section>
-      <div class="flex items-start">
-        <input
-          type="checkbox"
-          id="accept_terms"
-          bind:checked={formData.accept_terms}
-          required
-          class="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 mt-1"
-        />
-        <label for="accept_terms" class="ml-2 text-sm text-gray-700">
-          Acepto los <a href="/terminos" class="text-blue-600 hover:underline">términos y condiciones</a>
-          y la <a href="/privacidad" class="text-blue-600 hover:underline">política de privacidad</a> *
-        </label>
-      </div>
-      {#if errors.accept_terms}
-        <p class="text-red-600 text-sm mt-1">{errors.accept_terms}</p>
-      {/if}
-    </section>
-    
-    <!-- ========================================== -->
-    <!-- BOTÓN DE ENVÍO -->
-    <!-- ========================================== -->
-    <div class="flex justify-center">
-      <button
-        type="submit"
-        disabled={isSubmitting}
-        class="px-8 py-3 bg-blue-600 text-white font-medium rounded-lg hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors"
-      >
-        {#if isSubmitting}
-          <!-- Spinner de carga -->
-          <span class="flex items-center">
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+    </div>
+
+    <!-- TÉRMINOS -->
+    <div>
+      <label class="flex items-start gap-3 cursor-pointer group">
+        <div class="relative w-4 h-4 border flex items-center justify-center flex-shrink-0 mt-0.5
+                    {formData.accept_terms ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
+          <input type="checkbox" id="accept_terms" bind:checked={formData.accept_terms} required class="sr-only" />
+          {#if formData.accept_terms}
+            <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+              <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
             </svg>
-            Registrando...
-          </span>
+          {/if}
+        </div>
+        <span class="font-mono text-[10px] text-steel-500 uppercase tracking-widest group-hover:text-bone transition-colors leading-relaxed">
+          ACEPTO LOS <a href="/terminos" class="text-rust-500 hover:text-rust-400">TÉRMINOS Y CONDICIONES</a>
+          Y LA <a href="/privacidad" class="text-rust-500 hover:text-rust-400">POLÍTICA DE PRIVACIDAD</a> *
+        </span>
+      </label>
+      {#if errors.accept_terms}
+        <p class="font-mono text-[10px] text-rust-400 mt-1 ml-7">{errors.accept_terms}</p>
+      {/if}
+    </div>
+
+    <!-- BOTÓN ENVÍO -->
+    <div class="flex justify-center pt-2">
+      <button type="submit" disabled={isSubmitting}
+        class="btn-rust px-10 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-3">
+        {#if isSubmitting}
+          <svg class="animate-spin h-4 w-4" fill="none" viewBox="0 0 24 24">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          REGISTRANDO...
         {:else}
-          Registrar mi negocio
+          REGISTRAR MI NEGOCIO →
         {/if}
       </button>
     </div>

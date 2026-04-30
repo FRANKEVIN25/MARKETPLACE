@@ -45,24 +45,31 @@
   />
 </svelte:head>
 
-<div class="min-h-screen bg-[linear-gradient(180deg,#f8fafc_0%,#eff6ff_18%,#fff7ed_100%)]">
-  <section class="mx-auto max-w-7xl px-6 py-10 md:py-14">
-    <div class="mb-6 flex flex-wrap items-center gap-3 text-sm font-medium text-slate-500">
-      <a href="/productos" class="transition hover:text-slate-900">Productos</a>
-      <span>/</span>
-      <span class="text-slate-900">{provider.name}</span>
+<div class="min-h-screen">
+  <!-- Breadcrumb -->
+  <div class="bg-iron-900 border-b border-steel-600/30">
+    <div class="container-responsive py-3">
+      <div class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest text-steel-500">
+        <a href="/productos" class="hover:text-rust-500 transition-colors">PRODUCTOS</a>
+        <span class="text-steel-700">/</span>
+        <span class="text-bone truncate">{provider.name.toUpperCase()}</span>
+      </div>
     </div>
+  </div>
 
+  <!-- Hero -->
+  <div class="container-responsive py-8">
     <ProviderHero {provider} {averageRating} {productCatalogUrl} />
-  </section>
+  </div>
 
-  <section class="mx-auto max-w-7xl space-y-10 px-6 pb-16">
+  <div class="container-responsive pb-12 space-y-6">
     {#if data.warnings.length > 0}
-      <div class="rounded-[1.75rem] border border-amber-200 bg-amber-50 p-6 text-amber-900">
-        <h2 class="text-lg font-bold">Parte del perfil no pudo refrescarse</h2>
-        <div class="mt-3 space-y-1 text-sm">
+      <div class="border border-rust-700/50 bg-rust-600/10 p-5 flex items-start gap-3">
+        <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0 mt-1"></span>
+        <div>
+          <p class="font-mono text-xs text-rust-400 uppercase tracking-widest mb-2">PARTE DEL PERFIL NO PUDO REFRESCARSE</p>
           {#each data.warnings as warning}
-            <p>{warning}</p>
+            <p class="font-mono text-[10px] text-steel-400">{warning}</p>
           {/each}
         </div>
       </div>
@@ -75,59 +82,59 @@
       publishedAt={provider.created_at}
     />
 
-    <section class="grid gap-8 xl:grid-cols-[0.95fr,1.05fr]">
-      <article class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.55)]">
-        <div class="flex items-end justify-between gap-4">
+    <div class="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
+      <!-- Ficha estructurada -->
+      <div class="bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <div class="border-b border-steel-600/25 px-6 py-4 flex items-center justify-between gap-4">
           <div>
-            <p class="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-700">Ficha base</p>
-            <h2 class="mt-2 text-3xl font-black text-slate-950">Informacion estructurada del proveedor</h2>
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// FICHA BASE</p>
+            <h2 class="font-display text-3xl text-bone uppercase leading-none">INFORMACIÓN ESTRUCTURADA</h2>
           </div>
-          <a href={productCatalogUrl} class="text-sm font-semibold text-cyan-700 transition hover:text-cyan-800">Ver catalogo completo</a>
+          <a href={productCatalogUrl} class="btn-ghost font-mono text-[10px] uppercase tracking-widest shrink-0">VER CATÁLOGO →</a>
         </div>
-
-        <div class="mt-8 grid gap-4 sm:grid-cols-2">
+        <div class="p-5 grid gap-3 sm:grid-cols-2">
           {#each signalCards as card}
-            <div class="rounded-[1.5rem] border border-slate-200 bg-[linear-gradient(180deg,#ffffff,#f8fafc)] p-5">
-              <p class="text-xs uppercase tracking-[0.22em] text-slate-500">{card.label}</p>
-              <p class="mt-3 text-2xl font-black text-slate-950">{card.value}</p>
-              <p class="mt-2 text-sm leading-6 text-slate-600">{card.description}</p>
+            <div class="bg-iron-800/50 border border-steel-600/20 p-4">
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">{card.label.toUpperCase()}</p>
+              <p class="font-display text-2xl text-rust-600 leading-none mb-1">{card.value}</p>
+              <p class="font-mono text-[10px] text-steel-500 leading-relaxed">{card.description}</p>
             </div>
           {/each}
         </div>
-
-        <div class="mt-6 rounded-[1.5rem] bg-slate-950 p-6 text-white">
-          <p class="text-sm font-semibold uppercase tracking-[0.22em] text-cyan-300">Lectura comercial</p>
-          <p class="mt-3 text-lg leading-8 text-white/80">
-            Esta plantilla no intenta inventar una landing distinta por proveedor. Mantiene una base comun y deja que el contenido real cambie con reputacion, catalogo, contacto y actividad operativa.
+        <div class="border-t border-steel-600/25 bg-iron-800/30 px-6 py-5">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// LECTURA COMERCIAL</p>
+          <p class="font-mono text-xs text-steel-400 leading-relaxed">
+            Esta plantilla no intenta inventar una landing distinta por proveedor. Mantiene una base común y deja que el contenido real cambie con reputación, catálogo, contacto y actividad operativa.
           </p>
         </div>
-      </article>
+      </div>
 
       <ProviderReviewFeed {reviews} />
-    </section>
+    </div>
 
-    <section class="rounded-[2rem] border border-slate-200 bg-white p-8 shadow-[0_24px_70px_-45px_rgba(15,23,42,0.55)]">
-      <div class="flex flex-wrap items-end justify-between gap-4">
+    <!-- Catálogo de productos -->
+    <div class="bg-iron-900 border border-steel-600/25"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <div class="border-b border-steel-600/25 px-6 py-4 flex flex-wrap items-center justify-between gap-3">
         <div>
-          <p class="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-700">Catalogo publicado</p>
-          <h2 class="mt-2 text-3xl font-black text-slate-950">Productos visibles de este proveedor</h2>
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-1">// CATÁLOGO PUBLICADO</p>
+          <h2 class="font-display text-3xl text-bone uppercase leading-none">PRODUCTOS VISIBLES</h2>
         </div>
-        <a href={productCatalogUrl} class="rounded-2xl border border-slate-300 px-5 py-3 text-sm font-semibold text-slate-700 transition hover:border-slate-400 hover:text-slate-950">
-          Abrir todo el catalogo
-        </a>
+        <a href={productCatalogUrl} class="btn-outline shrink-0">ABRIR TODO EL CATÁLOGO</a>
       </div>
 
       {#if products.length === 0}
-        <div class="mt-8 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 p-8 text-center text-slate-600">
-          Este proveedor aun no tiene productos visibles en el catalogo publico.
+        <div class="p-8 text-center">
+          <p class="font-mono text-xs text-steel-600 uppercase tracking-widest">ESTE PROVEEDOR AÚN NO TIENE PRODUCTOS VISIBLES</p>
         </div>
       {:else}
-        <div class="mt-8 grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+        <div class="p-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
           {#each products as product}
             <ProductCard {product} />
           {/each}
         </div>
       {/if}
-    </section>
-  </section>
+    </div>
+  </div>
 </div>

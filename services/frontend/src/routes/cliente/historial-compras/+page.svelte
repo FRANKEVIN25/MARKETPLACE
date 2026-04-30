@@ -8,37 +8,28 @@
   let loading = true;
   let error = '';
 
-  // -------------------------------------------------------------------
-  // Helpers de UI
-  // -------------------------------------------------------------------
   const statusLabel: Record<OrderStatus, string> = {
-    pendiente_pago: 'Pendiente de pago',
-    pagado: 'Pagado',
-    procesando: 'Procesando',
-    enviado: 'Enviado',
-    completado: 'Completado',
-    cancelado: 'Cancelado',
+    pendiente_pago: 'PENDIENTE DE PAGO',
+    pagado: 'PAGADO',
+    procesando: 'PROCESANDO',
+    enviado: 'ENVIADO',
+    completado: 'COMPLETADO',
+    cancelado: 'CANCELADO',
   };
 
   const statusColor: Record<OrderStatus, string> = {
-    pendiente_pago:
-      'bg-yellow-100 text-yellow-800 border border-yellow-200',
-    pagado:
-      'bg-blue-100 text-blue-800 border border-blue-200',
-    procesando:
-      'bg-indigo-100 text-indigo-800 border border-indigo-200',
-    enviado:
-      'bg-purple-100 text-purple-800 border border-purple-200',
-    completado:
-      'bg-green-100 text-green-800 border border-green-200',
-    cancelado:
-      'bg-red-100 text-red-800 border border-red-200',
+    pendiente_pago: 'border-yellow-700/50 text-yellow-400',
+    pagado: 'border-steel-600/50 text-steel-300',
+    procesando: 'border-rust-700/50 text-rust-400',
+    enviado: 'border-steel-600/50 text-bone',
+    completado: 'border-green-700/50 text-green-400',
+    cancelado: 'border-rust-700/50 text-rust-500',
   };
 
   const deliveryLabel: Record<string, string> = {
-    domicilio: 'Envío a domicilio',
-    agencia: 'Recojo en agencia',
-    tienda: 'Recojo en tienda',
+    domicilio: 'ENVÍO A DOMICILIO',
+    agencia: 'RECOJO EN AGENCIA',
+    tienda: 'RECOJO EN TIENDA',
   };
 
   function formatDate(iso: string): string {
@@ -50,12 +41,9 @@
   }
 
   function formatCurrency(value: string | number): string {
-    return `S/ ${parseFloat(String(value)).toFixed(2)}`;
+    return `S/. ${parseFloat(String(value)).toFixed(2)}`;
   }
 
-  // -------------------------------------------------------------------
-  // Carga de datos
-  // -------------------------------------------------------------------
   onMount(async () => {
     const token = auth.getAccessToken();
     if (!token) {
@@ -64,7 +52,6 @@
     }
     try {
       orders = await api.orders.getOrders(token);
-      // Ordenar por fecha descendente
       orders.sort(
         (a, b) =>
           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
@@ -78,131 +65,88 @@
 </script>
 
 <svelte:head>
-  <title>Historial de Compras - ECOMPARTS</title>
+  <title>Historial de Compras — ECOMPARTS</title>
 </svelte:head>
 
-<div class="max-w-4xl mx-auto py-12 px-4">
-  <!-- Encabezado -->
-  <div class="flex items-center justify-between mb-8">
+<div class="container-responsive py-10 max-w-4xl">
+
+  <!-- Header -->
+  <div class="border-b border-steel-600/25 pb-6 mb-8 flex items-start justify-between gap-4">
     <div>
-      <h1 class="text-3xl font-bold text-gray-900">Historial de Compras</h1>
-      <p class="text-gray-500 mt-1">Revisa el estado de todos tus pedidos</p>
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// MI CUENTA / PEDIDOS</p>
+      <h1 class="font-display text-5xl text-bone uppercase leading-none">HISTORIAL DE COMPRAS</h1>
+      <p class="font-mono text-xs text-steel-500 mt-2 uppercase tracking-widest">Estado de todos tus pedidos</p>
     </div>
-    <a
-      href="/cliente/perfil"
-      class="text-sm text-blue-600 hover:underline flex items-center gap-1"
-    >
-      ← Mi cuenta
+    <a href="/cliente/perfil" class="btn-ghost shrink-0 font-mono text-[10px] uppercase tracking-widest mt-1">
+      ← MI CUENTA
     </a>
   </div>
 
-  <!-- Estado de carga -->
   {#if loading}
-    <div class="flex flex-col items-center justify-center py-24 text-gray-400">
-      <svg
-        class="animate-spin h-8 w-8 mb-3 text-blue-500"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-      >
-        <circle
-          class="opacity-25"
-          cx="12"
-          cy="12"
-          r="10"
-          stroke="currentColor"
-          stroke-width="4"
-        />
-        <path
-          class="opacity-75"
-          fill="currentColor"
-          d="M4 12a8 8 0 018-8v8H4z"
-        />
+    <div class="flex flex-col items-center justify-center py-24 gap-4">
+      <svg class="animate-spin h-8 w-8 text-rust-600" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/>
+        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
       </svg>
-      Cargando pedidos...
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest animate-pulse">CARGANDO PEDIDOS...</p>
     </div>
 
   {:else if error}
-    <div class="bg-red-50 border border-red-200 text-red-700 rounded-lg p-6 text-center">
-      {error}
+    <div class="border border-rust-700/50 bg-rust-600/10 p-6 text-center">
+      <p class="font-mono text-xs text-rust-400">{error}</p>
     </div>
 
   {:else if orders.length === 0}
-    <div class="flex flex-col items-center justify-center py-24 text-gray-400">
-      <svg
-        class="h-16 w-16 mb-4 text-gray-300"
-        xmlns="http://www.w3.org/2000/svg"
-        fill="none"
-        viewBox="0 0 24 24"
-        stroke="currentColor"
-      >
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          stroke-width="1.5"
-          d="M9 17v-2a4 4 0 014-4h0a4 4 0 014 4v2M3 17v-2a4 4 0 014-4h4m0 0V7a3 3 0 10-6 0v6h6z"
-        />
+    <div class="bg-iron-900 border border-steel-600/25 p-16 text-center"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <svg class="h-16 w-16 mx-auto mb-5 text-steel-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="0.75"
+          d="M9 17v-2a4 4 0 014-4h0a4 4 0 014 4v2M3 17v-2a4 4 0 014-4h4m0 0V7a3 3 0 10-6 0v6h6z"/>
       </svg>
-      <p class="text-lg font-medium">Aún no tienes pedidos</p>
-      <a
-        href="/productos"
-        class="mt-4 inline-block bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium px-6 py-2 rounded-lg transition"
-      >
-        Explorar productos
-      </a>
+      <p class="font-display text-3xl text-steel-600 uppercase mb-2">SIN PEDIDOS</p>
+      <p class="font-mono text-xs text-steel-700 uppercase tracking-widest mb-8">AÚN NO TIENES PEDIDOS REGISTRADOS</p>
+      <a href="/productos" class="btn-rust">EXPLORAR CATÁLOGO →</a>
     </div>
 
   {:else}
-    <!-- Contador -->
-    <p class="text-sm text-gray-500 mb-4">
-      {orders.length} pedido{orders.length !== 1 ? 's' : ''} registrado{orders.length !== 1 ? 's' : ''}
+    <p class="font-mono text-[10px] text-steel-600 uppercase tracking-widest mb-5">
+      {orders.length} PEDIDO{orders.length !== 1 ? 'S' : ''} REGISTRADO{orders.length !== 1 ? 'S' : ''}
     </p>
 
-    <!-- Lista de órdenes -->
-    <div class="space-y-4">
+    <div class="space-y-3">
       {#each orders as order (order.id)}
         <a
           href="/cliente/historial-compras/{order.id}"
-          class="block bg-white rounded-xl shadow-sm border border-gray-100 hover:shadow-md hover:border-blue-200 transition p-6"
+          class="block bg-iron-900 border border-steel-600/25 hover:border-steel-600/50 transition-colors group"
+          style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)"
         >
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <!-- Info principal -->
+          <div class="border-b border-steel-600/20 px-5 py-3 flex items-center justify-between gap-3 flex-wrap">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">
+              // ORDEN {order.order_number}
+            </p>
+            <span class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border {statusColor[order.status]}">
+              {statusLabel[order.status]}
+            </span>
+          </div>
+
+          <div class="px-5 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div class="space-y-1">
-              <div class="flex items-center gap-3 flex-wrap">
-                <span class="font-mono font-semibold text-gray-900 text-sm">
-                  {order.order_number}
-                </span>
-                <span
-                  class="text-xs font-medium px-2.5 py-0.5 rounded-full {statusColor[order.status]}"
-                >
-                  {statusLabel[order.status]}
-                </span>
-              </div>
-              <p class="text-xs text-gray-400">
-                {formatDate(order.created_at)} · {deliveryLabel[order.delivery_method] ?? order.delivery_method}
+              <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+                {formatDate(order.created_at)} — {deliveryLabel[order.delivery_method] ?? order.delivery_method}
               </p>
-              <p class="text-xs text-gray-500">
-                {order.provider_count} proveedor{order.provider_count !== 1 ? 'es' : ''}
-                · {order.items.length} producto{order.items.length !== 1 ? 's' : ''}
+              <p class="font-mono text-[10px] text-steel-600">
+                {order.provider_count} PROVEEDOR{order.provider_count !== 1 ? 'ES' : ''}
+                · {order.items.length} PRODUCTO{order.items.length !== 1 ? 'S' : ''}
               </p>
             </div>
-
-            <!-- Total y flecha -->
             <div class="flex items-center gap-4">
-              <span class="text-lg font-bold text-gray-900">
+              <span class="font-display text-2xl text-bone leading-none group-hover:text-rust-400 transition-colors">
                 {formatCurrency(order.total)}
               </span>
-              <svg
-                class="h-5 w-5 text-gray-400 flex-shrink-0"
-                xmlns="http://www.w3.org/2000/svg"
-                viewBox="0 0 20 20"
-                fill="currentColor"
-              >
-                <path
-                  fill-rule="evenodd"
+              <svg class="h-5 w-5 text-steel-600 flex-shrink-0" viewBox="0 0 20 20" fill="currentColor">
+                <path fill-rule="evenodd"
                   d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
-                  clip-rule="evenodd"
-                />
+                  clip-rule="evenodd"/>
               </svg>
             </div>
           </div>

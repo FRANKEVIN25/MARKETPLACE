@@ -26,44 +26,52 @@
   }
 </script>
 
-<section class="grid gap-6 lg:grid-cols-[0.9fr,1.1fr]">
-  <article class="rounded-[2rem] bg-slate-950 p-8 text-white shadow-[0_24px_80px_-50px_rgba(15,23,42,0.85)]">
-    <p class="text-sm font-semibold uppercase tracking-[0.24em] text-cyan-300">Resumen de reputacion</p>
-    <div class="mt-6 flex items-end gap-4">
-      <p class="text-6xl font-black">{averageRating.toFixed(1)}</p>
-      <div class="pb-2">
-        <p class="text-lg font-semibold">sobre 5.0</p>
-        <p class="text-sm text-white/70">{ratingCount} calificaciones visibles</p>
-      </div>
+<div class="grid gap-5 lg:grid-cols-[0.9fr_1.1fr]">
+  <!-- Rating breakdown -->
+  <div class="bg-iron-900 border border-steel-600/25"
+       style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+    <div class="border-b border-steel-600/25 px-5 py-3">
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// RESUMEN DE REPUTACIÓN</p>
     </div>
-
-    <div class="mt-6 space-y-3">
-      {#each orderedStars as star}
-        <div class="grid grid-cols-[44px,1fr,36px] items-center gap-3 text-sm">
-          <span class="font-semibold text-white/80">{star}★</span>
-          <div class="h-3 overflow-hidden rounded-full bg-white/10">
-            <div class="h-full rounded-full bg-cyan-300" style={`width: ${getWidth(star)};`}></div>
-          </div>
-          <span class="text-right text-white/70">{getCount(star)}</span>
+    <div class="px-5 py-5">
+      <div class="flex items-end gap-4 mb-5">
+        <p class="font-display text-6xl text-rust-600 leading-none">{averageRating.toFixed(1)}</p>
+        <div class="pb-1">
+          <p class="font-mono text-xs text-bone uppercase">SOBRE 5.0</p>
+          <p class="font-mono text-[10px] text-steel-500">{ratingCount} CALIFICACIONES</p>
         </div>
-      {/each}
+      </div>
+      <div class="space-y-2">
+        {#each orderedStars as star}
+          <div class="grid grid-cols-[40px_1fr_32px] items-center gap-3">
+            <span class="font-mono text-[10px] text-steel-400">{star}★</span>
+            <div class="h-1.5 bg-iron-800 border border-steel-600/20 overflow-hidden">
+              <div class="h-full bg-rust-600" style={`width: ${getWidth(star)};`}></div>
+            </div>
+            <span class="font-mono text-[10px] text-steel-500 text-right">{getCount(star)}</span>
+          </div>
+        {/each}
+      </div>
     </div>
-  </article>
+  </div>
 
-  <article class="rounded-[2rem] border border-slate-200 bg-[linear-gradient(180deg,#fff7ed,#ffffff)] p-8 shadow-[0_24px_70px_-45px_rgba(148,163,184,0.55)]">
-    <p class="text-sm font-semibold uppercase tracking-[0.24em] text-orange-700">Lectura rapida</p>
-    <h2 class="mt-2 text-3xl font-black text-slate-950">La plantilla deja claro por que confiar</h2>
-    <div class="mt-6 grid gap-4 sm:grid-cols-2">
-      <div class="rounded-[1.5rem] border border-orange-100 bg-white/90 p-5">
-        <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Evidencia</p>
-        <p class="mt-3 text-lg font-bold text-slate-950">Opiniones post entrega</p>
-        <p class="mt-2 text-sm leading-6 text-slate-600">La reputacion solo suma con subordenes entregadas y reseñas visibles.</p>
+  <!-- Lectura rápida -->
+  <div class="bg-iron-900 border border-steel-600/25"
+       style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+    <div class="border-b border-steel-600/25 px-5 py-3">
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// LECTURA RÁPIDA</p>
+    </div>
+    <div class="p-5 grid gap-3 sm:grid-cols-2">
+      <div class="bg-iron-800/50 border border-steel-600/20 p-4">
+        <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">EVIDENCIA</p>
+        <p class="font-mono text-xs text-bone mb-1">OPINIONES POST ENTREGA</p>
+        <p class="font-mono text-[10px] text-steel-500 leading-relaxed">La reputación solo suma con subórdenes entregadas y reseñas visibles.</p>
       </div>
-      <div class="rounded-[1.5rem] border border-orange-100 bg-white/90 p-5">
-        <p class="text-xs uppercase tracking-[0.24em] text-slate-500">Antiguedad del perfil</p>
-        <p class="mt-3 text-lg font-bold text-slate-950">Desde {formatMonth(publishedAt)}</p>
-        <p class="mt-2 text-sm leading-6 text-slate-600">Un formato comun permite comparar proveedores sin inventar layouts distintos.</p>
+      <div class="bg-iron-800/50 border border-steel-600/20 p-4">
+        <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">ANTIGÜEDAD</p>
+        <p class="font-mono text-xs text-bone mb-1">DESDE {formatMonth(publishedAt).toUpperCase()}</p>
+        <p class="font-mono text-[10px] text-steel-500 leading-relaxed">Un formato común permite comparar proveedores sin inventar layouts distintos.</p>
       </div>
     </div>
-  </article>
-</section>
+  </div>
+</div>

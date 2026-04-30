@@ -8,7 +8,6 @@
 
   const customer = auth.customer;
 
-  // ── Datos del backend ─────────────────────────────────────────────────────
   let categories: ServiceCategoryItem[] = [];
   let marcas: VehicleMarca[] = [];
   let modelos: VehicleModelo[] = [];
@@ -16,7 +15,6 @@
   let provinces: string[] = [];
   let districts: string[] = [];
 
-  // ── Estado del wizard ─────────────────────────────────────────────────────
   let selectedCategoryId: number | null = null;
   let selectedMarcaId: number | null = null;
   let selectedModeloId: number | null = null;
@@ -41,7 +39,6 @@
     marcas = ms;
     departments = locs.departments;
 
-    // Departamento por defecto
     const defaultDept = departments.includes('Lima') ? 'Lima' : (departments[0] ?? '');
     if (defaultDept) {
       wizardDepartment = defaultDept;
@@ -114,216 +111,261 @@
   }
 
   function categoryIcon(icon: string | undefined): string {
-  if (!icon) return '🔧';
-  return icon;
+    if (!icon) return '🔧';
+    return icon;
   }
 </script>
 
 <svelte:head>
-  <title>Servicios de Taller | ECOMPARTS</title>
+  <title>Servicios de Taller — ECOMPARTS</title>
   <meta
     name="description"
     content="Encuentra servicios de taller con búsqueda guiada, matching por vehículo y confianza basada en historial real de trabajos en ECOMPARTS."
   />
 </svelte:head>
 
-<section class="bg-gradient-to-br from-slate-950 via-blue-950 to-indigo-900 text-white">
-  <div class="max-w-7xl mx-auto px-6 py-16 md:py-20 grid grid-cols-1 xl:grid-cols-[1.08fr,0.92fr] gap-10 items-start">
+<!-- Hero de servicios -->
+<div class="bg-iron-900 border-b border-steel-600/30">
+  <div class="container-responsive py-10">
+    <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// RED DE TALLERES</p>
+    <h1 class="font-display text-5xl md:text-6xl text-bone uppercase leading-none mb-3">SERVICIOS<br/>DE TALLER</h1>
+    <p class="font-mono text-xs text-steel-500 uppercase tracking-widest">
+      Búsqueda guiada · Matching por vehículo · Historial verificado
+    </p>
+  </div>
+</div>
 
-    <!-- ── Paso 1: Categoría del problema ───────────────────────────────── -->
-    <div class="space-y-8">
-      <div class="rounded-3xl border border-white/15 bg-white/10 backdrop-blur p-6 md:p-7 shadow-2xl">
-        <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-6">
+<div class="container-responsive py-10">
+  <div class="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-8 items-start">
+
+    <!-- ══════════════════════════════════
+         PASO 1: CATEGORÍA DEL PROBLEMA
+    ═══════════════════════════════════ -->
+    <div>
+      <div class="bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 16px) 0, 100% 16px, 100% 100%, 0 100%)">
+
+        <div class="border-b border-steel-600/25 px-6 py-4 flex items-center justify-between">
           <div>
-            <p class="text-sm font-semibold uppercase tracking-wide text-blue-200">Búsqueda inteligente guiada</p>
-            <h2 class="text-2xl font-bold mt-1">1. ¿Qué problema tienes?</h2>
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PASO 01</p>
+            <p class="font-display text-2xl text-bone uppercase mt-1">¿QUÉ PROBLEMA TIENES?</p>
           </div>
+          <span class="font-display text-6xl text-rust-600/15 leading-none">01</span>
         </div>
 
-        {#if loadingInit}
-          <!-- Skeleton de carga -->
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {#each Array(6) as _}
-              <div class="rounded-2xl border border-white/10 bg-white/5 p-4 animate-pulse h-24"></div>
-            {/each}
-          </div>
-        {:else if categories.length === 0}
-          <p class="text-blue-200 text-sm">No hay categorías disponibles aún.</p>
-        {:else}
-          <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
-            {#each categories as category (category.id)}
-              <button
-                type="button"
-                onclick={() => (selectedCategoryId = category.id)}
-                class={`rounded-2xl border p-4 text-left transition ${selectedCategoryId === category.id
-                  ? 'border-blue-300 bg-white text-slate-900 shadow-lg'
-                  : 'border-white/15 bg-white/5 text-white hover:bg-white/10'}`}
-              >
-                <div class="flex items-start justify-between gap-3">
-                  <div>
-                    <p class="text-2xl mb-2">
+        <div class="p-6">
+          {#if loadingInit}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {#each Array(6) as _}
+                <div class="bg-iron-800 border border-steel-600/20 p-4 h-24 animate-pulse"></div>
+              {/each}
+            </div>
+
+          {:else if categories.length === 0}
+            <p class="font-mono text-xs text-steel-500 uppercase tracking-widest">SIN CATEGORÍAS DISPONIBLES</p>
+
+          {:else}
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+              {#each categories as category (category.id)}
+                <button
+                  type="button"
+                  onclick={() => (selectedCategoryId = category.id)}
+                  class="border p-4 text-left transition-all duration-150 group
+                    {selectedCategoryId === category.id
+                      ? 'border-rust-600 bg-rust-600/10'
+                      : 'border-steel-600/30 bg-iron-800/50 hover:border-steel-400'}"
+                >
+                  <div class="flex items-start justify-between gap-3 mb-2">
+                    <p class="text-xl">
                       {#if category.icon && category.icon.trim().startsWith('fa-')}
-                        <i class={`fa-solid ${category.icon} `} aria-hidden="true"></i>
+                        <i class="fa-solid {category.icon}" aria-hidden="true"></i>
                       {:else}
                         {categoryIcon(category.icon)}
                       {/if}
                     </p>
-                    <h3 class="font-bold">{category.name}</h3>
+                    {#if selectedCategoryId === category.id}
+                      <span class="font-mono text-[9px] uppercase tracking-widest text-rust-500 border border-rust-600/40 px-2 py-0.5">
+                        SELEC.
+                      </span>
+                    {/if}
                   </div>
-                  {#if selectedCategoryId === category.id}
-                    <span class="text-xs font-semibold rounded-full bg-blue-100 text-blue-700 px-2 py-1 shrink-0">Seleccionado</span>
-                  {/if}
-                </div>
-                <p class={`text-sm mt-2 ${selectedCategoryId === category.id ? 'text-slate-600' : 'text-blue-100'}`}>
-                  {category.description ?? ''}
-                </p>
-              </button>
-            {/each}
-          </div>
-        {/if}
+                  <h3 class="font-display text-lg uppercase leading-none mb-1
+                    {selectedCategoryId === category.id ? 'text-bone' : 'text-steel-300 group-hover:text-bone'}">
+                    {category.name}
+                  </h3>
+                  <p class="font-mono text-[10px] leading-relaxed
+                    {selectedCategoryId === category.id ? 'text-steel-400' : 'text-steel-600'}">
+                    {category.description ?? ''}
+                  </p>
+                </button>
+              {/each}
+            </div>
+          {/if}
+        </div>
       </div>
     </div>
 
-    <!-- ── Sidebar: Pasos 2 y 3 + CTA talleres ──────────────────────────── -->
-    <aside class="space-y-6">
+    <!-- ══════════════════════════════════
+         SIDEBAR: PASOS 2, 3 + CTA
+    ═══════════════════════════════════ -->
+    <aside class="space-y-5">
 
       <!-- Wizard: vehículo + ubicación -->
-      <div class="rounded-3xl bg-slate-700 p-2 md:p-4 shadow-2xl">
-        <div class="grid grid-cols-1 gap-4 mt-4">
+      <div class="bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
 
-          <!-- Paso 2: Vehículo -->
-          <div class="rounded-2xl bg-slate-950/35 border border-white/10 p-4">
-            <p class="text-sm font-semibold text-blue-200 mb-3">2. ¿Qué vehículo tienes?</p>
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <label>
-                <span class="block text-sm text-blue-100 mb-2">Marca</span>
-                <select
-                  bind:value={selectedMarcaId}
-                  onchange={handleMarcaChange}
-                  disabled={loadingInit}
-                  class="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
-                >
-                  {#if loadingInit}
-                    <option value={null}>Cargando...</option>
-                  {:else if marcas.length === 0}
-                    <option value={null}>Sin datos</option>
-                  {:else}
-                    {#each marcas as marca (marca.id)}
-                      <option value={marca.id}>{marca.nombre}</option>
-                    {/each}
-                  {/if}
-                </select>
-              </label>
-              <label>
-                <span class="block text-sm text-blue-100 mb-2">Modelo</span>
-                <select
-                  bind:value={selectedModeloId}
-                  disabled={loadingInit || loadingModelos || modelos.length === 0}
-                  class="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
-                >
-                  {#if loadingModelos}
-                    <option value={null}>Cargando...</option>
-                  {:else if modelos.length === 0}
-                    <option value={null}>Sin datos</option>
-                  {:else}
-                    {#each modelos as modelo (modelo.id)}
-                      <option value={modelo.id}>{modelo.nombre}</option>
-                    {/each}
-                  {/if}
-                </select>
-              </label>
-            </div>
+        <!-- Paso 2: Vehículo -->
+        <div class="border-b border-steel-600/25 px-5 py-4">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PASO 02 — VEHÍCULO</p>
+        </div>
+        <div class="p-5 space-y-3">
+          <div>
+            <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">MARCA</label>
+            <select
+              bind:value={selectedMarcaId}
+              onchange={handleMarcaChange}
+              disabled={loadingInit}
+              class="input-industrial disabled:opacity-50"
+            >
+              {#if loadingInit}
+                <option value={null}>Cargando...</option>
+              {:else if marcas.length === 0}
+                <option value={null}>Sin datos</option>
+              {:else}
+                {#each marcas as marca (marca.id)}
+                  <option value={marca.id}>{marca.nombre}</option>
+                {/each}
+              {/if}
+            </select>
           </div>
+          <div>
+            <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">MODELO</label>
+            <select
+              bind:value={selectedModeloId}
+              disabled={loadingInit || loadingModelos || modelos.length === 0}
+              class="input-industrial disabled:opacity-50"
+            >
+              {#if loadingModelos}
+                <option value={null}>Cargando...</option>
+              {:else if modelos.length === 0}
+                <option value={null}>Sin datos</option>
+              {:else}
+                {#each modelos as modelo (modelo.id)}
+                  <option value={modelo.id}>{modelo.nombre}</option>
+                {/each}
+              {/if}
+            </select>
+          </div>
+        </div>
 
-          <!-- Paso 3: Ubicación -->
-          <div class="rounded-2xl bg-slate-950/35 border border-white/10 p-4">
-            <p class="text-sm font-semibold text-blue-200 mb-3">3. ¿Dónde estás?</p>
-            <div class="grid grid-cols-1 gap-3">
-              <label>
-                <span class="block text-sm text-blue-100 mb-2">Departamento</span>
-                <select
-                  bind:value={wizardDepartment}
-                  onchange={handleDepartmentChange}
-                  disabled={loadingInit}
-                  class="w-full rounded-xl border border-white/15 bg-white/10 px-4 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
-                >
-                  {#if loadingInit}
-                    <option value="">Cargando...</option>
-                  {:else if departments.length === 0}
-                    <option value="">Sin talleres registrados</option>
-                  {:else}
-                    <option value="">Todos los departamentos</option>
-                    {#each departments as dept}
-                      <option value={dept}>{dept}</option>
-                    {/each}
-                  {/if}
-                </select>
+        <!-- Paso 3: Ubicación -->
+        <div class="border-t border-steel-600/25 px-5 py-4">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PASO 03 — UBICACIÓN</p>
+        </div>
+        <div class="p-5 space-y-3">
+          <div>
+            <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">DEPARTAMENTO</label>
+            <select
+              bind:value={wizardDepartment}
+              onchange={handleDepartmentChange}
+              disabled={loadingInit}
+              class="input-industrial disabled:opacity-50"
+            >
+              {#if loadingInit}
+                <option value="">Cargando...</option>
+              {:else if departments.length === 0}
+                <option value="">Sin talleres registrados</option>
+              {:else}
+                <option value="">Todos los departamentos</option>
+                {#each departments as dept}
+                  <option value={dept}>{dept}</option>
+                {/each}
+              {/if}
+            </select>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">
+                PROVINCIA <span class="text-steel-700">(OPC.)</span>
               </label>
-              <div class="grid grid-cols-2 gap-3">
-                <label>
-                  <span class="block text-sm text-blue-100 mb-2">
-                    Provincia <span class="text-blue-300/60 text-xs">(opcional)</span>
-                  </span>
-                  <select
-                    bind:value={wizardProvince}
-                    onchange={handleProvinceChange}
-                    disabled={loadingLocation || provinces.length === 0}
-                    class="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
-                  >
-                    <option value="">Todas</option>
-                    {#each provinces as prov}
-                      <option value={prov}>{prov}</option>
-                    {/each}
-                  </select>
-                </label>
-                <label>
-                  <span class="block text-sm text-blue-100 mb-2">
-                    Distrito <span class="text-blue-300/60 text-xs">(opcional)</span>
-                  </span>
-                  <select
-                    bind:value={wizardDistrict}
-                    disabled={loadingLocation || districts.length === 0}
-                    class="w-full rounded-xl border border-white/15 bg-white/10 px-3 py-3 text-white focus:outline-none focus:ring-2 focus:ring-blue-300 disabled:opacity-50"
-                  >
-                    <option value="">Todos</option>
-                    {#each districts as dist}
-                      <option value={dist}>{dist}</option>
-                    {/each}
-                  </select>
-                </label>
-              </div>
+              <select
+                bind:value={wizardProvince}
+                onchange={handleProvinceChange}
+                disabled={loadingLocation || provinces.length === 0}
+                class="input-industrial disabled:opacity-50"
+              >
+                <option value="">Todas</option>
+                {#each provinces as prov}
+                  <option value={prov}>{prov}</option>
+                {/each}
+              </select>
+            </div>
+            <div>
+              <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">
+                DISTRITO <span class="text-steel-700">(OPC.)</span>
+              </label>
+              <select
+                bind:value={wizardDistrict}
+                disabled={loadingLocation || districts.length === 0}
+                class="input-industrial disabled:opacity-50"
+              >
+                <option value="">Todos</option>
+                {#each districts as dist}
+                  <option value={dist}>{dist}</option>
+                {/each}
+              </select>
             </div>
           </div>
         </div>
 
-        <div class="mt-4 px-2 pb-2">
+        <!-- CTA buscar -->
+        <div class="border-t border-steel-600/25 p-5">
           <button
             type="button"
             onclick={runDiagnosis}
             disabled={loadingInit || !selectedCategoryId}
-            class="w-full rounded-2xl bg-blue-500 hover:bg-blue-400 disabled:bg-blue-800 disabled:opacity-60 text-white font-bold px-6 py-4 text-base transition shadow-lg"
+            class="w-full bg-rust-600 hover:bg-rust-700 disabled:opacity-40 disabled:cursor-not-allowed
+                   text-bone font-display text-xl uppercase tracking-widest py-4 transition-colors"
+            style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)"
           >
-            Buscar talleres →
+            BUSCAR TALLERES →
           </button>
         </div>
       </div>
 
-      <!-- CTA: activación para talleres -->
-      <section class="rounded-3xl border border-white/15 bg-white/10 backdrop-blur p-6 text-white shadow-xl">
-        <p class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-3">Activación para talleres</p>
-        <h2 class="text-2xl font-bold mb-3">Tu negocio también puede publicar aquí</h2>
-        <p class="text-blue-100 mb-5">
-          Si tu empresa opera como taller, puedes definir categorías, publicar servicios, exhibir expertise por vehículo y escalar después hacia una operación más gestionada.
-        </p>
-        <div class="flex flex-wrap gap-3">
-          <button onclick={openWorkshopSetup} class="rounded-xl bg-white text-blue-800 font-semibold px-5 py-3 hover:bg-blue-50 transition">
-            Configurar mi taller
-          </button>
-          <a href="/taller/servicios" class="rounded-xl border border-white/25 px-5 py-3 font-semibold hover:bg-white/10 transition">
-            Ver plantilla interna
-          </a>
+      <!-- CTA para talleres -->
+      <div class="bg-iron-900 border border-steel-600/25 p-6 relative overflow-hidden"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+        <!-- BG decoration -->
+        <div class="absolute top-0 right-0 w-32 h-32 opacity-5 pointer-events-none" aria-hidden="true">
+          <svg viewBox="0 0 200 200" fill="none" stroke="#e64a19" stroke-width="0.5">
+            <circle cx="100" cy="100" r="90"/><circle cx="100" cy="100" r="60"/>
+            <line x1="10" y1="100" x2="190" y2="100"/>
+            <line x1="100" y1="10" x2="100" y2="190"/>
+          </svg>
         </div>
-      </section>
+        <div class="relative z-10">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-3">// PARA TALLERES</p>
+          <h2 class="font-display text-2xl text-bone uppercase leading-none mb-3">
+            TU TALLER TAMBIÉN<br/>PUEDE PUBLICAR AQUÍ
+          </h2>
+          <p class="font-mono text-xs text-steel-500 leading-relaxed mb-5 uppercase tracking-wide">
+            Define categorías, publica servicios, exhibe expertise por vehículo.
+          </p>
+          <div class="flex flex-col gap-2">
+            <button
+              onclick={openWorkshopSetup}
+              class="btn-rust text-center"
+            >
+              CONFIGURAR MI TALLER
+            </button>
+            <a href="/taller/servicios" class="btn-outline text-center text-sm">
+              VER PLANTILLA INTERNA
+            </a>
+          </div>
+        </div>
+      </div>
+
     </aside>
   </div>
-</section>
+</div>

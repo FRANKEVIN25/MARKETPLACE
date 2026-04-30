@@ -114,120 +114,159 @@
 </script>
 
 <svelte:head>
-  <title>Perfil de Taller | ECOMPARTS</title>
+  <title>Perfil de Taller — ECOMPARTS</title>
   <meta name="description" content="Configura la presencia comercial de tu taller a partir del perfil empresa del customer." />
 </svelte:head>
 
-<div class="max-w-6xl mx-auto px-4 py-12 space-y-8">
-  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+<div class="container-responsive py-10 max-w-6xl">
+
+  <!-- Header -->
+  <div class="border-b border-steel-600/25 pb-6 mb-8 flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
     <div>
-      <p class="text-sm font-semibold uppercase tracking-wide text-blue-600">Plantilla inicial</p>
-      <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Perfil de taller</h1>
-      <p class="text-gray-600 mt-2 max-w-3xl">
-        Esta vista extiende el perfil del cliente empresa y agrega los bloques que luego se conectarán con `Workshop`, `WorkshopSchedule` y `WorkshopVehicleExpertise`.
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// TALLER / PERFIL COMERCIAL</p>
+      <h1 class="font-display text-5xl text-bone uppercase leading-none mb-2">PERFIL DE TALLER</h1>
+      <p class="font-mono text-xs text-steel-500 max-w-2xl leading-relaxed">
+        Extiende tu perfil de empresa y configura los bloques que se conectarán con Workshop, horarios y expertise vehicular.
       </p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <a href="/servicios" class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Ver landing de servicios</a>
-      <a href="/taller/servicios" class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">Configurar catálogo</a>
+    <div class="flex flex-wrap gap-3 mt-1">
+      <a href="/servicios" class="btn-ghost">VER SERVICIOS</a>
+      <a href="/taller/servicios" class="btn-rust">CONFIGURAR CATÁLOGO →</a>
     </div>
   </div>
 
   {#if loading}
-    <div class="rounded-2xl bg-white p-8 shadow text-gray-500">Cargando base del perfil...</div>
-  {:else if accessDenied}
-    <div class="rounded-2xl bg-amber-50 border border-amber-200 p-8 text-amber-900 space-y-4">
-      <div>
-        <h2 class="text-2xl font-bold">Acceso no habilitado</h2>
-        <p class="mt-2 text-sm">
-          Este espacio se activa solo para empresas cuya actividad económica sea Taller mecánico.
-        </p>
-      </div>
-      <a href="/cliente/perfil" class="inline-flex items-center rounded-lg bg-white border border-amber-300 px-5 py-2 font-semibold hover:bg-amber-100 transition">
-        Volver a mi perfil
-      </a>
+    <div class="bg-iron-900 border border-steel-600/25 p-12 text-center">
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest animate-pulse">CARGANDO PERFIL...</p>
     </div>
+
+  {:else if accessDenied}
+    <div class="border border-steel-600/30 bg-iron-900 p-8"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-3">// ACCESO NO HABILITADO</p>
+      <h2 class="font-display text-3xl text-bone uppercase mb-3">MÓDULO RESTRINGIDO</h2>
+      <p class="font-mono text-xs text-steel-400 mb-6 leading-relaxed">
+        Este espacio se activa solo para empresas cuya actividad económica sea <span class="text-bone">Taller mecánico</span>.
+      </p>
+      <a href="/cliente/perfil" class="btn-outline">← VOLVER A MI PERFIL</a>
+    </div>
+
   {:else}
-    <div class="grid grid-cols-1 xl:grid-cols-[1.2fr,0.8fr] gap-6">
-      <section class="bg-white rounded-2xl shadow p-8 space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 border-b border-gray-100">
-          <div>
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Perfil Customer</p>
-            <p class="font-semibold text-gray-900">{customer?.customer_id || 'Pendiente'}</p>
+    <div class="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+
+      <!-- Formulario principal -->
+      <div class="bg-iron-900 border border-steel-600/25"
+           style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+
+        <!-- Datos de cuenta (readonly) -->
+        <div class="border-b border-steel-600/25 px-6 py-4">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// DATOS DE EMPRESA</p>
+        </div>
+        <div class="grid grid-cols-2 divide-x divide-steel-600/20 border-b border-steel-600/25">
+          <div class="px-6 py-4">
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">ID CUSTOMER</p>
+            <p class="font-mono text-sm text-bone">{customer?.customer_id || 'Pendiente'}</p>
           </div>
-          <div>
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Documento</p>
-            <p class="font-semibold text-gray-900">{customer?.document_type || 'RUC'} · {customer?.document_number || 'Sin completar'}</p>
+          <div class="px-6 py-4">
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">DOCUMENTO</p>
+            <p class="font-mono text-sm text-bone">{customer?.document_type || 'RUC'} · {customer?.document_number || 'Sin completar'}</p>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="workshopName">Nombre comercial</label>
-            <input id="workshopName" bind:value={form.workshopName} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="phone">Teléfono principal</label>
-            <input id="phone" bind:value={form.phone} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="headline">Titular comercial</label>
-            <input id="headline" bind:value={form.headline} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="description">Descripción</label>
-            <textarea id="description" bind:value={form.description} rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="district">Distrito principal</label>
-            <input id="district" bind:value={form.district} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="address">Dirección base</label>
-            <input id="address" bind:value={form.address} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Av., calle o referencia" />
-          </div>
+        <!-- Datos editables -->
+        <div class="border-b border-steel-600/25 px-6 py-4">
+          <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// DATOS DEL TALLER</p>
         </div>
-
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-2">
-          <div>
-            <p class="text-sm font-medium text-gray-700 mb-2">Nivel de servicio</p>
-            <div class="grid grid-cols-3 gap-2">
-              {#each ['BASIC', 'MANAGED', 'ADVANCED'] as level}
-                <button
-                  type="button"
-                  onclick={() => form.serviceLevel = level as ServiceLevel}
-                  class={`rounded-lg border px-3 py-2 text-sm font-medium transition ${form.serviceLevel === level ? 'border-blue-600 bg-blue-50 text-blue-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                >
-                  {level}
-                </button>
-              {/each}
+        <div class="p-6 space-y-5">
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="workshopName">
+                // NOMBRE COMERCIAL
+              </label>
+              <input id="workshopName" bind:value={form.workshopName} class="input-industrial" />
+            </div>
+            <div>
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="phone">
+                // TELÉFONO PRINCIPAL
+              </label>
+              <input id="phone" bind:value={form.phone} class="input-industrial" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="headline">
+                // TITULAR COMERCIAL
+              </label>
+              <input id="headline" bind:value={form.headline} class="input-industrial" />
+            </div>
+            <div class="md:col-span-2">
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="description">
+                // DESCRIPCIÓN
+              </label>
+              <textarea id="description" bind:value={form.description} rows="4" class="input-industrial resize-none"></textarea>
+            </div>
+            <div>
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="district">
+                // DISTRITO
+              </label>
+              <input id="district" bind:value={form.district} class="input-industrial" />
+            </div>
+            <div>
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="address">
+                // DIRECCIÓN BASE
+              </label>
+              <input id="address" bind:value={form.address} class="input-industrial" placeholder="Av., calle o referencia" />
             </div>
           </div>
-          <div>
-            <p class="text-sm font-medium text-gray-700 mb-2">Relación con autopartes</p>
-            <div class="grid grid-cols-1 gap-2">
-              {#each ['BUYER', 'B2B_BUYER', 'SELLER'] as level}
-                <button
-                  type="button"
-                  onclick={() => form.commerceLevel = level as CommerceLevel}
-                  class={`rounded-lg border px-3 py-2 text-sm font-medium text-left transition ${form.commerceLevel === level ? 'border-indigo-600 bg-indigo-50 text-indigo-700' : 'border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                >
-                  {level}
-                </button>
-              {/each}
+
+          <!-- Niveles -->
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 pt-4 border-t border-steel-600/20">
+            <div>
+              <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-3">// NIVEL DE SERVICIO</p>
+              <div class="grid grid-cols-3 gap-2">
+                {#each ['BASIC', 'MANAGED', 'ADVANCED'] as level}
+                  <button
+                    type="button"
+                    onclick={() => form.serviceLevel = level as ServiceLevel}
+                    class="font-mono text-[10px] uppercase tracking-widest border py-2 px-2 transition-all duration-150
+                      {form.serviceLevel === level
+                        ? 'border-rust-600 bg-rust-600/10 text-rust-400'
+                        : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
+                  >
+                    {level}
+                  </button>
+                {/each}
+              </div>
+            </div>
+            <div>
+              <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-3">// RELACIÓN CON AUTOPARTES</p>
+              <div class="grid grid-cols-1 gap-2">
+                {#each ['BUYER', 'B2B_BUYER', 'SELLER'] as level}
+                  <button
+                    type="button"
+                    onclick={() => form.commerceLevel = level as CommerceLevel}
+                    class="font-mono text-[10px] uppercase tracking-widest border py-2 px-3 text-left transition-all duration-150
+                      {form.commerceLevel === level
+                        ? 'border-rust-600 bg-rust-600/10 text-rust-400'
+                        : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
+                  >
+                    {level}
+                  </button>
+                {/each}
+              </div>
             </div>
           </div>
-        </div>
 
-        <div class="space-y-4 pt-2 border-t border-gray-100">
-          <div>
-            <p class="text-sm font-medium text-gray-700 mb-3">Especialidades</p>
+          <!-- Especialidades -->
+          <div class="pt-4 border-t border-steel-600/20">
+            <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-3">// ESPECIALIDADES</p>
             <div class="flex flex-wrap gap-2">
               {#each specialtyOptions as specialty}
                 <button
                   type="button"
                   onclick={() => form.specialties = toggleSelection(form.specialties, specialty)}
-                  class={`px-4 py-2 rounded-full text-sm border transition ${form.specialties.includes(specialty) ? 'bg-blue-600 border-blue-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                  class="font-mono text-[10px] uppercase tracking-widest border px-3 py-1.5 transition-all duration-150
+                    {form.specialties.includes(specialty)
+                      ? 'border-rust-600 bg-rust-600/10 text-rust-400'
+                      : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
                 >
                   {specialty}
                 </button>
@@ -235,90 +274,135 @@
             </div>
           </div>
 
-          <div>
-            <p class="text-sm font-medium text-gray-700 mb-3">Vehículos foco</p>
+          <!-- Vehículos foco -->
+          <div class="pt-4 border-t border-steel-600/20">
+            <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-3">// VEHÍCULOS FOCO</p>
             <div class="flex flex-wrap gap-2">
               {#each vehicleFocusOptions as brand}
                 <button
                   type="button"
                   onclick={() => form.vehicleFocus = toggleSelection(form.vehicleFocus, brand)}
-                  class={`px-4 py-2 rounded-full text-sm border transition ${form.vehicleFocus.includes(brand) ? 'bg-indigo-600 border-indigo-600 text-white' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'}`}
+                  class="font-mono text-[10px] uppercase tracking-widest border px-3 py-1.5 transition-all duration-150
+                    {form.vehicleFocus.includes(brand)
+                      ? 'border-rust-600 bg-rust-600/10 text-rust-400'
+                      : 'border-steel-600/40 text-steel-500 hover:border-steel-400 hover:text-bone'}"
                 >
                   {brand}
                 </button>
               {/each}
             </div>
           </div>
-        </div>
 
-        <div class="space-y-3 pt-2 border-t border-gray-100">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.pickupDelivery} class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Recojo y entrega coordinada</span>
-          </label>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.courtesyInspection} class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Inspección de cortesía en diagnóstico</span>
-          </label>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.emergencyService} class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Atención prioritaria o emergencias</span>
-          </label>
-        </div>
-
-        {#if message}
-          <div class="bg-green-50 text-green-700 rounded-lg p-3 text-sm">{message}</div>
-        {/if}
-        {#if error}
-          <div class="bg-red-50 text-red-700 rounded-lg p-3 text-sm">{error}</div>
-        {/if}
-
-        <button
-          type="button"
-          onclick={saveTemplate}
-          disabled={saving}
-          class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition"
-        >
-          {saving ? 'Guardando...' : 'Guardar plantilla del taller'}
-        </button>
-      </section>
-
-      <aside class="space-y-6">
-        <section class="bg-slate-900 text-white rounded-2xl p-6 shadow">
-          <p class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-2">Resumen visible</p>
-          <h2 class="text-2xl font-bold mb-2">{form.workshopName || 'Tu taller'}</h2>
-          <p class="text-slate-300 text-sm mb-4">{form.headline}</p>
-          <div class="flex flex-wrap gap-2 mb-4">
-            {#each form.specialties as specialty}
-              <span class="px-3 py-1 rounded-full bg-white/10 text-sm">{specialty}</span>
+          <!-- Opciones de servicio -->
+          <div class="pt-4 border-t border-steel-600/20 space-y-3">
+            <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">// SERVICIOS ADICIONALES</p>
+            {#each [
+              { key: 'pickupDelivery', label: 'RECOJO Y ENTREGA COORDINADA' },
+              { key: 'courtesyInspection', label: 'INSPECCIÓN DE CORTESÍA EN DIAGNÓSTICO' },
+              { key: 'emergencyService', label: 'ATENCIÓN PRIORITARIA / EMERGENCIAS' },
+            ] as opt}
+              <label class="flex items-center gap-3 cursor-pointer group">
+                <div class="relative w-4 h-4 border border-steel-600/50 flex items-center justify-center
+                            {(form as any)[opt.key] ? 'border-rust-600 bg-rust-600/20' : 'hover:border-steel-400'}">
+                  <input type="checkbox" bind:checked={(form as any)[opt.key]} class="sr-only" />
+                  {#if (form as any)[opt.key]}
+                    <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                      <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                    </svg>
+                  {/if}
+                </div>
+                <span class="font-mono text-[10px] text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">{opt.label}</span>
+              </label>
             {/each}
           </div>
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div class="rounded-xl bg-white/10 p-3">
-              <p class="text-slate-300">Service level</p>
-              <p class="font-semibold">{form.serviceLevel}</p>
-            </div>
-            <div class="rounded-xl bg-white/10 p-3">
-              <p class="text-slate-300">Commerce level</p>
-              <p class="font-semibold">{form.commerceLevel}</p>
-            </div>
-          </div>
-        </section>
 
-        <section class="bg-white rounded-2xl p-6 shadow space-y-4">
-          <div>
-            <p class="text-sm font-semibold text-gray-900">Bloques siguientes</p>
-            <p class="text-sm text-gray-600">Esta plantilla deja listos los siguientes módulos para conectar:</p>
+          <!-- Mensajes -->
+          {#if message}
+            <div class="border border-green-700/50 bg-green-600/10 px-4 py-3 flex items-center gap-3">
+              <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0"></span>
+              <p class="font-mono text-xs text-green-400 uppercase tracking-widest">{message}</p>
+            </div>
+          {/if}
+          {#if error}
+            <div class="border border-rust-700/50 bg-rust-600/10 px-4 py-3 flex items-center gap-3">
+              <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+              <p class="font-mono text-xs text-rust-400">{error}</p>
+            </div>
+          {/if}
+
+          <button
+            type="button"
+            onclick={saveTemplate}
+            disabled={saving}
+            class="btn-rust disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {saving ? 'GUARDANDO...' : 'GUARDAR PLANTILLA DEL TALLER'}
+          </button>
+        </div>
+      </div>
+
+      <!-- Sidebar: preview + próximos pasos -->
+      <aside class="space-y-5">
+
+        <!-- Preview del taller -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-5 py-3">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PREVIEW PÚBLICO</p>
           </div>
-          <ul class="space-y-3 text-sm text-gray-700">
-            <li class="flex gap-3"><span class="text-green-600">✓</span><span>Configuración de `Workshop` y customer empresarial.</span></li>
-            <li class="flex gap-3"><span class="text-green-600">✓</span><span>Especialidades por `ServiceCategory` plana.</span></li>
-            <li class="flex gap-3"><span class="text-green-600">✓</span><span>Preparación para horarios y expertise vehicular.</span></li>
-          </ul>
-          <a href="/taller/servicios" class="inline-flex items-center font-semibold text-blue-600 hover:text-blue-700">
-            Continuar con catálogo de servicios →
-          </a>
-        </section>
+          <div class="p-5 space-y-4">
+            <div>
+              <h2 class="font-display text-2xl text-bone uppercase leading-none mb-1">
+                {form.workshopName || 'TU TALLER'}
+              </h2>
+              <p class="font-mono text-xs text-steel-400 leading-relaxed">{form.headline}</p>
+            </div>
+            <div class="flex flex-wrap gap-2">
+              {#each form.specialties as specialty}
+                <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 text-steel-400 px-2 py-0.5">
+                  {specialty}
+                </span>
+              {/each}
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-iron-800 border border-steel-600/20 p-3">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">SERVICE LVL</p>
+                <p class="font-display text-lg text-bone">{form.serviceLevel}</p>
+              </div>
+              <div class="bg-iron-800 border border-steel-600/20 p-3">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">COMMERCE</p>
+                <p class="font-display text-lg text-bone">{form.commerceLevel}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Próximos pasos -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-5 py-3">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// PRÓXIMOS PASOS</p>
+          </div>
+          <div class="p-5 space-y-3">
+            {#each [
+              'Configuración de Workshop y customer empresarial.',
+              'Especialidades por ServiceCategory plana.',
+              'Preparación para horarios y expertise vehicular.',
+            ] as item}
+              <div class="flex items-start gap-2.5">
+                <span class="text-green-400 font-mono text-xs flex-shrink-0 mt-0.5">✓</span>
+                <p class="font-mono text-[10px] text-steel-400 leading-relaxed">{item}</p>
+              </div>
+            {/each}
+            <div class="border-t border-steel-600/20 pt-3">
+              <a href="/taller/servicios"
+                 class="font-mono text-[10px] uppercase tracking-widest text-rust-500 hover:text-rust-400 transition-colors">
+                CONTINUAR CON CATÁLOGO DE SERVICIOS →
+              </a>
+            </div>
+          </div>
+        </div>
+
       </aside>
     </div>
   {/if}
