@@ -16,7 +16,7 @@ class ProviderAdmin(admin.ModelAdmin):
     search_fields = ['name', 'ruc', 'email']
     readonly_fields = ['slug', 'odoo_company_id', 'odoo_user_id', 'odoo_username', 'rating_average', 'rating_count', 'rating_breakdown', 'created_at', 'updated_at']
     filter_horizontal = ('variantes_habilitadas',)
-    actions = ['aprobar_y_configurar_odoo', 'solo_aprobar', 'push_variantes_a_odoo']
+    actions = ['aprobar_y_configurar_odoo', 'push_variantes_a_odoo']
 
     fieldsets = (
         ('Información Básica', {'fields': ('name', 'slug', 'logo', 'owner', 'tier')}),
@@ -43,44 +43,82 @@ class ProviderAdmin(admin.ModelAdmin):
     def get_variantes_count(self, obj):
         return obj.variantes_habilitadas.count()
 
-    @admin.action(description='✅ Aprobar y configurar en Odoo (crea Company + Usuario)')
+    @admin.action(description='✅ Aprobar y configurar en Odoo')
     def aprobar_y_configurar_odoo(self, request, queryset):
         """
-        Aprueba los providers seleccionados.
-        La signal post_save se encarga de disparar la Celery task
-        que crea la Company + Usuario en Odoo.
+        Acción unificada para aprobar y configurar providers en Odoo.
+
+        Comportamiento según estado del provider:
+        - Sin credenciales Odoo + no aprobado  → aprueba; la signal dispara la task Celery.
+        - Sin credenciales Odoo + ya aprobado  → relanza directamente la task (falló antes).
+        - Ya tiene credenciales Odoo           → sincroniza datos de la company (RUC, email,
+                                                  teléfono, moneda PEN) sin recrear nada.
         """
+        from apps.sync.tasks import create_provider_with_odoo_setup
+        from apps.sync.connector import OdooConnector
+        from django.utils.crypto import get_random_string
+
         for provider in queryset:
             if provider.has_odoo_credentials():
-                self.message_user(
-                    request,
-                    f"⚠️ {provider.name} ya tiene credenciales de Odoo. Omitido.",
-                    messages.WARNING
+                # Proveedor ya configurado en Odoo → solo sincronizar datos
+                odoo = OdooConnector()
+                ok = odoo.update_company(
+                    company_id=provider.odoo_company_id,
+                    email=provider.email or None,
+                    currency_code='PEN',
+                    vat=provider.ruc or None,
+                    phone=provider.phone or None,
                 )
+                if ok:
+                    self.message_user(
+                        request,
+                        f"🔄 {provider.name} (company {provider.odoo_company_id}): datos sincronizados en Odoo.",
+                        messages.SUCCESS,
+                    )
+                else:
+                    self.message_user(
+                        request,
+                        f"❌ {provider.name}: error al sincronizar datos en Odoo. Revisa los logs.",
+                        messages.ERROR,
+                    )
                 continue
 
-            # Marcar como aprobado
-            provider.is_approved = True
-            provider.save(update_fields=['is_approved'])
+            # Sin credenciales → necesita aprovisionamiento completo
+            odoo_password = provider.get_odoo_password_temp()
+            if not odoo_password:
+                odoo_password = get_random_string(12)
+                provider.set_odoo_password_temp(odoo_password)
+                provider.save(update_fields=['odoo_password_temp'])
+                logger.warning("⚠️ %s: sin contraseña temp, generada automáticamente", provider.name)
 
-            self.message_user(
-                request,
-                f"🚀 {provider.name}: aprobado. La configuración de Odoo fue encolada automáticamente.",
-                messages.SUCCESS
-            )
-
-    @admin.action(description='👍 Solo aprobar (sin configurar Odoo)')
-    def solo_aprobar(self, request, queryset):
-        """
-        Aprueba los providers sin tocar Odoo.
-        Útil para providers que ya tienen credenciales o para aprobar manualmente.
-        """
-        updated = queryset.update(is_approved=True)
-        self.message_user(
-            request,
-            f"✅ {updated} proveedor(es) aprobado(s).",
-            messages.SUCCESS
-        )
+            if not provider.is_approved:
+                # Aprobar → la signal post_save dispara la task automáticamente
+                provider.is_approved = True
+                provider.save(update_fields=['is_approved'])
+                self.message_user(
+                    request,
+                    f"🚀 {provider.name}: aprobado. La configuración de Odoo fue encolada.",
+                    messages.SUCCESS,
+                )
+            else:
+                # Ya aprobado pero sin credenciales (task anterior falló) → relanzar
+                provider_data = {
+                    'name': provider.name,
+                    'email': provider.email or '',
+                    'phone': provider.phone or '',
+                    'ruc': provider.ruc or '',
+                    'tier': provider.tier,
+                }
+                task = create_provider_with_odoo_setup.delay(
+                    user_id=provider.owner.id,
+                    provider_data=provider_data,
+                    odoo_password=odoo_password,
+                )
+                self.message_user(
+                    request,
+                    f"🔄 {provider.name}: ya aprobado pero sin cuenta Odoo. Task relanzada (ID: {task.id}).",
+                    messages.SUCCESS,
+                )
 
     @admin.action(description='🚗 Push variantes a Odoo (scope por proveedor)')
     def push_variantes_a_odoo(self, request, queryset):

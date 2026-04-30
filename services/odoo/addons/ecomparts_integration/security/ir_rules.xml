@@ -4,31 +4,58 @@
         Record Rule: Scope de variantes de vehiculo por proveedor (compania).
 
         Logica:
-          - Si company_ids esta vacio (catalogo nuevo, sin scope asignado)
-            la variante es visible para TODOS.
-            Fallback seguro durante puesta en marcha y antes de correr
-            push_vehicles con la opcion provider-id.
-          - Si company_ids tiene valores, solo las companias listadas pueden
-            ver y usar la variante en el selector de compatibilidades.
+          - Solo las variantes cuyo company_ids incluya la compania activa del
+            usuario son visibles. Variantes con company_ids vacio NO son visibles
+            para usuarios normales (deben asignarse a al menos un proveedor via
+            push_vehicles con la opcion provider-id antes de ser usables).
+          - El fallback "company_ids vacio = visible para todos" fue removido:
+            era util solo durante la puesta en marcha inicial. Con el catalogo
+            completo en Odoo, una variante sin scope no debe mostrarse a ningun
+            proveedor.
 
         Quien lo gestiona:
           El comando Django push_vehicles escribe company_ids via RPC con
-          credenciales de admin. Los admin de Odoo (grupo erp_manager)
-          bypassan esta regla por el comportamiento estandar de Odoo.
+          credenciales de admin (base.group_system). Los admins bypassan
+          esta regla via rule_vehiculo_variante_admin_bypass (ver abajo).
 
         Afecta:
-          group_user (usuarios normales, incluyendo los proveedores).
-          NO afecta a administradores Odoo ni al superuser.
+          group_user (usuarios normales, proveedores sin base.group_system).
+          NO afecta a administradores Odoo (base.group_system) ni al superuser.
     -->
     <record id="rule_vehiculo_variante_by_company" model="ir.rule">
         <field name="name">Variante vehiculo: scope por compania (proveedor)</field>
         <field name="model_id" ref="model_vehiculo_variante"/>
         <field name="domain_force">
-            ['|',
-             ('company_ids', '=', False),
-             ('company_ids', 'in', [company_id])]
+            [('company_ids', 'in', [company_id])]
         </field>
         <field name="groups" eval="[(4, ref('base.group_user'))]"/>
+        <field name="perm_read"   eval="True"/>
+        <field name="perm_write"  eval="False"/>
+        <field name="perm_create" eval="False"/>
+        <field name="perm_unlink" eval="False"/>
+    </record>
+
+    <!--
+        Record Rule: Bypass de scope para usuarios administradores del sistema.
+
+        Los usuarios con base.group_system (admins, service user de Django)
+        necesitan ver TODAS las variantes independientemente del scope asignado,
+        ya que son los responsables de gestionar ese scope.
+
+        En Odoo, las reglas del mismo modelo se aplican como UNION cuando el
+        usuario pertenece a multiples grupos con reglas. Por lo tanto, un usuario
+        en base.group_system vera la union de:
+          - [(1,'=',1)] de esta regla  →  todas las variantes
+          - dominio de scope           →  solo las de su company
+        El resultado es TODOS los registros (la union absorbe).
+
+        Afecta: solo base.group_system (administradores Odoo + service user Django).
+    -->
+    <record id="rule_vehiculo_variante_admin_bypass" model="ir.rule">
+        <field name="name">Variante vehiculo: bypass total para admins (base.group_system)</field>
+        <field name="model_id" ref="model_vehiculo_variante"/>
+        <field name="domain_force">[(1, '=', 1)]</field>
+        <field name="groups" eval="[(4, ref('base.group_system'))]"/>
         <field name="perm_read"   eval="True"/>
         <field name="perm_write"  eval="False"/>
         <field name="perm_create" eval="False"/>

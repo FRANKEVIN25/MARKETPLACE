@@ -114,7 +114,7 @@ SYNC_STOCK_INTERVAL_MINUTES = int(os.getenv('SYNC_STOCK_INTERVAL_MINUTES', '60')
 SYNC_CATALOG_SCHEDULE_HOUR = int(os.getenv('SYNC_CATALOG_SCHEDULE_HOUR', '1'))
 SYNC_CATALOG_SCHEDULE_MINUTE = int(os.getenv('SYNC_CATALOG_SCHEDULE_MINUTE', '0'))
 SYNC_COMPATIBILITY_SCHEDULE_HOUR = int(os.getenv('SYNC_COMPATIBILITY_SCHEDULE_HOUR', '2'))
-SYNC_COMPATIBILITY_SCHEDULE_MINUTE = int(os.getenv('SYNC_COMPATIBILITY_SCHEDULE_MINUTE', '10'))
+SYNC_COMPATIBILITY_SCHEDULE_MINUTE = int(os.getenv('SYNC_COMPATIBILITY_SCHEDULE_MINUTE', '30'))
 
 # Celery Beat — tareas periódicas
 from celery.schedules import crontab  # noqa: E402
@@ -245,8 +245,8 @@ CELERY_TIMEZONE = TIME_ZONE
 # Odoo Connection
 ODOO_CONFIG = {
 'URL': os.environ.get('ODOO_URL', 'http://ecomparts-odoo-shared:8069'),
-'DB': os.environ.get('ODOO_DB', 'ecomparts_odoo'),
-'USERNAME': os.environ.get('ODOO_USERNAME', 'admin@ecomparts.local'),
+'DB': os.environ.get('ODOO_DB', 'ecomparts_odoo_shared'),
+'USERNAME': os.environ.get('ODOO_USERNAME', 'service@ecomparts.local'),
 'PASSWORD': os.environ.get('ODOO_PASSWORD', ''),
 }
 

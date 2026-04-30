@@ -2,6 +2,7 @@
  * Cliente HTTP para la API de Django
  */
 import axios, { type AxiosInstance } from 'axios';
+import { auth } from '../store/auth';
 import type {
   Product,
   Category,
@@ -93,6 +94,41 @@ function authHeaders(token: string) {
   return { Authorization: `Bearer ${token}` };
 }
 
+type RetryableRequestConfig = {
+  _retry?: boolean;
+  headers?: Record<string, string>;
+  url?: string;
+};
+
+let refreshRequest: Promise<string | null> | null = null;
+
+async function refreshAccessToken(): Promise<string | null> {
+  const refreshToken = auth.getRefreshToken();
+
+  if (!refreshToken) {
+    auth.clearTokens();
+    return null;
+  }
+
+  if (!refreshRequest) {
+    refreshRequest = apiClient
+      .post<{ access: string }>('/api/v1/auth/token/refresh/', { refresh: refreshToken })
+      .then((response) => {
+        auth.updateAccessToken(response.data.access);
+        return response.data.access;
+      })
+      .catch(() => {
+        auth.clearTokens();
+        return null;
+      })
+      .finally(() => {
+        refreshRequest = null;
+      });
+  }
+
+  return refreshRequest;
+}
+
 // Interceptor para logging (solo desarrollo)
 if (import.meta.env.DEV) {
   apiClient.interceptors.request.use((config) => {
@@ -111,6 +147,35 @@ if (import.meta.env.DEV) {
     }
   );
 }
+
+apiClient.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config as RetryableRequestConfig | undefined;
+    const isUnauthorized = error.response?.status === 401;
+    const hasAuthHeader = Boolean(
+      originalRequest?.headers?.Authorization || originalRequest?.headers?.authorization
+    );
+    const isRefreshRequest = originalRequest?.url === '/api/v1/auth/token/refresh/';
+
+    if (!isUnauthorized || !originalRequest || originalRequest._retry || !hasAuthHeader || isRefreshRequest) {
+      return Promise.reject(error);
+    }
+
+    const newAccessToken = await refreshAccessToken();
+    if (!newAccessToken) {
+      return Promise.reject(error);
+    }
+
+    originalRequest._retry = true;
+    originalRequest.headers = {
+      ...(originalRequest.headers ?? {}),
+      Authorization: `Bearer ${newAccessToken}`,
+    };
+
+    return apiClient.request(originalRequest);
+  }
+);
 
 /**
  * API Client
