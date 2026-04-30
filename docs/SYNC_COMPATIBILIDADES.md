@@ -33,8 +33,8 @@ A continuación se listan los cambios importantes que se han implementado para s
       - Al finalizar el push con `--provider-id`, llama a `sync_full_scope_for_company` → añade variantes nuevas al scope y revoca las que ya no están (en un solo par de batch-writes).
       - `--only-unlinked` sigue funcionando en modo provider.
 
-- **Odoo (addon `ecomparts_integration`)**
-   - `services/odoo/addons/ecomparts_integration/models/vehicle_models.py`
+- **Odoo (addon `ecomp`)**
+   - `services/odoo/addons/ecomp/models/vehicle_models.py`
       - Campo `VarianteVehiculo.company_ids` → `Many2many` a `res.company`, tabla `vehiculo_variante_company_rel`.
    - `security/ir_rules.xml` (nuevo)
       - Record Rule `rule_vehiculo_variante_by_company`: aplica a `group_user`, dominio `['|', ('company_ids', '=', False), ('company_ids', 'in', [company_id])]`.
@@ -58,7 +58,7 @@ Product ──────────────────── Compatibili
 (odoo_template_id=12)         (notas_instalacion)             (odoo_variante_id=7)
 ```
 
-En Odoo se modela con `autopart.compatibility` del módulo `ecomparts_integration`:
+En Odoo se modela con `autopart.compatibility` del módulo `ecomp`:
 
 ```
 product.template ──── autopart.compatibility ──── vehiculo.variante
@@ -289,9 +289,9 @@ docker exec -it ecomparts-backend python manage.py sync_products
 | `apps/sync/models.py` | `ProviderSyncState` para observabilidad por provider y por fase |
 | `apps/sync/services/observability.py` | Persistencia de inicio/fin/estado/métricas de cada fase |
 | `apps/sync/management/commands/sync_compatibility.py` | Ejecución manual de compatibilidades vía CLI |
-| `services/odoo/addons/ecomparts_integration/models/vehicle_models.py` | Modelos Odoo — `django_external_id` sin `readonly` a nivel de campo |
-| `services/odoo/addons/ecomparts_integration/views/vehicle_views.xml` | Vistas Odoo — `django_external_id` con `readonly="1"` (solo UI) |
-| `services/odoo/addons/ecomparts_integration/models/compatibility.py` | `autopart.compatibility` en Odoo |
+| `services/odoo/addons/ecomp/models/vehicle_models.py` | Modelos Odoo — `django_external_id` sin `readonly` a nivel de campo |
+| `services/odoo/addons/ecomp/views/vehicle_views.xml` | Vistas Odoo — `django_external_id` con `readonly="1"` (solo UI) |
+| `services/odoo/addons/ecomp/models/compatibility.py` | `autopart.compatibility` en Odoo |
 
 ---
 
@@ -408,3 +408,204 @@ Cuando un proveedor crea una variante en Odoo sin que Django la haya empujado, l
 **Archivos a modificar:**
 - `apps/sync/services/compatibility.py` → `_resolve_django_variant()`: añadir Vía 3
 - `apps/vehicles/models.py`: posible campo `is_pending_review` para variantes auto-importadas
+
+### [PROPUESTA] Importación de compatibilidades por códigos cortos en una sola celda
+
+**Estado:** Propuesta funcional  
+**Prioridad:** Alta si se quiere carga masiva desde Excel/CSV
+
+### Objetivo
+
+Permitir una columna de importación como esta en productos:
+
+```text
+Compatibilidad = var0001,var0004,var0007
+```
+
+La intención es que una sola celda represente varias variantes compatibles, sin obligar al usuario a preparar un archivo separado con una fila por compatibilidad.
+
+### Situación actual
+
+Hoy el sistema ya tiene anclas bidireccionales para compatibilidades, pero no tiene todavía un código corto de importación para variantes equivalente al de categorías:
+
+- **Django**
+   - `VariantVehiculo` tiene `odoo_variante_id`.
+   - Ese campo sirve para resolver sync Odoo → Django.
+   - **No existe** un `import_code` corto, estable y legible para variantes.
+- **Odoo**
+   - `vehiculo.variante` tiene `django_external_id`.
+   - Ese campo guarda el PK de Django como texto.
+   - Sirve para vinculación técnica vía RPC, pero **no es ideal** como valor operativo de importación manual.
+- **Modelo de compatibilidad**
+   - La relación real no es un Many2many plano: se materializa como `autopart.compatibility` en Odoo y `CompatibilidadProducto` en Django.
+   - Por eso la compatibilidad es una entidad propia y no solo una lista de IDs pegada al producto.
+
+### Conclusión técnica
+
+Con el diseño actual, **Django no está listo** para soportar bien una importación amigable del tipo `var0001,var0004,var0007`.
+
+Sí existe una clave técnica (`django_external_id`), pero faltan dos piezas para que el flujo sea limpio y mantenible:
+
+1. Un **código corto y estable** de variante generado en Django.
+2. Una **capa de importación en Odoo** que convierta una celda multi-valor en múltiples registros `autopart.compatibility`.
+
+### Propuesta recomendada
+
+#### 1. Añadir código corto estable en Django para variantes
+
+Agregar un campo nuevo en `apps/vehicles/models.py`:
+
+```python
+import_code = models.CharField(
+      max_length=16,
+      unique=True,
+      editable=False,
+      blank=True,
+      help_text="Código corto y estable para proyección de compatibilidades en Odoo."
+)
+```
+
+Formato sugerido:
+
+- `VAR0001`
+- `VAR0002`
+- `VAR0003`
+
+Requisitos del campo:
+
+- No depender del nombre de la variante.
+- No depender del PK de Django.
+- No cambiar si se edita modelo, motor, años o tracción.
+- Ser visible en admin/API para facilitar exportaciones y soporte.
+
+#### 2. Proyectar ese código a Odoo
+
+Agregar campo espejo en `vehiculo.variante`:
+
+- `django_import_code`
+
+Y mantenerlo desde `push_vehicles`, igual que hoy se mantiene `django_external_id`.
+
+Con eso, cada variante en Odoo tendría dos anclas distintas:
+
+- `django_external_id` → vínculo técnico con el PK Django.
+- `django_import_code` → código corto operativo para importaciones.
+
+### Dos formas de importar compatibilidades
+
+#### Opción A — Importación estándar de Odoo, una fila por compatibilidad
+
+Archivo recomendado:
+
+```text
+External ID,Name,Product Category,Compatibility/Product,Compatibility/Variant
+product_template_101,Soporte de Iphone,ecomp.cat_lef035,product_template_101,ecomp.var_var0001
+product_template_101,Soporte de Iphone,ecomp.cat_lef035,product_template_101,ecomp.var_var0004
+product_template_101,Soporte de Iphone,ecomp.cat_lef035,product_template_101,ecomp.var_var0007
+```
+
+Ventajas:
+
+- Usa el modelo real de Odoo.
+- Es más transparente para depuración.
+- Permite luego agregar `fitment_notes` por fila.
+- No requiere parseo especial dentro de una celda.
+
+Desventaja:
+
+- Duplica filas del producto cuando hay muchas compatibilidades.
+
+#### Opción B — Importación amigable con una sola celda multi-valor
+
+Archivo deseado por negocio, dos formas:
+
+```text
+External ID,Name,Product Category,Compatibilidad
+product_template_101,Soporte de Iphone,ecomp.cat_lef035,"var0001,var0004,var0007"
+product_template_101,Soporte de Iphone,ecomp.cat_lef035,"ecomp.var_var0001,ecomp.var_var0004,ecomp.var_var0007"
+```
+
+Esta opción **no la resuelve bien el importador estándar de Odoo** porque:
+
+- `compatibility_ids` es un One2many, no un Many2many simple.
+- Odoo no va a expandir automáticamente esa celda en varios registros `autopart.compatibility`.
+- La relación además puede tener metadatos propios como `fitment_notes`.
+
+Si se quiere este formato, hace falta una personalización en Odoo. La más limpia sería:
+
+- Agregar un campo auxiliar de importación en `product.template`, por ejemplo `compatibility_import_codes_raw`.
+- Parsear la cadena en `create()` y `write()` o en un método explícito de postproceso.
+- Resolver cada token contra `vehiculo.variante.django_import_code`.
+- Crear o reactivar registros en `autopart.compatibility`.
+- Desactivar o eliminar compatibilidades que ya no estén presentes, si se quiere modo reconcile.
+
+### Recomendación de arquitectura
+
+La recomendación más sólida es implementar en dos etapas:
+
+**Etapa 1 — Base estable**
+
+- Añadir `VariantVehiculo.import_code` en Django.
+- Añadir `vehiculo.variante.django_import_code` en Odoo.
+- Proyectar External IDs de variantes en Odoo con un esquema explícito, por ejemplo:
+   - `ecomp.var_var0001`
+   - `ecomp.var_var0004`
+   - `ecomp.var_var0007`
+- Habilitar importación de compatibilidades en archivo separado o en varias filas por producto.
+
+**Etapa 2 — UX simplificada**
+
+- Implementar columna única `Compatibilidad` con lista separada por comas.
+- Resolver internamente esos códigos a múltiples `autopart.compatibility`.
+- Mantener el archivo de una fila por producto como formato amigable para operación.
+
+### Decisión sugerida
+
+Si el objetivo inmediato es destrabar carga masiva sin demasiada personalización, conviene:
+
+1. Crear `import_code` en `VariantVehiculo` en Django.
+2. Sincronizarlo a Odoo como `django_import_code`.
+3. Generar External IDs de variantes tipo `ecomp.var_var0001`.
+4. Importar compatibilidades en formato fila-por-fila sobre `autopart.compatibility` o con columnas hijas en productos.
+
+### Estado actual de la etapa 1
+
+Los puntos 1, 2 y 3 ya quedaron cubiertos:
+
+- Django genera `VariantVehiculo.import_code`.
+- `push_vehicles` proyecta ese código a Odoo como `vehiculo.variante.django_import_code`.
+- El addon `ecomp` materializa automáticamente `ir.model.data` para variantes con formato `ecomp.var_var0001`.
+
+### Importación fila-por-fila recomendada hoy
+
+La ruta recomendada inmediata es importar directamente sobre el modelo `autopart.compatibility` desde el menú **Autoparts > Compatibilidades**.
+
+Archivo sugerido:
+
+```text
+External ID,Product/External ID,Variant/External ID,fitment_notes,active
+compat_prod101_var0001,product_template_101,ecomp.var_var0001,"Solo AT",1
+compat_prod101_var0004,product_template_101,ecomp.var_var0004,"",1
+compat_prod101_var0007,product_template_101,ecomp.var_var0007,"Requiere kit adicional",1
+```
+
+Notas operativas:
+
+- `Product/External ID` debe apuntar al External ID real del `product.template` en Odoo.
+- `Variant/External ID` debe usar el XML ID generado por el addon, por ejemplo `ecomp.var_var0001`.
+- `External ID` de cada compatibilidad conviene generarlo por fila para que futuras reimportaciones actualicen en vez de duplicar.
+- Si la UI de importación muestra etiquetas traducidas, puede variar el nombre visual de las columnas, pero conceptualmente los campos son `product_tmpl_id`, `variant_id`, `fitment_notes` y `active`.
+
+Con esta ruta no hace falta todavía un importador custom para celda multi-valor.
+
+Si el objetivo es una UX de Excel mucho más simple para usuarios no técnicos, entonces además de lo anterior conviene construir un importador custom para la celda multi-valor.
+
+### Veredicto
+
+Para compatibilidades, **sí necesitamos un campo adicional en Django** si queremos un flujo realmente mantenible y amigable:
+
+- `odoo_variante_id` sirve como cache operativo, pero no como código portable de importación.
+- `django_external_id` sirve como ancla técnica, pero no como código corto de negocio.
+- El campo faltante es un `import_code` estable para `VariantVehiculo`.
+
+Sin ese campo, se puede seguir sincronizando por RPC y por IDs internos, pero no queda una base limpia para importaciones humanas tipo `var0001,var0004,var0007`.

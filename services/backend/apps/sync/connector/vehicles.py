@@ -31,6 +31,7 @@ class OdooVehiclesMixin:
         domain_by_natural_key: list,
         create_vals: dict,
         django_id: int,
+        sync_vals: dict | None = None,
     ) -> int:
         """
         Lógica de 3 vías compartida por todos los métodos push_*.
@@ -46,33 +47,53 @@ class OdooVehiclesMixin:
             int: ID del registro en Odoo
         """
         str_django_id = str(django_id)
+        sync_vals = sync_vals or {}
+
+        def _build_update_vals(record: dict, ensure_external_id: bool) -> dict:
+            update_vals = {}
+            if ensure_external_id and not record.get('django_external_id'):
+                update_vals['django_external_id'] = str_django_id
+            for field_name, field_value in sync_vals.items():
+                if record.get(field_name) != field_value:
+                    update_vals[field_name] = field_value
+            return update_vals
+
+        read_fields = ['id', 'django_external_id', *sync_vals.keys()]
 
         # 1. Buscar por django_external_id (sync previa)
         existing = self.execute_kw(
             model, 'search_read',
             [domain_by_ext_id],
-            {'fields': ['id'], 'limit': 1},
+            {'fields': read_fields, 'limit': 1},
         )
         if existing:
-            return existing[0]['id']
+            record = existing[0]
+            update_vals = _build_update_vals(record, ensure_external_id=False)
+            if update_vals:
+                self.execute_kw(model, 'write', [[record['id']], update_vals])
+            return record['id']
 
         # 2. Buscar por clave natural (registro sin vincular)
         existing = self.execute_kw(
             model, 'search_read',
             [domain_by_natural_key],
-            {'fields': ['id', 'django_external_id'], 'limit': 1},
+            {'fields': read_fields, 'limit': 1},
         )
         if existing:
-            odoo_id = existing[0]['id']
-            if not existing[0].get('django_external_id'):
+            record = existing[0]
+            odoo_id = record['id']
+            update_vals = _build_update_vals(record, ensure_external_id=True)
+            if update_vals:
                 self.execute_kw(
                     model, 'write',
-                    [[odoo_id], {'django_external_id': str_django_id}],
+                    [[odoo_id], update_vals],
                 )
             return odoo_id
 
         # 3. Crear nuevo registro en Odoo
+        create_vals = dict(create_vals)
         create_vals['django_external_id'] = str_django_id
+        create_vals.update(sync_vals)
         return self.execute_kw(model, 'create', [create_vals])
 
     # ── Push de entidades vehiculares ─────────────────────────────────────────
@@ -183,6 +204,7 @@ class OdooVehiclesMixin:
         anio_desde: int,
         anio_hasta: int | None,
         django_id: int,
+        django_import_code: str | None = None,
     ) -> int:
         """
         Empuja o vincula una VariantVehiculo completa.
@@ -225,6 +247,7 @@ class OdooVehiclesMixin:
                 'anio_hasta': anio_hasta or False,
             },
             django_id,
+            sync_vals={'django_import_code': django_import_code or False},
         )
 
     # ── Scope multi-company ───────────────────────────────────────────────────

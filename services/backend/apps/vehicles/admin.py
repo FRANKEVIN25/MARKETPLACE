@@ -33,6 +33,7 @@ class MotorAdmin(admin.ModelAdmin):
 @admin.register(VariantVehiculo)
 class VariantVehiculoAdmin(admin.ModelAdmin):
     list_display = (
+        'import_code',
         'modelo',
         'get_marca',
         'motor',
@@ -52,6 +53,7 @@ class VariantVehiculoAdmin(admin.ModelAdmin):
     # Estos search_fields también son usados por el widget filter_horizontal
     # de ProviderAdmin para buscar variantes al asignar el scope.
     search_fields = (
+        'import_code',
         'modelo__nombre',
         'modelo__marca__nombre',
         'motor__codigo_motor',
@@ -59,7 +61,7 @@ class VariantVehiculoAdmin(admin.ModelAdmin):
         'anio_desde',
         'anio_hasta',
     )
-    readonly_fields = ('odoo_variante_id',)
+    readonly_fields = ('import_code', 'odoo_variante_id')
 
     def get_queryset(self, request):
         from django.db.models import Count

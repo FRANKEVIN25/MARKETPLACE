@@ -22,6 +22,12 @@ class Category(MPTTModel):
         aunque cambie el nombre. Esto garantiza URLs estables para SEO.
         Si el slug base ya existe, se añade un sufijo numérico (-1, -2…).
     """
+    IMPORT_CODE_PREFIXES = {
+        0: 'CAT',
+        1: 'SUB',
+        2: 'LEF',
+    }
+
     name = models.CharField(max_length=100)
     slug = models.SlugField(max_length=120, unique=True, blank=True)
     parent = TreeForeignKey(
@@ -41,6 +47,17 @@ class Category(MPTTModel):
         unique=True,
         editable=False,
         help_text="Clave estable usada para vincular la categoría con Odoo.",
+    )
+
+    import_code = models.CharField(
+        max_length=16,
+        unique=True,
+        editable=False,
+        blank=True,
+        help_text=(
+            "Código corto y estable para proyección de External ID en Odoo. "
+            "Se genera en Django y no depende del nombre de la categoría."
+        ),
     )
 
     # Vínculo cacheado con Odoo para resolución operativa rápida.
@@ -88,9 +105,35 @@ class Category(MPTTModel):
             counter += 1
         return slug
 
+    @classmethod
+    def get_import_code_prefix(cls, level: int | None) -> str:
+        return cls.IMPORT_CODE_PREFIXES.get(level if level is not None else 0, 'CAT')
+
+    @classmethod
+    def build_next_import_code(cls, level: int | None) -> str:
+        prefix = cls.get_import_code_prefix(level)
+        last_code = (
+            cls.objects.filter(import_code__startswith=prefix)
+            .order_by('-import_code')
+            .values_list('import_code', flat=True)
+            .first()
+        )
+        next_number = int(last_code[len(prefix):]) + 1 if last_code else 1
+        return f'{prefix}{next_number:03d}'
+
+    def _target_level_for_import_code(self) -> int:
+        if self.parent_id:
+            parent_level = self.parent.level if self.parent else Category.objects.only('level').get(pk=self.parent_id).level
+            return parent_level + 1
+        if self.pk and hasattr(self, 'level') and self.level is not None:
+            return self.level
+        return 0
+
     def save(self, *args, **kwargs):
         if not self.slug:
             self.slug = self._generate_unique_slug()
+        if not self.import_code:
+            self.import_code = self.build_next_import_code(self._target_level_for_import_code())
         super().save(*args, **kwargs)
 
 

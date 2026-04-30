@@ -50,7 +50,7 @@ class Workshop(models.Model):
     SERVICE_LEVEL_CHOICES = [
         ('BASIC',    'Básico — Sin ERP'),
         ('MANAGED',  'Gestionado — Odoo ERP + Repair'),
-        ('ADVANCED', 'Avanzado — Odoo ERP + Repair + ecomparts_integration + analitica'),
+        ('ADVANCED', 'Avanzado — Odoo ERP + Repair + ecomp + analitica'),
     ]
 
     # ── Eje 2: relación con autopartes ────────────────────────────────────────

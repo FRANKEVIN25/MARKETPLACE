@@ -48,6 +48,13 @@ class AutopartCompatibility(models.Model):
         readonly=True,
     )
 
+    variant_import_code = fields.Char(
+        string='Código variante',
+        related='variant_id.django_import_code',
+        store=False,
+        readonly=True,
+    )
+
     fitment_notes = fields.Text(
         string='Notas de compatibilidad',
         help='Detalles de montaje o restricciones de compatibilidad (ej: solo 4x4, requiere kit adicional, etc.)'

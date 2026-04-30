@@ -159,7 +159,7 @@ class OdooProductsMixin:
             list[dict]: Categorías con id, name, parent_id, complete_name
         """
         default_fields = fields or [
-            'id', 'name', 'parent_id', 'complete_name', 'active', 'django_sync_key',
+            'id', 'name', 'parent_id', 'complete_name', 'active', 'django_sync_key', 'django_import_code',
         ]
         try:
             return self.execute_kw(
@@ -168,11 +168,14 @@ class OdooProductsMixin:
                 {'fields': default_fields},
             )
         except Exception as e:
-            if 'django_sync_key' in default_fields:
-                fallback_fields = [f for f in default_fields if f != 'django_sync_key']
+            if 'django_sync_key' in default_fields or 'django_import_code' in default_fields:
+                fallback_fields = [
+                    f for f in default_fields
+                    if f not in {'django_sync_key', 'django_import_code'}
+                ]
                 try:
                     logger.warning(
-                        "Odoo aún no expone django_sync_key en product.category; reintentando sin ese campo."
+                        "Odoo aún no expone campos Django en product.category; reintentando sin ellos."
                     )
                     return self.execute_kw(
                         'product.category', 'search_read',
@@ -212,6 +215,7 @@ class OdooProductsMixin:
         *,
         name: str,
         django_sync_key: str,
+        django_import_code: str | None,
         parent_odoo_id: int,
         is_active: bool,
         odoo_category_id: int | None = None,
@@ -232,12 +236,16 @@ class OdooProductsMixin:
         if 'django_sync_key' not in supported_fields:
             raise RuntimeError(
                 "Odoo no expone product.category.django_sync_key. "
-                "Actualiza el módulo ecomparts_integration antes de ejecutar push_categories."
+                "Actualiza el módulo ecomp antes de ejecutar push_categories."
             )
 
         supports_active = 'active' in supported_fields
 
+        supports_import_code = 'django_import_code' in supported_fields
+
         fields = ['id', 'name', 'parent_id', 'django_sync_key']
+        if supports_import_code:
+            fields.append('django_import_code')
         if supports_active:
             fields.append('active')
         target_parent_id = parent_odoo_id or False
@@ -275,6 +283,8 @@ class OdooProductsMixin:
                 update_vals['active'] = bool(is_active)
             if record.get('django_sync_key') != django_sync_key:
                 update_vals['django_sync_key'] = django_sync_key
+            if supports_import_code and record.get('django_import_code') != django_import_code:
+                update_vals['django_import_code'] = django_import_code
 
             if update_vals:
                 self.execute_kw(
@@ -288,6 +298,8 @@ class OdooProductsMixin:
             'parent_id': target_parent_id,
             'django_sync_key': django_sync_key,
         }
+        if supports_import_code:
+            create_vals['django_import_code'] = django_import_code
         if supports_active:
             create_vals['active'] = bool(is_active)
         odoo_id = self.execute_kw('product.category', 'create', [create_vals])

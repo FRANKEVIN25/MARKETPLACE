@@ -1,4 +1,5 @@
 """Views públicas para servicios de taller."""
+from django.db import transaction
 from django.db.models import (
     Count,
     DecimalField,
@@ -10,7 +11,8 @@ from django.db.models import (
     Value,
 )
 from django.db.models.functions import Coalesce
-from rest_framework import filters, generics
+from rest_framework import filters, generics, permissions
+from rest_framework.exceptions import PermissionDenied
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -19,14 +21,19 @@ from .models import (
     ServiceCategory,
     Workshop,
     WorkshopLocation,
+    WorkshopSchedule,
     WorkshopService,
     WorkshopServiceHistory,
     WorkshopVehicleExpertise,
 )
 from .serializers import (
+    ServiceCategoryCatalogSerializer,
     ServiceCategorySerializer,
+    WorkshopCatalogSerializer,
+    WorkshopCatalogUpdateSerializer,
     ServiceListingSerializer,
     ServicePublicDetailSerializer,
+    WorkshopProfileSerializer,
     WorkshopPublicDetailSerializer,
 )
 
@@ -60,6 +67,86 @@ def _workshop_locations_prefetch():
         'workshop__locations',
         queryset=WorkshopLocation.objects.order_by('-is_main', 'id'),
         to_attr='prefetched_locations',
+    )
+
+
+def _workshop_schedule_prefetch():
+    return Prefetch(
+        'schedules',
+        queryset=WorkshopSchedule.objects.order_by('day_of_week', 'start_time'),
+    )
+
+
+def _workshop_profile_queryset():
+    return Workshop.objects.select_related('customer_profile').prefetch_related(
+        Prefetch(
+            'locations',
+            queryset=WorkshopLocation.objects.order_by('-is_main', 'id'),
+        ),
+        _workshop_schedule_prefetch(),
+    )
+
+
+def _workshop_catalog_queryset():
+    return Workshop.objects.prefetch_related(
+        Prefetch(
+            'workshop_services',
+            queryset=WorkshopService.objects.select_related('service__category').order_by(
+                'service__category__order',
+                'service__name',
+            ),
+        ),
+        Prefetch(
+            'vehicle_expertise',
+            queryset=WorkshopVehicleExpertise.objects.select_related(
+                'marca',
+                'modelo__marca',
+            ).order_by('-total_jobs', '-created_at'),
+        ),
+    )
+
+
+def _catalog_categories_queryset():
+    return ServiceCategory.objects.prefetch_related(
+        Prefetch('services', queryset=Service.objects.order_by('name'))
+    ).order_by('order', 'name')
+
+
+def _serialize_workshop_catalog(workshop):
+    payload = {
+        'categories': _catalog_categories_queryset(),
+        'workshop_services': workshop.workshop_services.all(),
+        'vehicle_expertise': workshop.vehicle_expertise.all(),
+    }
+    return WorkshopCatalogSerializer(payload).data
+
+
+def _get_or_create_workshop_for_user(user):
+    if not hasattr(user, 'customer_profile'):
+        raise PermissionDenied('Debes tener un perfil customer para configurar tu taller.')
+
+    customer = user.customer_profile
+    if customer.customer_type != 'company' or customer.business_activity != 'workshop':
+        raise PermissionDenied(
+            'Este módulo solo está disponible para empresas con actividad económica de taller mecánico.'
+        )
+
+    workshop = (
+        _workshop_profile_queryset()
+        .filter(owner=user)
+        .order_by('id')
+        .first()
+    )
+
+    if workshop:
+        return workshop
+
+    return Workshop.objects.create(
+        owner=user,
+        customer_profile=customer,
+        name=customer.company_name or customer.get_full_name() or user.username,
+        ruc=customer.document_number if customer.document_type == 'RUC' else None,
+        phone=customer.phone or '',
     )
 
 
@@ -265,6 +352,82 @@ class PublicWorkshopLocationOptionsView(APIView):
             'provinces': provinces,
             'districts': districts,
         })
+
+
+class WorkshopProfileMeView(APIView):
+    """Perfil editable del taller autenticado."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        workshop = _get_or_create_workshop_for_user(request.user)
+        workshop = _workshop_profile_queryset().get(pk=workshop.pk)
+        return Response(WorkshopProfileSerializer(workshop).data)
+
+
+class WorkshopCatalogMeView(APIView):
+    """Configuración autenticada del catálogo del taller."""
+
+    permission_classes = [permissions.IsAuthenticated]
+
+    def get(self, request):
+        workshop = _get_or_create_workshop_for_user(request.user)
+        workshop = _workshop_catalog_queryset().get(pk=workshop.pk)
+        return Response(_serialize_workshop_catalog(workshop))
+
+    def patch(self, request):
+        workshop = _get_or_create_workshop_for_user(request.user)
+        serializer = WorkshopCatalogUpdateSerializer(data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            if 'workshop_services' in serializer.validated_data:
+                self._replace_workshop_services(
+                    workshop,
+                    serializer.validated_data['workshop_services'],
+                )
+
+            if 'vehicle_expertise' in serializer.validated_data:
+                self._replace_vehicle_expertise(
+                    workshop,
+                    serializer.validated_data['vehicle_expertise'],
+                )
+
+        workshop = _workshop_catalog_queryset().get(pk=workshop.pk)
+        return Response(_serialize_workshop_catalog(workshop))
+
+    def _replace_workshop_services(self, workshop, workshop_services):
+        workshop.workshop_services.all().delete()
+
+        instances = []
+        for item in workshop_services:
+            instance = WorkshopService(workshop=workshop, **item)
+            instance.full_clean(exclude=['workshop'])
+            instances.append(instance)
+
+        WorkshopService.objects.bulk_create(instances)
+
+    def _replace_vehicle_expertise(self, workshop, vehicle_expertise):
+        workshop.vehicle_expertise.all().delete()
+
+        instances = []
+        for item in vehicle_expertise:
+            instance = WorkshopVehicleExpertise(workshop=workshop, **item)
+            instance.full_clean(exclude=['workshop'])
+            instances.append(instance)
+
+        WorkshopVehicleExpertise.objects.bulk_create(instances)
+
+    def patch(self, request):
+        workshop = _get_or_create_workshop_for_user(request.user)
+        serializer = WorkshopProfileSerializer(workshop, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+
+        with transaction.atomic():
+            serializer.save()
+
+        workshop = _workshop_profile_queryset().get(pk=workshop.pk)
+        return Response(WorkshopProfileSerializer(workshop).data)
 
 
 class PublicWorkshopDetailView(generics.RetrieveAPIView):

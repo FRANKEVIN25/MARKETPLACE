@@ -10,7 +10,7 @@ Puntos clave:
 - Extender los productos de Odoo con campos propios de repuestos (lado, calidad, códigos OEM, etc.).
 - Mantener una sincronización consistente entre los modelos de Odoo y los modelos expuestos por la API Django REST (IDs externos, slugs, restricciones de unicidad).
 
-El módulo está definido en el directorio `services/odoo/addons_disabled/ecomparts_integration` y debe trasladarse a `services/odoo/addons` para estar disponible como addon instalable en la instancia Odoo.
+El módulo está definido en el directorio `services/odoo/addons_disabled/ecomp` y debe trasladarse a `services/odoo/addons` para estar disponible como addon instalable en la instancia Odoo.
 
 ---
 
@@ -31,7 +31,7 @@ Archivos principales relevantes para el dominio de vehículos y compatibilidades
 
 ## 1. `vehicle_models.py`
 
-Archivo: `services/odoo/addons_disabled/ecomparts_integration/models/vehicle_models.py`
+Archivo: `services/odoo/addons_disabled/ecomp/models/vehicle_models.py`
 
 Este archivo define el modelo jerárquico de vehículos y sus atributos técnicos. Es la base para cualquier lógica de compatibilidad.
 
@@ -126,7 +126,7 @@ Restricciones y validaciones:
 
 ### 1.7. Datos semilla de vehículos
 
-Archivo: `services/odoo/addons_disabled/ecomparts_integration/data/vehicle_variants_seed.xml`
+Archivo: `services/odoo/addons_disabled/ecomp/data/vehicle_variants_seed.xml`
 
 Este archivo carga datos iniciales de ejemplo para:
 - Marcas: Toyota, Honda, Ford, Hyundai, Tesla.
@@ -140,7 +140,7 @@ Sirve como catálogo base para pruebas de UX y para validar las reglas de compat
 
 ## 2. `products.py` (diseño propuesto)
 
-Archivo previsto: `services/odoo/addons_disabled/ecomparts_integration/models/products.py`
+Archivo previsto: `services/odoo/addons_disabled/ecomp/models/products.py`
 
 Objetivo: extender los modelos estándar de productos (`product.template` y/o `product.product`) para incluir campos específicos de autopartes y el enlace con las compatibilidades vehículo–producto.
 
@@ -172,7 +172,7 @@ Vistas esperadas (ya previstas en el manifest):
 
 ## 3. `compatibility.py` (diseño propuesto)
 
-Archivo previsto: `services/odoo/addons_disabled/ecomparts_integration/models/compatibility.py`
+Archivo previsto: `services/odoo/addons_disabled/ecomp/models/compatibility.py`
 
 Objetivo: representar de forma explícita la relación de compatibilidad entre una autoparte (producto) y una o varias variantes de vehículo.
 
@@ -240,7 +240,7 @@ Acciones y vistas previstas (según `__manifest__.py`):
 
 ## 6. Pasos para activar el módulo en Odoo
 
-1. Mover el módulo desde `services/odoo/addons_disabled/ecomparts_integration` a `services/odoo/addons/ecomparts_integration`.
+1. Mover el módulo desde `services/odoo/addons_disabled/ecomp` a `services/odoo/addons/ecomp`.
 2. Reiniciar el contenedor/servicio de Odoo para que detecte el nuevo addon.
 3. Desde la interfaz de Odoo (Apps):
    - Actualizar la lista de aplicaciones.
@@ -257,7 +257,7 @@ Acciones y vistas previstas (según `__manifest__.py`):
 Este es el roadmap propuesto para implementar el módulo de autopartes y compatibilidades en Odoo 18, coordinado con el backend Django REST.
 
 1. **Preparación del módulo Odoo**
-  - Mover `ecomparts_integration` desde `services/odoo/addons_disabled` a `services/odoo/addons`.
+  - Mover `ecomp` desde `services/odoo/addons_disabled` a `services/odoo/addons`.
   - Verificar que `__manifest__.py` es válido para Odoo 18 y que las dependencias (`base`, `product`, `stock`) están disponibles.
 
 2. **Modelado de vehículos (ya implementado)**

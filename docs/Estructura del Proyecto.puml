@@ -24,7 +24,7 @@ right side
 **** <b>config/</b>
 ***** odoo.conf\n<i>Configuración Odoo</i>\n<i>DB, puertos, addons</i>
 **** <b>addons/</b>
-***** <b>ecomparts_integration/</b>\n<i>Módulo personalizado</i>
+***** <b>ecomp/</b>\n<i>Módulo personalizado</i>
 ****** __init__.py
 ****** __manifest__.py
 ****** <b>models/</b>\n<i>Modelos Odoo</i>

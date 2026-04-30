@@ -46,7 +46,7 @@ package "ERP Odoo 19" <<erp>> {
     
     package "Módulos Odoo" {
         [base] as odoo_base
-        [ecomparts_integration] as odoo_custom
+        [ecomp] as odoo_custom
     }
 }
 

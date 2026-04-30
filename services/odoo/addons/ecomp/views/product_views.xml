@@ -65,4 +65,27 @@
             </xpath>
         </field>
     </record>
+
+    <record id="view_product_category_form_ecomparts" model="ir.ui.view">
+        <field name="name">product.category.form.ecomparts</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_form_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='parent_id']" position="after">
+                <field name="django_sync_key" readonly="1"/>
+                <field name="import_xmlid" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
+
+    <record id="view_product_category_tree_ecomparts" model="ir.ui.view">
+        <field name="name">product.category.tree.ecomparts</field>
+        <field name="model">product.category</field>
+        <field name="inherit_id" ref="product.product_category_list_view"/>
+        <field name="arch" type="xml">
+            <xpath expr="//field[@name='display_name']" position="after">
+                <field name="import_xmlid" optional="show" readonly="1"/>
+            </xpath>
+        </field>
+    </record>
 </odoo>

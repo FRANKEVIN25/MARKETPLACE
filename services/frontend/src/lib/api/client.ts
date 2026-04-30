@@ -11,9 +11,16 @@ import type {
   PublicProviderDetail,
   ProviderReview,
   ServiceCategoryItem,
+  ServiceCatalogCategory,
   ServiceFilters,
   ServiceListing,
+  WorkshopCatalogConfig,
+  WorkshopProfile,
+  WorkshopProfileLocation,
+  WorkshopProfileSchedule,
   WorkshopLocationOptions,
+  WorkshopServiceConfigItem,
+  WorkshopVehicleExpertiseItem,
   Customer,
   Address,
   AuthTokens,
@@ -74,6 +81,58 @@ function normalizeServiceListingResponse(
     ...response,
     results: (response.results ?? []).map(normalizeServiceListing),
   };
+}
+
+function normalizeWorkshopScheduleTime(value: string): string {
+  return value ? value.slice(0, 5) : value;
+}
+
+function normalizeWorkshopProfile(profile: WorkshopProfile): WorkshopProfile {
+  return {
+    ...profile,
+    locations: (profile.locations ?? []).map((location: WorkshopProfileLocation) => ({
+      ...location,
+      latitude: location.latitude ?? '0.000000',
+      longitude: location.longitude ?? '0.000000',
+    })),
+    schedules: (profile.schedules ?? []).map((schedule: WorkshopProfileSchedule) => ({
+      ...schedule,
+      start_time: normalizeWorkshopScheduleTime(schedule.start_time),
+      end_time: normalizeWorkshopScheduleTime(schedule.end_time),
+    })),
+  };
+}
+
+function normalizeWorkshopServiceConfig(
+  item: WorkshopServiceConfigItem,
+): WorkshopServiceConfigItem {
+  return {
+    ...item,
+    min_price: item.min_price === null || item.min_price === undefined ? null : Number(item.min_price),
+    max_price: item.max_price === null || item.max_price === undefined ? null : Number(item.max_price),
+    estimated_time_min: Number(item.estimated_time_min ?? 0),
+    warranty_days: Number(item.warranty_days ?? 0),
+  };
+}
+
+function normalizeWorkshopCatalog(config: WorkshopCatalogConfig): WorkshopCatalogConfig {
+  return {
+    ...config,
+    workshop_services: (config.workshop_services ?? []).map(normalizeWorkshopServiceConfig),
+    vehicle_expertise: (config.vehicle_expertise ?? []).map((item: WorkshopVehicleExpertiseItem) => ({
+      ...item,
+      marca: item.marca ?? null,
+      modelo: item.modelo ?? null,
+      total_jobs: Number(item.total_jobs ?? 0),
+      last_job_date: item.last_job_date ?? null,
+      label: item.label ?? item.modelo_nombre ?? item.marca_nombre ?? null,
+    })),
+  };
+}
+
+function extractResults<T>(response: PaginatedResponse<T> | T[]): T[] {
+  const data = response as any;
+  return Array.isArray(data) ? data : (data.results ?? []);
 }
 
 // Configuración base
@@ -400,6 +459,59 @@ export const api = {
         { params },
       );
       return response.data;
+    },
+
+    async getWorkshopProfile(token: string): Promise<WorkshopProfile> {
+      const response = await apiClient.get<WorkshopProfile>(
+        '/api/v1/services/workshop-profile/me/',
+        { headers: authHeaders(token) }
+      );
+      return normalizeWorkshopProfile(response.data);
+    },
+
+    async updateWorkshopProfile(token: string, data: Partial<WorkshopProfile>): Promise<WorkshopProfile> {
+      const response = await apiClient.patch<WorkshopProfile>(
+        '/api/v1/services/workshop-profile/me/',
+        data,
+        { headers: authHeaders(token) }
+      );
+      return normalizeWorkshopProfile(response.data);
+    },
+
+    async getWorkshopCatalog(token: string): Promise<WorkshopCatalogConfig> {
+      const response = await apiClient.get<WorkshopCatalogConfig>(
+        '/api/v1/services/catalog/me/',
+        { headers: authHeaders(token) }
+      );
+      return normalizeWorkshopCatalog(response.data);
+    },
+
+    async updateWorkshopCatalog(token: string, data: Partial<WorkshopCatalogConfig>): Promise<WorkshopCatalogConfig> {
+      const response = await apiClient.patch<WorkshopCatalogConfig>(
+        '/api/v1/services/catalog/me/',
+        data,
+        { headers: authHeaders(token) }
+      );
+      return normalizeWorkshopCatalog(response.data);
+    },
+
+    async vehicleMarcas(token: string): Promise<VehicleMarca[]> {
+      const response = await apiClient.get<PaginatedResponse<VehicleMarca> | VehicleMarca[]>(
+        '/api/v1/vehicles/marcas/',
+        { headers: authHeaders(token) }
+      );
+      return extractResults(response.data);
+    },
+
+    async vehicleModelos(token: string, marcaId: number): Promise<VehicleModelo[]> {
+      const response = await apiClient.get<PaginatedResponse<VehicleModelo> | VehicleModelo[]>(
+        '/api/v1/vehicles/modelos/',
+        {
+          headers: authHeaders(token),
+          params: { marca: marcaId },
+        }
+      );
+      return extractResults(response.data);
     },
   },
 

@@ -166,7 +166,7 @@ Notas:
 2. Ejecutar una operacion real desde Django, por ejemplo:
 
 ```bash
-docker exec -it ecomparts-backend python manage.py upgrade_odoo_module --module=ecomparts_integration
+docker exec -it ecomparts-backend python manage.py upgrade_odoo_module --module=ecomp
 docker exec -it ecomparts-backend python manage.py push_categories
 ```
 

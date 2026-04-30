@@ -467,6 +467,7 @@ export interface ProductFilters {
 export type ServiceType = 'maintenance' | 'repair' | 'diagnostic';
 export type ServiceLevel = 'BASIC' | 'MANAGED' | 'ADVANCED';
 export type CommerceLevel = 'NONE' | 'BUYER' | 'B2B_BUYER' | 'SELLER';
+export type VehicleExpertiseLevel = 'basic' | 'pro' | 'expert';
 
 export interface ServiceCategoryItem {
   id: number;
@@ -482,6 +483,96 @@ export interface WorkshopLocationOptions {
   departments: string[];
   provinces: string[];
   districts: string[];
+}
+
+export interface WorkshopProfileLocation {
+  id?: number;
+  name: string;
+  address: string;
+  district: string;
+  province: string;
+  department: string;
+  latitude?: string | number;
+  longitude?: string | number;
+  is_main: boolean;
+}
+
+export interface WorkshopProfileSchedule {
+  id?: number;
+  day_of_week: number;
+  day_label?: string;
+  start_time: string;
+  end_time: string;
+  is_active: boolean;
+}
+
+export interface WorkshopProfile {
+  id: number;
+  name: string;
+  phone: string;
+  whatsapp: string;
+  website: string;
+  description: string;
+  large_description: string;
+  years_experience: number;
+  status: 'open' | 'busy' | 'closed';
+  locations: WorkshopProfileLocation[];
+  schedules: WorkshopProfileSchedule[];
+}
+
+export interface ServiceCatalogServiceOption {
+  id: number;
+  name: string;
+  description: string;
+  service_type: ServiceType;
+  complexity: 'low' | 'medium' | 'high';
+}
+
+export interface ServiceCatalogCategory {
+  id: number;
+  name: string;
+  description?: string;
+  icon?: string;
+  order: number;
+  services: ServiceCatalogServiceOption[];
+}
+
+export interface WorkshopServiceConfigItem {
+  id?: number;
+  service: number;
+  service_name?: string;
+  category_id?: number;
+  category_name?: string;
+  service_type?: ServiceType;
+  complexity?: 'low' | 'medium' | 'high';
+  is_specialized: boolean;
+  min_price: number | null;
+  max_price: number | null;
+  currency: string;
+  estimated_time_min: number;
+  available: boolean;
+  has_warranty: boolean;
+  warranty_days: number;
+}
+
+export interface WorkshopVehicleExpertiseItem {
+  id?: number;
+  marca?: number | null;
+  marca_nombre?: string | null;
+  modelo?: number | null;
+  modelo_nombre?: string | null;
+  granularity?: 'marca' | 'modelo';
+  label?: string | null;
+  expertise_level: VehicleExpertiseLevel;
+  notes: string;
+  total_jobs?: number;
+  last_job_date?: string | null;
+}
+
+export interface WorkshopCatalogConfig {
+  categories: ServiceCatalogCategory[];
+  workshop_services: WorkshopServiceConfigItem[];
+  vehicle_expertise: WorkshopVehicleExpertiseItem[];
 }
 
 export interface ServiceMainLocation {

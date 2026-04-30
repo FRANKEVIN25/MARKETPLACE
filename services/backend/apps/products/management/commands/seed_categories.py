@@ -3,7 +3,7 @@ Comando de carga inicial de categorías de autopartes.
 
 Crea la jerarquía canónica de 3 niveles (Principal → Subcategoría → Hoja)
 que debe coincidir con la definida en:
-    services/odoo/addons/ecomparts_integration/data/categories_seed.xml
+    services/odoo/addons/ecomp/data/categories_seed.xml
 
 USO:
     # En Docker
@@ -224,7 +224,7 @@ class Command(BaseCommand):
     help = (
         "Carga la jerarquía canónica de 3 niveles de categorías de autopartes. "
         "Idempotente: no duplica si ya existen. "
-        "Equivalente al categories_seed.xml de ecomparts_integration en Odoo."
+        "Equivalente al categories_seed.xml de ecomp en Odoo."
     )
 
     def add_arguments(self, parser):

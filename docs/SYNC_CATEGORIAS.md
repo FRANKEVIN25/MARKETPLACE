@@ -106,7 +106,7 @@ La fuente de verdad operativa del catálogo es Django:
 |---------|-----|------------------|
 | Django  | Fuente de verdad | `services/backend/apps/products/management/commands/seed_categories.py` → `products.Category` |
 | Odoo    | Proyección operativa para proveedores | `product.category` + `django_sync_key` |
-| Odoo XML | Solo bootstrap / legado | `services/odoo/addons/ecomparts_integration/data/categories_seed.xml` |
+| Odoo XML | Solo bootstrap / legado | `services/odoo/addons/ecomp/data/categories_seed.xml` |
 
 > **Regla actual:** las altas, renombres y movimientos se hacen en Django y luego se propagan a Odoo con `push_categories`.
 
@@ -135,7 +135,7 @@ class Category(MPTTModel):
 
 ## Modelo Odoo: `product.category`
 
-Modelo nativo de Odoo, extendido por `ecomparts_integration`. Campos relevantes:
+Modelo nativo de Odoo, extendido por `ecomp`. Campos relevantes:
 
 | Campo Odoo         | Uso en Django                         |
 |--------------------|---------------------------------------|
@@ -218,8 +218,8 @@ Si falta alguna categoría global vinculada en Django, `sync_products` falla rá
 | `apps/sync/services/categories.py` | `push_categories()` y `get_persisted_category_map()` |
 | `apps/products/management/commands/seed_products.py` | Datos de prueba — referencia categorías por nombre, no las crea |
 | `apps/sync/management/commands/sync_products.py` | Sync por provider usando mapa de categorías ya persistido |
-| `services/odoo/addons/ecomparts_integration/models/products.py` | Agrega `django_sync_key` a `product.category` |
-| `services/odoo/addons/ecomparts_integration/data/categories_seed.xml` | Fixture legado / bootstrap |
+| `services/odoo/addons/ecomp/models/products.py` | Agrega `django_sync_key` a `product.category` |
+| `services/odoo/addons/ecomp/data/categories_seed.xml` | Fixture legado / bootstrap |
 
 ---
 
@@ -232,7 +232,7 @@ Si falta alguna categoría global vinculada en Django, `sync_products` falla rá
 docker exec -it ecomparts-backend python manage.py migrate
 
 # Actualizar el módulo Odoo para agregar product.category.django_sync_key
-docker exec -it ecomparts-backend python manage.py upgrade_odoo_module --module=ecomparts_integration
+docker exec -it ecomparts-backend python manage.py upgrade_odoo_module --module=ecomp
 
 # Django: crear jerarquía de categorías
 docker exec -it ecomparts-backend python manage.py seed_categories

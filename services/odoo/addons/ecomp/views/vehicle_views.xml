@@ -183,6 +183,7 @@
                 <field name="anio_hasta"/>
                 <field name="nombre"/>
                 <field name="django_external_id" readonly="1"/>
+                <field name="import_xmlid" readonly="1"/>
             </list>
         </field>
     </record>
@@ -210,6 +211,7 @@
                     </group>
                     <group>
                         <field name="django_external_id" readonly="1"/>
+                        <field name="import_xmlid" readonly="1"/>
                     </group>
                 </sheet>
             </form>
@@ -227,6 +229,8 @@
                 <field name="modelo_id"/>
                 <field name="motor_id"/>
                 <field name="variant_id"/>
+                <field name="variant_import_code" optional="show"/>
+                <field name="fitment_notes" optional="show"/>
                 <field name="active"/>
             </list>
         </field>
@@ -241,6 +245,7 @@
                     <group>
                         <field name="product_tmpl_id"/>
                         <field name="variant_id"/>
+                        <field name="variant_import_code" readonly="1"/>
                     </group>
                     <group>
                         <field name="fitment_notes" colspan="4"/>

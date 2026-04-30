@@ -216,7 +216,7 @@ class Command(BaseCommand):
                     odoo_variante_id = odoo.push_variante(
                         modelo_odoo_id, motor_odoo_id, trans_odoo_id,
                         traccion_odoo_id, variante.anio_desde, variante.anio_hasta,
-                        variante.id
+                        variante.id, variante.import_code
                     )
 
                     # Vincular en Django si cambió

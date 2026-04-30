@@ -8,7 +8,7 @@ import random
 # Mapeo: alias usado en products_data → nombre canónico en la jerarquía de 3 niveles.
 # Los nombres canónicos coinciden exactamente con los definidos en:
 #   - seed_categories.py                              (Django)
-#   - ecomparts_integration/data/categories_seed.xml  (Odoo)
+#   - ecomp/data/categories_seed.xml                  (Odoo)
 #
 # Se usan categorías de nivel 2 para que los productos tengan un nivel de
 # especificidad razonable sin llegar al nivel de hoja.

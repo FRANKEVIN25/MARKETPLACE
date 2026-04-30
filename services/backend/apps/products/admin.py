@@ -9,10 +9,10 @@ from django.utils.html import format_html
 
 @admin.register(Category)
 class CategoryAdmin(MPTTModelAdmin):
-    list_display = ['name', 'parent', 'is_active', 'created_at']
+    list_display = ['name', 'import_code', 'parent', 'is_active', 'created_at']
     list_filter = ['is_active', 'created_at']
-    search_fields = ['name', 'slug']
-    readonly_fields = ['slug', 'created_at', 'updated_at']
+    search_fields = ['name', 'slug', 'import_code']
+    readonly_fields = ['slug', 'sync_key', 'import_code', 'created_at', 'updated_at']
     mptt_level_indent = 20
 
 

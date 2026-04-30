@@ -7,7 +7,7 @@
 | Orquestación sync actual | `services/backend/apps/sync/services/products.py` |
 | Tareas Celery activas | `services/backend/apps/sync/tasks.py` |
 | Conector Odoo (lectura) | `services/backend/apps/sync/connector/products.py` |
-| Modelo addon Odoo | `services/odoo/addons/ecomparts_integration/models/products.py` |
+| Modelo addon Odoo | `services/odoo/addons/ecomp/models/products.py` |
 
 ---
 
@@ -41,7 +41,7 @@ Svelte frontend
 ### Puntos clave del código actual
 
 ```python
-# addon Odoo — ecomparts_integration/models/products.py
+# addon Odoo — ecomp/models/products.py
 class ProductTemplate(models.Model):
     _inherit = 'product.template'
 
@@ -231,7 +231,7 @@ Sin embargo, tiene un costo de implementación real y nuevas dependencias operat
 
 Las dos mejoras críticas del flujo actual están implementadas:
 
-1. **`x_image_version` en el addon Odoo** (`ecomparts_integration/models/products.py`): campo `Char` con `index=True` y `copy=False` en `product.template`. Los overrides de `create()` y `write()` lo actualizan únicamente cuando `image_1920` cambia, con precisión de microsegundos (`%Y%m%d%H%M%S%f`). Esto elimina completamente los falsos positivos que generaba `write_date`.
+1. **`x_image_version` en el addon Odoo** (`ecomp/models/products.py`): campo `Char` con `index=True` y `copy=False` en `product.template`. Los overrides de `create()` y `write()` lo actualizan únicamente cuando `image_1920` cambia, con precisión de microsegundos (`%Y%m%d%H%M%S%f`). Esto elimina completamente los falsos positivos que generaba `write_date`.
 
 2. **`sync_provider_product_images()` usa `x_image_version`** (`services/products.py`): los dos round-trips JSON-RPC ahora piden `x_image_version` en lugar de `write_date`. La lógica de `_product_needs_image_refresh()` no cambió; el beneficio viene de que la señal es ahora exacta.
 

@@ -165,6 +165,8 @@ class Motor(models.Model):
 
 
 class VariantVehiculo(models.Model):
+    IMPORT_CODE_PREFIX = 'VAR'
+
     modelo = models.ForeignKey(ModeloVehiculo, on_delete=models.CASCADE)
     motor = models.ForeignKey(Motor, on_delete=models.PROTECT)
     transmision = models.ForeignKey(Transmision, on_delete=models.PROTECT)
@@ -172,6 +174,17 @@ class VariantVehiculo(models.Model):
 
     anio_desde = models.PositiveIntegerField()
     anio_hasta = models.PositiveIntegerField(null=True, blank=True)
+
+    import_code = models.CharField(
+        max_length=16,
+        unique=True,
+        editable=False,
+        blank=True,
+        help_text=(
+            'Código corto y estable para proyección de compatibilidades en Odoo. '
+            'Se genera en Django y no depende del nombre de la variante.'
+        ),
+    )
 
     # Vínculo con Odoo — almacena el ID de vehiculo.variante en Odoo.
     # Permite resolver la variante en queries de compatibilidad sin depender
@@ -190,6 +203,22 @@ class VariantVehiculo(models.Model):
             raise ValidationError(
                 {'anio_hasta': 'El año de fin no puede ser anterior al año de inicio.'}
             )
+
+    @classmethod
+    def build_next_import_code(cls) -> str:
+        last_code = (
+            cls.objects.filter(import_code__startswith=cls.IMPORT_CODE_PREFIX)
+            .order_by('-import_code')
+            .values_list('import_code', flat=True)
+            .first()
+        )
+        next_number = int(last_code[len(cls.IMPORT_CODE_PREFIX):]) + 1 if last_code else 1
+        return f'{cls.IMPORT_CODE_PREFIX}{next_number:04d}'
+
+    def save(self, *args, **kwargs):
+        if not self.import_code:
+            self.import_code = self.build_next_import_code()
+        super().save(*args, **kwargs)
 
     class Meta:
         unique_together = ('modelo','motor','transmision','traccion','anio_desde','anio_hasta')

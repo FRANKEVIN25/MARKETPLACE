@@ -339,7 +339,7 @@ Hoy la heuristica implementable sin tocar Odoo es usar `write_date` como version
 
 Eso no requiere addon nuevo para funcionar.
 
-Pero la version mas precisa si conviene implementarla en el addon de Odoo, idealmente en `services/odoo/addons/ecomparts_integration/models/products.py`, agregando una señal dedicada de cambio de imagen en `product.template` o `product.product`.
+Pero la version mas precisa si conviene implementarla en el addon de Odoo, idealmente en `services/odoo/addons/ecomp/models/products.py`, agregando una señal dedicada de cambio de imagen en `product.template` o `product.product`.
 
 En otras palabras:
 

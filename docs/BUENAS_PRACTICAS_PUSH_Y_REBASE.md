@@ -281,7 +281,7 @@ sudo chown -R $USER:$USER ruta
 Ejemplo real de este proyecto:
 
 ```bash
-sudo chown -R $USER:$USER services/odoo/addons/ecomparts_integration
+sudo chown -R $USER:$USER services/odoo/addons/ecomp
 ```
 
 ### Buena práctica preventiva

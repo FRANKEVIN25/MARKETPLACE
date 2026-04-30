@@ -53,12 +53,13 @@ class VariantVehiculoSerializer(serializers.ModelSerializer):
     class Meta:
         model = VariantVehiculo
         fields = [
-            'id', 'modelo', 'marca_nombre', 'modelo_nombre',
+            'id', 'import_code', 'modelo', 'marca_nombre', 'modelo_nombre',
             'motor', 'motor_display',
             'transmision', 'transmision_display',
             'traccion', 'traccion_display',
             'anio_desde', 'anio_hasta'
         ]
+        read_only_fields = ['import_code']
 
 
 class VariantVehiculoFilterSerializer(serializers.ModelSerializer):

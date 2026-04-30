@@ -52,7 +52,7 @@ def push_categories(odoo, stats: dict | None = None) -> dict:
     if not odoo.category_supports_sync_key():
         raise RuntimeError(
             "Odoo no expone product.category.django_sync_key. "
-            "Ejecuta la actualización del módulo ecomparts_integration y vuelve a correr push_categories."
+            "Ejecuta la actualización del módulo ecomp y vuelve a correr push_categories."
         )
 
     root_odoo_id = odoo.get_category_root_id()
@@ -80,6 +80,7 @@ def push_categories(odoo, stats: dict | None = None) -> dict:
         odoo_id, created, updated = odoo.push_category(
             name=category.name,
             django_sync_key=str(category.sync_key),
+            django_import_code=category.import_code,
             parent_odoo_id=parent_odoo_id,
             is_active=category.is_active,
             odoo_category_id=category.odoo_category_id,

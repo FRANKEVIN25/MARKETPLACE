@@ -190,7 +190,7 @@ workshop.customer_profile.addresses.all()     # direcciones del taller
 | `odoo_repair_id` | ID del módulo Repair. Solo para `service_level` `MANAGED` / `ADVANCED` |
 
 > **Flujo de activación Odoo:**  
-> Cuando `service_level` cambia a `MANAGED` o `ADVANCED`, se debe crear (o actualizar) el Partner en Odoo vía la API JSON-RPC del addon `ecomparts_integration`. Ver sección 5.
+> Cuando `service_level` cambia a `MANAGED` o `ADVANCED`, se debe crear (o actualizar) el Partner en Odoo vía la API JSON-RPC del addon `ecomp`. Ver sección 5.
 
 > **El historial Django no se toca en el upgrade:**  
 > Odoo no existía mientras el taller operaba con `service_level=BASIC`, por lo que solo empieza a registrar datos desde el momento del upgrade. El `customer_profile` del taller y todo su historial de compras en Django permanecen intactos. No hay migración de datos ni pérdida de información al cambiar de nivel.
@@ -369,7 +369,7 @@ Upgrade commerce_level=SELLER          Signal/task → marketplace.Provider.crea
 
 | Addon | Propósito | Relación con `services` |
 |---|---|---|
-| `ecomparts_integration` | Catálogo de vehículos, compatibilidades, productos | El taller con `commerce_level=SELLER` crea productos aquí. `autopart_quality`, `autopart_side`, `autopart_oem_code` son campos del addon |
+| `ecomp` | Catálogo de vehículos, compatibilidades, productos | El taller con `commerce_level=SELLER` crea productos aquí. `autopart_quality`, `autopart_side`, `autopart_oem_code` son campos del addon |
 | `orders_odoo` | Extiende `sale.order` con datos del marketplace | Cuando el taller vende repuestos, las órdenes pasan por aquí. Campo `payment_state` en Odoo refleja lo aprobado desde Django |
 | `odoo_django_webhook` | Webhooks Odoo → Django | Notifica a Django cuando una `sale.order` se confirma o una entrega se valida. Relevante cuando el taller (`commerce_level=SELLER`) vende y despacha |
 | `multi_company_products` | Multi-tenant en Odoo | Cada taller `commerce_level=SELLER` opera como compañía separada en Odoo |
@@ -486,7 +486,7 @@ WorkshopServiceHistory.service → compatible con el vehículo del cliente
 ```
 
 La compatibilidad vehículo↔servicio reutilizará la lógica de `products.Compatibility` 
-ya implementada en `ecomparts_integration`.
+ya implementada en `ecomp`.
 
 ### `sync` (sincronización Odoo ↔ Django)
 

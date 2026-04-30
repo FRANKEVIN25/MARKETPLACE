@@ -1,10 +1,20 @@
 """
 Serializers públicos para servicios de taller.
 """
+from decimal import Decimal
+
 from rest_framework import serializers
 from django.utils.text import slugify
 
-from .models import ServiceCategory, Service, Workshop, WorkshopService, WorkshopLocation
+from .models import (
+    ServiceCategory,
+    Service,
+    Workshop,
+    WorkshopLocation,
+    WorkshopSchedule,
+    WorkshopService,
+    WorkshopVehicleExpertise,
+)
 
 
 def _vehicle_label(item) -> str | None:
@@ -49,6 +59,359 @@ class WorkshopLocationSerializer(serializers.ModelSerializer):
             'is_main',
         ]
         read_only_fields = fields
+
+
+class WorkshopScheduleSerializer(serializers.ModelSerializer):
+    day_label = serializers.CharField(source='get_day_of_week_display', read_only=True)
+
+    class Meta:
+        model = WorkshopSchedule
+        fields = [
+            'id',
+            'day_of_week',
+            'day_label',
+            'start_time',
+            'end_time',
+            'is_active',
+        ]
+        read_only_fields = fields
+
+
+class WorkshopLocationWriteSerializer(serializers.ModelSerializer):
+    latitude = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        required=False,
+        default=Decimal('0.000000'),
+    )
+    longitude = serializers.DecimalField(
+        max_digits=10,
+        decimal_places=6,
+        required=False,
+        default=Decimal('0.000000'),
+    )
+
+    class Meta:
+        model = WorkshopLocation
+        fields = [
+            'id',
+            'name',
+            'address',
+            'district',
+            'province',
+            'department',
+            'latitude',
+            'longitude',
+            'is_main',
+        ]
+        read_only_fields = ['id']
+
+
+class WorkshopScheduleWriteSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = WorkshopSchedule
+        fields = [
+            'id',
+            'day_of_week',
+            'start_time',
+            'end_time',
+            'is_active',
+        ]
+        read_only_fields = ['id']
+
+    def validate(self, attrs):
+        start_time = attrs.get('start_time')
+        end_time = attrs.get('end_time')
+
+        if start_time and end_time and start_time >= end_time:
+            raise serializers.ValidationError(
+                'La hora de cierre debe ser mayor que la hora de apertura.'
+            )
+
+        return attrs
+
+
+class WorkshopProfileSerializer(serializers.ModelSerializer):
+    locations = WorkshopLocationWriteSerializer(many=True, required=False)
+    schedules = WorkshopScheduleWriteSerializer(many=True, required=False)
+
+    class Meta:
+        model = Workshop
+        fields = [
+            'id',
+            'name',
+            'phone',
+            'whatsapp',
+            'website',
+            'description',
+            'large_description',
+            'years_experience',
+            'status',
+            'locations',
+            'schedules',
+        ]
+
+    def validate_locations(self, value):
+        if not value:
+            return value
+
+        main_count = sum(1 for item in value if item.get('is_main'))
+        if main_count != 1:
+            raise serializers.ValidationError(
+                'Debes marcar exactamente una ubicación principal.'
+            )
+
+        return value
+
+    def validate_schedules(self, value):
+        seen_slots = set()
+
+        for item in value:
+            slot_key = (item['day_of_week'], item['start_time'])
+            if slot_key in seen_slots:
+                raise serializers.ValidationError(
+                    'No puedes repetir el mismo horario de inicio para un día.'
+                )
+            seen_slots.add(slot_key)
+
+        return value
+
+    def update(self, instance, validated_data):
+        locations_data = validated_data.pop('locations', None)
+        schedules_data = validated_data.pop('schedules', None)
+
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        instance.clean()
+        instance.save()
+
+        if locations_data is not None:
+            self._replace_locations(instance, locations_data)
+
+        if schedules_data is not None:
+            self._replace_schedules(instance, schedules_data)
+
+        return instance
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        data['locations'] = WorkshopLocationSerializer(
+            instance.locations.order_by('-is_main', 'id'),
+            many=True,
+        ).data
+        data['schedules'] = WorkshopScheduleSerializer(
+            instance.schedules.order_by('day_of_week', 'start_time'),
+            many=True,
+        ).data
+        return data
+
+    def _replace_locations(self, instance, locations_data):
+        instance.locations.all().delete()
+        WorkshopLocation.objects.bulk_create([
+            WorkshopLocation(
+                workshop=instance,
+                name=item.get('name', ''),
+                address=item['address'],
+                district=item['district'],
+                province=item['province'],
+                department=item['department'],
+                latitude=item.get('latitude', Decimal('0.000000')),
+                longitude=item.get('longitude', Decimal('0.000000')),
+                is_main=item.get('is_main', False),
+            )
+            for item in locations_data
+        ])
+
+    def _replace_schedules(self, instance, schedules_data):
+        instance.schedules.all().delete()
+        WorkshopSchedule.objects.bulk_create([
+            WorkshopSchedule(
+                workshop=instance,
+                day_of_week=item['day_of_week'],
+                start_time=item['start_time'],
+                end_time=item['end_time'],
+                is_active=item.get('is_active', True),
+            )
+            for item in schedules_data
+        ])
+
+
+class ServiceCatalogOptionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Service
+        fields = [
+            'id',
+            'name',
+            'description',
+            'service_type',
+            'complexity',
+        ]
+        read_only_fields = fields
+
+
+class ServiceCategoryCatalogSerializer(serializers.ModelSerializer):
+    services = ServiceCatalogOptionSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = ServiceCategory
+        fields = [
+            'id',
+            'name',
+            'description',
+            'icon',
+            'order',
+            'services',
+        ]
+        read_only_fields = fields
+
+
+class WorkshopServiceConfigSerializer(serializers.ModelSerializer):
+    service_name = serializers.CharField(source='service.name', read_only=True)
+    category_id = serializers.IntegerField(source='service.category_id', read_only=True)
+    category_name = serializers.CharField(source='service.category.name', read_only=True)
+    service_type = serializers.CharField(source='service.service_type', read_only=True)
+    complexity = serializers.CharField(source='service.complexity', read_only=True)
+
+    class Meta:
+        model = WorkshopService
+        fields = [
+            'id',
+            'service',
+            'service_name',
+            'category_id',
+            'category_name',
+            'service_type',
+            'complexity',
+            'is_specialized',
+            'min_price',
+            'max_price',
+            'currency',
+            'estimated_time_min',
+            'available',
+            'has_warranty',
+            'warranty_days',
+        ]
+        read_only_fields = [
+            'id',
+            'service_name',
+            'category_id',
+            'category_name',
+            'service_type',
+            'complexity',
+        ]
+
+    def validate(self, attrs):
+        min_price = attrs.get('min_price')
+        max_price = attrs.get('max_price')
+        has_warranty = attrs.get('has_warranty', False)
+        warranty_days = attrs.get('warranty_days', 0)
+
+        if min_price is not None and max_price is not None and max_price < min_price:
+            raise serializers.ValidationError(
+                'El precio máximo debe ser mayor o igual al precio mínimo.'
+            )
+
+        if not has_warranty:
+            attrs['warranty_days'] = 0
+
+        if warranty_days < 0:
+            raise serializers.ValidationError(
+                'Los días de garantía no pueden ser negativos.'
+            )
+
+        return attrs
+
+
+class WorkshopVehicleExpertiseConfigSerializer(serializers.ModelSerializer):
+    granularity = serializers.CharField(read_only=True)
+    label = serializers.SerializerMethodField()
+    marca_nombre = serializers.SerializerMethodField()
+    modelo_nombre = serializers.SerializerMethodField()
+
+    class Meta:
+        model = WorkshopVehicleExpertise
+        fields = [
+            'id',
+            'marca',
+            'marca_nombre',
+            'modelo',
+            'modelo_nombre',
+            'granularity',
+            'label',
+            'expertise_level',
+            'notes',
+            'total_jobs',
+            'last_job_date',
+        ]
+        read_only_fields = [
+            'id',
+            'marca_nombre',
+            'modelo_nombre',
+            'granularity',
+            'label',
+            'total_jobs',
+            'last_job_date',
+        ]
+
+    def get_label(self, obj):
+        return _vehicle_label(obj)
+
+    def get_marca_nombre(self, obj):
+        if obj.modelo_id:
+            return obj.modelo.marca.nombre
+        if obj.marca_id:
+            return obj.marca.nombre
+        return None
+
+    def get_modelo_nombre(self, obj):
+        if obj.modelo_id:
+            return obj.modelo.nombre
+        return None
+
+    def validate(self, attrs):
+        marca = attrs.get('marca')
+        modelo = attrs.get('modelo')
+
+        if bool(marca) == bool(modelo):
+            raise serializers.ValidationError(
+                'Debes elegir exactamente una marca o un modelo.'
+            )
+
+        return attrs
+
+
+class WorkshopCatalogSerializer(serializers.Serializer):
+    categories = ServiceCategoryCatalogSerializer(many=True, read_only=True)
+    workshop_services = WorkshopServiceConfigSerializer(many=True, read_only=True)
+    vehicle_expertise = WorkshopVehicleExpertiseConfigSerializer(many=True, read_only=True)
+
+
+class WorkshopCatalogUpdateSerializer(serializers.Serializer):
+    workshop_services = WorkshopServiceConfigSerializer(many=True, required=False)
+    vehicle_expertise = WorkshopVehicleExpertiseConfigSerializer(many=True, required=False)
+
+    def validate_workshop_services(self, value):
+        service_ids = [item['service'].id for item in value]
+        if len(service_ids) != len(set(service_ids)):
+            raise serializers.ValidationError(
+                'No puedes repetir el mismo servicio en el catálogo del taller.'
+            )
+        return value
+
+    def validate_vehicle_expertise(self, value):
+        keys = []
+        for item in value:
+            if item.get('modelo'):
+                keys.append(('modelo', item['modelo'].id))
+            elif item.get('marca'):
+                keys.append(('marca', item['marca'].id))
+
+        if len(keys) != len(set(keys)):
+            raise serializers.ValidationError(
+                'No puedes repetir la misma marca o modelo en expertise vehicular.'
+            )
+        return value
 
 
 class ServiceListingSerializer(serializers.ModelSerializer):
