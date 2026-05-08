@@ -283,6 +283,9 @@
         website: form.website,
         description: form.headline,
         large_description: form.description,
+        pickup_delivery: form.pickupDelivery,
+        emergency_service: form.emergencyService,
+        courtesy_inspection: form.courtesyInspection,
         locations: locations.map(({ provinceOptions, districtOptions, ...location }) => ({
           ...location,
           latitude: location.latitude || '0.000000',
@@ -319,91 +322,137 @@
 </script>
 
 <svelte:head>
-  <title>Perfil de Taller | ECOMPARTS</title>
-  <meta name="description" content="Configura la presencia comercial de tu taller a partir del perfil empresa del customer." />
+  <title>Perfil de Taller — ECOMPARTS</title>
+  <meta name="description" content="Configura la presencia comercial de tu taller: sedes, horarios y datos de contacto." />
 </svelte:head>
 
-<div class="max-w-6xl mx-auto px-4 py-12 space-y-8">
-  <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+<div class="container-responsive py-10">
+
+  <!-- ── Header ── -->
+  <div class="border-b border-steel-600/25 pb-6 mb-8 flex items-start justify-between gap-4 flex-wrap">
     <div>
-      <h1 class="text-3xl md:text-4xl font-bold text-gray-900">Perfil de taller</h1>
-      <p class="text-gray-600 mt-2 max-w-3xl">
-        Completa la información comercial, registra una o varias sedes y define tus horarios de atención para dejar el perfil operativo.
-      </p>
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// MI TALLER / PERFIL</p>
+      <h1 class="font-display text-5xl text-bone uppercase leading-none">PERFIL DE TALLER</h1>
+      <p class="font-mono text-xs text-steel-500 mt-2 uppercase tracking-widest">Información comercial, sedes y horarios de atención</p>
     </div>
-    <div class="flex flex-wrap gap-3">
-      <a href="/servicios" class="px-5 py-2 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition">Ver landing de servicios</a>
-      <a href="/taller/servicios" class="px-5 py-2 rounded-lg bg-blue-600 text-white hover:bg-blue-700 transition">Configurar catálogo</a>
+    <div class="flex flex-wrap gap-3 shrink-0 mt-1">
+      <a href="/servicios" class="btn-ghost">VER SERVICIOS</a>
+      <a href="/taller/servicios" class="btn-outline">CATÁLOGO →</a>
     </div>
   </div>
 
   {#if loading}
-    <div class="rounded-2xl bg-white p-8 shadow text-gray-500">Cargando base del perfil...</div>
-  {:else if accessDenied}
-    <div class="rounded-2xl bg-amber-50 border border-amber-200 p-8 text-amber-900 space-y-4">
-      <div>
-        <h2 class="text-2xl font-bold">Acceso no habilitado</h2>
-        <p class="mt-2 text-sm">
-          Este espacio se activa solo para empresas cuya actividad económica sea Taller mecánico.
-        </p>
-      </div>
-      <a href="/cliente/perfil" class="inline-flex items-center rounded-lg bg-white border border-amber-300 px-5 py-2 font-semibold hover:bg-amber-100 transition">
-        Volver a mi perfil
-      </a>
+    <!-- Loading -->
+    <div class="bg-iron-900 border border-steel-600/25 p-16 text-center">
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest animate-pulse">CARGANDO PERFIL DEL TALLER...</p>
     </div>
+
+  {:else if accessDenied}
+    <!-- Access denied -->
+    <div class="border border-rust-700/50 bg-rust-600/10 p-8"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// ACCESO NO HABILITADO</p>
+      <h2 class="font-display text-3xl text-bone uppercase mb-3">MÓDULO NO DISPONIBLE</h2>
+      <p class="font-mono text-xs text-steel-500 leading-relaxed mb-6 max-w-xl">
+        Este módulo se activa únicamente para empresas cuya actividad económica sea Taller mecánico.
+        Cambia la actividad en tu perfil de cliente para habilitarlo.
+      </p>
+      <a href="/cliente/perfil" class="btn-outline">← VOLVER A MI PERFIL</a>
+    </div>
+
   {:else}
     <div class="grid grid-cols-1 xl:grid-cols-[1.2fr,0.8fr] gap-6">
-      <section class="bg-white rounded-2xl shadow p-8 space-y-6">
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pb-6 border-b border-gray-100">
-          <div>
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Perfil Customer</p>
-            <p class="font-semibold text-gray-900">{customer?.customer_id || 'Pendiente'}</p>
+
+      <!-- ════════════════════════════════
+           COLUMNA IZQUIERDA — Formulario
+      ════════════════════════════════ -->
+      <div class="space-y-6">
+
+        <!-- Datos del cliente (solo lectura) -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// DATOS DEL CLIENTE</p>
           </div>
-          <div>
-            <p class="text-xs text-gray-500 uppercase tracking-wide">Documento</p>
-            <p class="font-semibold text-gray-900">{customer?.document_type || 'RUC'} · {customer?.document_number || 'Sin completar'}</p>
+          <div class="grid grid-cols-2 divide-x divide-steel-600/20">
+            <div class="px-6 py-5">
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">ID CLIENTE</p>
+              <p class="font-mono text-sm text-bone">{customer?.customer_id || '—'}</p>
+            </div>
+            <div class="px-6 py-5">
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">DOCUMENTO</p>
+              <p class="font-mono text-sm text-bone">{customer?.document_type || 'RUC'} · {customer?.document_number || 'Sin completar'}</p>
+            </div>
           </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="workshopName">Nombre comercial</label>
-            <input id="workshopName" bind:value={form.workshopName} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+        <!-- Datos comerciales -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// DATOS COMERCIALES</p>
           </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="phone">Teléfono principal</label>
-            <input id="phone" bind:value={form.phone} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="whatsapp">WhatsApp</label>
-            <input id="whatsapp" bind:value={form.whatsapp} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="website">Sitio web</label>
-            <input id="website" bind:value={form.website} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://..." />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="headline">Titular comercial</label>
-            <input id="headline" bind:value={form.headline} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" />
-          </div>
-          <div class="md:col-span-2">
-            <label class="block text-sm font-medium text-gray-700 mb-1" for="description">Descripción</label>
-            <textarea id="description" bind:value={form.description} rows="4" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+          <div class="p-6 space-y-5">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+              <div>
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="workshopName">
+                  // NOMBRE COMERCIAL
+                </label>
+                <input id="workshopName" bind:value={form.workshopName} class="input-industrial" />
+              </div>
+              <div>
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="phone">
+                  // TELÉFONO PRINCIPAL
+                </label>
+                <input id="phone" type="tel" bind:value={form.phone} class="input-industrial" />
+              </div>
+              <div>
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="whatsapp">
+                  // WHATSAPP
+                </label>
+                <input id="whatsapp" type="tel" bind:value={form.whatsapp} class="input-industrial" />
+              </div>
+              <div>
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="website">
+                  // SITIO WEB
+                </label>
+                <input id="website" type="url" bind:value={form.website} placeholder="https://..." class="input-industrial" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="headline">
+                  // TITULAR COMERCIAL
+                </label>
+                <input id="headline" bind:value={form.headline} class="input-industrial" />
+              </div>
+              <div class="md:col-span-2">
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for="description">
+                  // DESCRIPCIÓN
+                </label>
+                <textarea
+                  id="description"
+                  bind:value={form.description}
+                  rows="4"
+                  class="input-industrial resize-none"
+                ></textarea>
+              </div>
+            </div>
           </div>
         </div>
 
-        <section class="space-y-5 pt-2 border-t border-gray-100">
-          <div class="flex items-center justify-between gap-4">
+        <!-- Sedes del taller -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4 flex items-center justify-between gap-4">
             <div>
-              <p class="text-sm font-medium text-gray-700">Sedes del taller</p>
-              <p class="text-sm text-gray-500">Puedes registrar una sede principal y sucursales con departamento, provincia y distrito.</p>
+              <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// SEDES DEL TALLER</p>
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mt-0.5">Sede principal y sucursales</p>
             </div>
             <button
               type="button"
-              onclick={addLocation}
-              class="rounded-lg border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+              on:click={addLocation}
+              class="btn-ghost"
             >
-              Agregar sede
+              + AGREGAR SEDE
             </button>
           </div>
 
@@ -413,59 +462,80 @@
             {/each}
           </datalist>
 
-          <div class="space-y-4">
+          <div class="divide-y divide-steel-600/20">
             {#each locations as location, index}
-              <div class="rounded-2xl border border-gray-200 p-5 space-y-4">
-                <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+              <div class="p-6 space-y-5">
+
+                <!-- Sede header -->
+                <div class="flex items-start justify-between gap-3 flex-wrap">
                   <div>
-                    <p class="text-sm font-semibold text-gray-900">{location.name || `Sede ${index + 1}`}</p>
-                    <p class="text-xs text-gray-500">{location.is_main ? 'Ubicación principal visible para el cliente.' : 'Sucursal adicional del taller.'}</p>
+                    <p class="font-mono text-xs text-bone uppercase tracking-widest">
+                      {location.name || `SEDE ${index + 1}`}
+                    </p>
+                    <p class="font-mono text-[9px] mt-0.5 uppercase tracking-widest {location.is_main ? 'text-rust-600' : 'text-steel-600'}">
+                      {location.is_main ? '★ UBICACIÓN PRINCIPAL' : 'SUCURSAL ADICIONAL'}
+                    </p>
                   </div>
                   <div class="flex flex-wrap gap-2">
-                    <button
-                      type="button"
-                      onclick={() => setMainLocation(index)}
-                      class={`rounded-lg px-3 py-2 text-sm font-medium transition ${location.is_main ? 'bg-blue-600 text-white' : 'border border-gray-300 text-gray-700 hover:bg-gray-50'}`}
-                    >
-                      {location.is_main ? 'Principal' : 'Marcar principal'}
-                    </button>
+                    {#if !location.is_main}
+                      <button
+                        type="button"
+                        on:click={() => setMainLocation(index)}
+                        class="btn-ghost"
+                      >
+                        MARCAR PRINCIPAL
+                      </button>
+                    {/if}
                     {#if locations.length > 1}
                       <button
                         type="button"
-                        onclick={() => removeLocation(index)}
-                        class="rounded-lg border border-red-200 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 transition"
+                        on:click={() => removeLocation(index)}
+                        class="font-mono text-[10px] uppercase tracking-widest text-rust-600 hover:text-rust-400
+                               border border-rust-700/50 px-3 py-2 hover:border-rust-500 transition-colors"
                       >
-                        Eliminar
+                        ELIMINAR
                       </button>
                     {/if}
                   </div>
                 </div>
 
+                <!-- Sede fields -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for={`location-name-${index}`}>Nombre de sede</label>
-                    <input id={`location-name-${index}`} bind:value={location.name} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ej: Sede San Luis" />
+                    <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for={`location-name-${index}`}>
+                      // NOMBRE DE SEDE
+                    </label>
+                    <input
+                      id={`location-name-${index}`}
+                      bind:value={location.name}
+                      placeholder="Ej: Sede San Luis"
+                      class="input-industrial"
+                    />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for={`department-${index}`}>Departamento</label>
+                    <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for={`department-${index}`}>
+                      // DEPARTAMENTO
+                    </label>
                     <input
                       id={`department-${index}`}
                       list="department-options"
                       bind:value={location.department}
-                      onchange={() => void handleDepartmentChange(index, location.department)}
-                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      on:change={() => handleDepartmentChange(index, location.department)}
                       placeholder="Ej: Lima"
+                      class="input-industrial"
                     />
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for={`province-${index}`}>Provincia</label>
+                    <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for={`province-${index}`}>
+                      // PROVINCIA
+                    </label>
                     <input
                       id={`province-${index}`}
                       list={`province-options-${index}`}
                       bind:value={location.province}
-                      onchange={() => void handleProvinceChange(index, location.province)}
-                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      on:change={() => handleProvinceChange(index, location.province)}
                       placeholder="Ej: Lima"
+                      class="input-industrial"
                     />
                     <datalist id={`province-options-${index}`}>
                       {#each location.provinceOptions as province}
@@ -474,13 +544,15 @@
                     </datalist>
                   </div>
                   <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for={`district-${index}`}>Distrito</label>
+                    <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for={`district-${index}`}>
+                      // DISTRITO
+                    </label>
                     <input
                       id={`district-${index}`}
                       list={`district-options-${index}`}
                       bind:value={location.district}
-                      class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
                       placeholder="Ej: San Luis"
+                      class="input-industrial"
                     />
                     <datalist id={`district-options-${index}`}>
                       {#each location.districtOptions as district}
@@ -489,140 +561,249 @@
                     </datalist>
                   </div>
                   <div class="md:col-span-2">
-                    <label class="block text-sm font-medium text-gray-700 mb-1" for={`address-${index}`}>Dirección</label>
-                    <input id={`address-${index}`} bind:value={location.address} class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Av., calle, lote o referencia principal" />
+                    <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2" for={`address-${index}`}>
+                      // DIRECCIÓN
+                    </label>
+                    <input
+                      id={`address-${index}`}
+                      bind:value={location.address}
+                      placeholder="Av., calle, lote o referencia principal"
+                      class="input-industrial"
+                    />
                   </div>
                 </div>
               </div>
             {/each}
           </div>
-        </section>
+        </div>
 
-        <section class="space-y-4 pt-2 border-t border-gray-100">
-          <div>
-            <p class="text-sm font-medium text-gray-700">Horarios de atención</p>
-            <p class="text-sm text-gray-500">Esta configuración se guarda en `WorkshopSchedule` y luego podrá ampliarse con bloques más detallados.</p>
+        <!-- Horarios de atención -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// HORARIOS DE ATENCIÓN</p>
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mt-0.5">Horario semanal base · WorkshopSchedule</p>
           </div>
-
-          <div class="space-y-3">
+          <div class="px-6 py-4 divide-y divide-steel-600/15">
             {#each schedules as schedule, index}
-              <div class="grid grid-cols-1 md:grid-cols-[1fr,auto,1fr,1fr] gap-3 items-center rounded-xl border border-gray-200 p-4">
+              <div class="grid grid-cols-1 md:grid-cols-[140px,auto,1fr,1fr] gap-4 items-center py-4">
+
+                <!-- Día -->
                 <div>
-                  <p class="font-medium text-gray-900">{schedule.day_label}</p>
-                  <p class="text-xs text-gray-500">{schedule.is_active ? 'Atención habilitada' : 'Sin atención al público'}</p>
+                  <p class="font-mono text-xs text-bone uppercase tracking-widest">{schedule.day_label}</p>
+                  <p class="font-mono text-[9px] uppercase tracking-widest mt-0.5 {schedule.is_active ? 'text-green-500' : 'text-steel-600'}">
+                    {schedule.is_active ? 'ATENCIÓN ACTIVA' : 'SIN ATENCIÓN'}
+                  </p>
                 </div>
-                <label class="inline-flex items-center gap-3 text-sm text-gray-700">
-                  <input
-                    type="checkbox"
-                    checked={schedule.is_active}
-                    onchange={(event) => updateSchedule(index, { is_active: (event.currentTarget as HTMLInputElement).checked })}
-                    class="w-4 h-4 text-blue-600 rounded"
-                  />
-                  Abierto
+
+                <!-- Toggle abierto -->
+                <label class="flex items-center gap-2 cursor-pointer group">
+                  <div class="relative w-4 h-4 border flex items-center justify-center transition-colors
+                              {schedule.is_active ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
+                    <input
+                      type="checkbox"
+                      checked={schedule.is_active}
+                      on:change={(e) => updateSchedule(index, { is_active: (e.currentTarget as HTMLInputElement).checked })}
+                      class="sr-only"
+                    />
+                    {#if schedule.is_active}
+                      <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                      </svg>
+                    {/if}
+                  </div>
+                  <span class="font-mono text-[10px] uppercase tracking-widest text-steel-500 group-hover:text-bone transition-colors">ABIERTO</span>
                 </label>
+
+                <!-- Apertura -->
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1" for={`start-${index}`}>Apertura</label>
+                  <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1.5" for={`start-${index}`}>APERTURA</label>
                   <input
                     id={`start-${index}`}
                     type="time"
                     value={schedule.start_time}
                     disabled={!schedule.is_active}
-                    onchange={(event) => updateSchedule(index, { start_time: (event.currentTarget as HTMLInputElement).value })}
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-100 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    on:change={(e) => updateSchedule(index, { start_time: (e.currentTarget as HTMLInputElement).value })}
+                    class="input-industrial disabled:opacity-40 disabled:cursor-not-allowed"
                   />
                 </div>
+
+                <!-- Cierre -->
                 <div>
-                  <label class="block text-xs font-medium text-gray-500 mb-1" for={`end-${index}`}>Cierre</label>
+                  <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1.5" for={`end-${index}`}>CIERRE</label>
                   <input
                     id={`end-${index}`}
                     type="time"
                     value={schedule.end_time}
                     disabled={!schedule.is_active}
-                    onchange={(event) => updateSchedule(index, { end_time: (event.currentTarget as HTMLInputElement).value })}
-                    class="w-full border border-gray-300 rounded-lg px-3 py-2 disabled:bg-gray-100 disabled:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    on:change={(e) => updateSchedule(index, { end_time: (e.currentTarget as HTMLInputElement).value })}
+                    class="input-industrial disabled:opacity-40 disabled:cursor-not-allowed"
                   />
                 </div>
+
               </div>
             {/each}
           </div>
-        </section>
-
-        <div class="space-y-3 pt-2 border-t border-gray-100">
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.pickupDelivery} class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Recojo y entrega coordinada</span>
-          </label>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.courtesyInspection} class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Inspección de cortesía en diagnóstico</span>
-          </label>
-          <label class="flex items-center gap-3 cursor-pointer">
-            <input type="checkbox" bind:checked={form.emergencyService} class="w-4 h-4 text-blue-600 rounded" />
-            <span class="text-sm text-gray-700">Atención prioritaria o emergencias</span>
-          </label>
         </div>
 
+        <!-- Opciones de servicio -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// OPCIONES DE SERVICIO</p>
+          </div>
+          <div class="p-6 space-y-3">
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <div class="relative w-4 h-4 border flex items-center justify-center transition-colors
+                          {form.pickupDelivery ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
+                <input type="checkbox" bind:checked={form.pickupDelivery} class="sr-only" />
+                {#if form.pickupDelivery}
+                  <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                {/if}
+              </div>
+              <span class="font-mono text-xs text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">
+                RECOJO Y ENTREGA COORDINADA
+              </span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <div class="relative w-4 h-4 border flex items-center justify-center transition-colors
+                          {form.courtesyInspection ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
+                <input type="checkbox" bind:checked={form.courtesyInspection} class="sr-only" />
+                {#if form.courtesyInspection}
+                  <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                {/if}
+              </div>
+              <span class="font-mono text-xs text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">
+                INSPECCIÓN DE CORTESÍA EN DIAGNÓSTICO
+              </span>
+            </label>
+            <label class="flex items-center gap-3 cursor-pointer group">
+              <div class="relative w-4 h-4 border flex items-center justify-center transition-colors
+                          {form.emergencyService ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
+                <input type="checkbox" bind:checked={form.emergencyService} class="sr-only" />
+                {#if form.emergencyService}
+                  <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                  </svg>
+                {/if}
+              </div>
+              <span class="font-mono text-xs text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">
+                ATENCIÓN PRIORITARIA / EMERGENCIAS
+              </span>
+            </label>
+          </div>
+        </div>
+
+        <!-- Mensajes de estado -->
         {#if message}
-          <div class="bg-green-50 text-green-700 rounded-lg p-3 text-sm">{message}</div>
+          <div class="border border-green-700/50 bg-green-600/10 px-5 py-4 flex items-center gap-3">
+            <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0"></span>
+            <p class="font-mono text-xs text-green-400 uppercase tracking-widest">{message}</p>
+          </div>
         {/if}
-        {#if error}
-          <div class="bg-red-50 text-red-700 rounded-lg p-3 text-sm">{error}</div>
+        {#if error && !accessDenied}
+          <div class="border border-rust-700/50 bg-rust-600/10 px-5 py-4 flex items-center gap-3">
+            <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+            <p class="font-mono text-xs text-rust-400">{error}</p>
+          </div>
         {/if}
 
+        <!-- Botón guardar -->
         <button
           type="button"
-          onclick={saveTemplate}
+          on:click={saveTemplate}
           disabled={saving}
-          class="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold px-6 py-3 rounded-lg transition"
+          class="btn-rust w-full text-center disabled:opacity-50 disabled:cursor-not-allowed"
+          style="clip-path: polygon(0 0, calc(100% - 10px) 0, 100% 10px, 100% 100%, 0 100%)"
         >
-          {saving ? 'Guardando...' : 'Guardar plantilla del taller'}
+          {saving ? 'GUARDANDO...' : 'GUARDAR PLANTILLA DEL TALLER →'}
         </button>
-      </section>
 
+      </div>
+
+      <!-- ════════════════════════════════
+           COLUMNA DERECHA — Sidebar
+      ════════════════════════════════ -->
       <aside class="space-y-6">
-        <section class="bg-slate-900 text-white rounded-2xl p-6 shadow">
-          <p class="text-sm font-semibold uppercase tracking-wide text-blue-200 mb-2">Resumen visible</p>
-          <h2 class="text-2xl font-bold mb-2">{form.workshopName || 'Tu taller'}</h2>
-          <p class="text-slate-300 text-sm mb-4">{form.headline}</p>
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div class="rounded-xl bg-white/10 p-3">
-              <p class="text-slate-300">Sedes registradas</p>
-              <p class="font-semibold">{locations.length}</p>
-            </div>
-            <div class="rounded-xl bg-white/10 p-3">
-              <p class="text-slate-300">Días activos</p>
-              <p class="font-semibold">{activeDays}</p>
-            </div>
-          </div>
-          {#if mainLocation}
-            <div class="mt-4 rounded-xl bg-white/10 p-4 text-sm space-y-1">
-              <p class="text-slate-300">Sede principal</p>
-              <p class="font-semibold">{mainLocation.name || 'Sede principal'}</p>
-              <p>{mainLocation.address}</p>
-              <p class="text-slate-300">{mainLocation.district}, {mainLocation.province}, {mainLocation.department}</p>
-            </div>
-          {/if}
-        </section>
 
-        <section class="bg-white rounded-2xl p-6 shadow space-y-4">
-          <div>
-            <p class="text-sm font-semibold text-gray-900">Bloques siguientes</p>
-            <p class="text-sm text-gray-600">Esta plantilla deja listos los siguientes módulos para conectar:</p>
+        <!-- Vista previa -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// VISTA PREVIA</p>
           </div>
-          <ul class="space-y-3 text-sm text-gray-700">
-            <li class="flex gap-3"><span class="text-green-600">✓</span><span>Sincronización de `Workshop` con customer empresarial.</span></li>
-            <li class="flex gap-3"><span class="text-green-600">✓</span><span>Registro de múltiples sedes con `WorkshopLocation`.</span></li>
-            <li class="flex gap-3"><span class="text-green-600">✓</span><span>Horario semanal base con `WorkshopSchedule`.</span></li>
-          </ul>
-          {#if additionalLocations > 0}
-            <div class="rounded-xl bg-slate-50 p-4 text-sm text-gray-600">
-              Además de la sede principal, ya tienes {additionalLocations} {additionalLocations === 1 ? 'sede adicional lista' : 'sedes adicionales listas'} para el perfil público.
+          <div class="p-6 space-y-5">
+            <div>
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">NOMBRE COMERCIAL</p>
+              <p class="font-display text-3xl text-bone uppercase leading-none">{form.workshopName || 'TU TALLER'}</p>
             </div>
-          {/if}
-          <a href="/taller/servicios" class="inline-flex items-center font-semibold text-blue-600 hover:text-blue-700">
-            Continuar con catálogo de servicios →
-          </a>
-        </section>
+            {#if form.headline}
+              <p class="font-mono text-xs text-steel-400 leading-relaxed">{form.headline}</p>
+            {/if}
+            <div class="grid grid-cols-2 gap-3 border-t border-steel-600/20 pt-5">
+              <div class="border border-steel-600/25 p-4">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">SEDES</p>
+                <p class="font-display text-3xl text-bone leading-none">{locations.length}</p>
+              </div>
+              <div class="border border-steel-600/25 p-4">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">DÍAS ACTIVOS</p>
+                <p class="font-display text-3xl text-bone leading-none">{activeDays}</p>
+              </div>
+            </div>
+            {#if mainLocation}
+              <div class="border-l-2 border-rust-600 pl-4 py-1">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">SEDE PRINCIPAL</p>
+                <p class="font-mono text-xs text-bone uppercase tracking-widest">{mainLocation.name || 'Sede principal'}</p>
+                {#if mainLocation.address}
+                  <p class="font-mono text-[10px] text-steel-500 mt-1">{mainLocation.address}</p>
+                {/if}
+                {#if mainLocation.district || mainLocation.province || mainLocation.department}
+                  <p class="font-mono text-[10px] text-steel-600 mt-0.5 uppercase">
+                    {[mainLocation.district, mainLocation.province, mainLocation.department].filter(Boolean).join(' · ')}
+                  </p>
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </div>
+
+        <!-- Módulos conectados -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// MÓDULOS CONECTADOS</p>
+          </div>
+          <div class="p-6 space-y-3">
+            {#each [
+              'Sincronización de Workshop con customer empresarial',
+              'Registro de múltiples sedes con WorkshopLocation',
+              'Horario semanal base con WorkshopSchedule',
+            ] as item}
+              <div class="flex items-start gap-3">
+                <span class="font-mono text-xs text-green-500 mt-0.5 flex-shrink-0">✓</span>
+                <p class="font-mono text-[10px] text-steel-400 uppercase tracking-widest leading-relaxed">{item}</p>
+              </div>
+            {/each}
+            {#if additionalLocations > 0}
+              <div class="border border-steel-600/25 p-4 mt-2">
+                <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+                  {additionalLocations} SEDE{additionalLocations !== 1 ? 'S' : ''} ADICIONAL{additionalLocations !== 1 ? 'ES' : ''} REGISTRADA{additionalLocations !== 1 ? 'S' : ''}
+                </p>
+              </div>
+            {/if}
+          </div>
+          <div class="border-t border-steel-600/25 px-6 py-4">
+            <a href="/taller/servicios"
+               class="font-mono text-[10px] text-rust-500 hover:text-rust-400 uppercase tracking-widest transition-colors">
+              CONTINUAR CON CATÁLOGO DE SERVICIOS →
+            </a>
+          </div>
+        </div>
+
       </aside>
     </div>
   {/if}

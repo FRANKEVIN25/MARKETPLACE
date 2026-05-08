@@ -10,9 +10,7 @@
   const product = data.product;
 
   let cantidad = 1;
-  let carritoAbiert = false;
   let productoEnCarrito = false;
-  let imagenActiva = 0;
 
   // Calcular precio con impuesto
   $: precioBase = parseFloat(product.price || '0');

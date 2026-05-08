@@ -67,6 +67,7 @@
       <div>
         <p class="font-mono text-[9px] text-rust-600 uppercase tracking-widest mb-4">// CONTACTO</p>
         <ul class="space-y-3">
+          <!-- TODO: Reemplazar con datos reales antes del deploy público -->
           <li class="flex items-start gap-2">
             <span class="font-mono text-[10px] text-steel-700 mt-0.5 shrink-0">✉</span>
             <span class="font-mono text-[11px] text-steel-500 uppercase tracking-wide break-all">INFO@ECOMPARTS.PE</span>
@@ -96,7 +97,7 @@
   <div class="border-t border-steel-600/20">
     <div class="container-responsive py-5 flex flex-col sm:flex-row items-center justify-between gap-3">
       <p class="font-mono text-[10px] text-steel-700 uppercase tracking-widest">
-        © 2025 ECOMPARTS · TODOS LOS DERECHOS RESERVADOS
+        © {new Date().getFullYear()} ECOMPARTS · TODOS LOS DERECHOS RESERVADOS
       </p>
       <div class="flex items-center gap-4">
         <a href="/terminos" class="font-mono text-[10px] text-steel-700 hover:text-steel-500 uppercase tracking-widest transition-colors">

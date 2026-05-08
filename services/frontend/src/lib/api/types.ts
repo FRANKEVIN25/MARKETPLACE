@@ -516,6 +516,9 @@ export interface WorkshopProfile {
   large_description: string;
   years_experience: number;
   status: 'open' | 'busy' | 'closed';
+  pickup_delivery?: boolean;
+  emergency_service?: boolean;
+  courtesy_inspection?: boolean;
   locations: WorkshopProfileLocation[];
   schedules: WorkshopProfileSchedule[];
 }

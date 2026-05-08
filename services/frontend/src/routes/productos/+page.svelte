@@ -534,6 +534,58 @@
             <ProductCard {product} />
           {/each}
         </div>
+
+        <!-- ── Paginación ── -->
+        {#if data.totalCount > data.products.length || filtros.page > 1}
+          {@const pageSize = 20}
+          {@const totalPages = Math.ceil(data.totalCount / pageSize)}
+          <div class="flex items-center justify-between mt-10 pt-6 border-t border-steel-600/25">
+
+            <!-- Info de página -->
+            <p class="font-mono text-[10px] text-steel-600 uppercase tracking-widest">
+              PÁGINA {filtros.page} DE {totalPages}
+            </p>
+
+            <!-- Controles -->
+            <div class="flex items-center gap-0">
+              <button
+                type="button"
+                disabled={filtros.page <= 1}
+                on:click={() => {
+                  filtros.page = filtros.page - 1;
+                  actualizarURL();
+                }}
+                class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest px-5 py-3
+                       border border-steel-600/40 text-steel-400 transition-colors
+                       hover:border-rust-600 hover:text-rust-500
+                       disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-steel-600/40 disabled:hover:text-steel-400"
+              >
+                ← ANTERIOR
+              </button>
+
+              <!-- Número de página actual -->
+              <div class="px-5 py-3 border-y border-steel-600/40 font-mono text-[10px] text-bone uppercase tracking-widest">
+                {filtros.page}
+              </div>
+
+              <button
+                type="button"
+                disabled={filtros.page >= totalPages}
+                on:click={() => {
+                  filtros.page = filtros.page + 1;
+                  actualizarURL();
+                }}
+                class="flex items-center gap-2 font-mono text-[10px] uppercase tracking-widest px-5 py-3
+                       border border-steel-600/40 text-steel-400 transition-colors
+                       hover:border-rust-600 hover:text-rust-500
+                       disabled:opacity-30 disabled:cursor-not-allowed disabled:hover:border-steel-600/40 disabled:hover:text-steel-400"
+              >
+                SIGUIENTE →
+              </button>
+            </div>
+
+          </div>
+        {/if}
       </div>
     {/if}
   </div>
