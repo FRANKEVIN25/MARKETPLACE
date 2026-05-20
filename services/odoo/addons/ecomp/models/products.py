@@ -73,6 +73,12 @@ class ProductTemplate(models.Model):
         string='Compatibilidades de vehículos'
     )
 
+    marketplace_image_ids = fields.One2many(
+        'ecomp.product.image',
+        'product_tmpl_id',
+        string='Imágenes del Marketplace'
+    )
+
 
 class ProductCategory(models.Model):
     _inherit = 'product.category'

@@ -45,7 +45,7 @@
 
     <div class="flex flex-wrap gap-4">
       <button
-        onclick={goToRegistration}
+        on:click={goToRegistration}
         class="btn-rust text-base"
       >
         REGISTRARME AHORA →
@@ -191,7 +191,7 @@
       <p class="font-mono text-sm text-steel-400 uppercase tracking-industrial mb-8 max-w-lg">
         Únete a los cientos de vendors que confían en ECOMPARTS para hacer crecer su negocio.
       </p>
-      <button onclick={goToRegistration} class="btn-rust text-base">
+      <button on:click={goToRegistration} class="btn-rust text-base">
         CREAR MI CUENTA GRATIS →
       </button>
     </div>

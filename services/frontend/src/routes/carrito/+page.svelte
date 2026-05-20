@@ -1,8 +1,13 @@
 <script lang="ts">
   import { goto } from '$app/navigation';
+  import { onMount } from 'svelte';
   import { cart } from '$lib/store/cart';
   import { auth } from '$lib/store/auth';
   import type { CartItem } from '$lib/store/cart';
+
+  onMount(() => {
+    cart.refresh();
+  });
 
   $: cartItems = $cart;
   $: totalCarrito = cartItems.reduce((acc, item) => acc + item.precioTotal, 0);

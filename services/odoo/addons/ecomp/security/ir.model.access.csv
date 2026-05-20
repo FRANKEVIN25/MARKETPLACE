@@ -6,3 +6,4 @@ access_vehiculo_traccion_user,access_vehiculo_traccion_user,model_vehiculo_tracc
 access_vehiculo_motor_user,access_vehiculo_motor_user,model_vehiculo_motor,base.group_user,1,1,1,1
 access_vehiculo_variante_user,access_vehiculo_variante_user,model_vehiculo_variante,base.group_user,1,1,1,1
 access_autopart_compatibility_user,access_autopart_compatibility_user,model_autopart_compatibility,base.group_user,1,1,1,1
+access_ecomp_product_image_user,access_ecomp_product_image_user,model_ecomp_product_image,base.group_user,1,1,1,1

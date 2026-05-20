@@ -63,6 +63,28 @@
                     </field>
                 </page>
             </xpath>
+
+            <!-- Galería de imágenes del Marketplace como pestaña del notebook -->
+            <xpath expr="//notebook/page[last()]" position="after">
+                <page string="Galería Marketplace">
+                    <field name="marketplace_image_ids" nolabel="1">
+                        <kanban>
+                            <field name="name"/>
+                            <field name="image_1920"/>
+                            <templates>
+                                <t t-name="card" class="flex-column p-0 o_kanban_record_has_image_fill">
+                                    <field name="image_1920" widget="image"
+                                           class="o_kanban_image_fill_left"
+                                           options="{'zoom': true, 'size': [200, 200]}"/>
+                                    <footer class="p-1">
+                                        <field name="name" class="o_text_overflow"/>
+                                    </footer>
+                                </t>
+                            </templates>
+                        </kanban>
+                    </field>
+                </page>
+            </xpath>
         </field>
     </record>
 

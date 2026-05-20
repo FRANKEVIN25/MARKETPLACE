@@ -322,443 +322,610 @@
 </script>
 
 <svelte:head>
-  <title>Servicios del Taller | ECOMPARTS</title>
-  <meta name="description" content="Configura el catalogo real del taller por categorias, servicios publicados y expertise vehicular." />
+  <title>Servicios del Taller — ECOMPARTS</title>
+  <meta name="description" content="Configura el catálogo real del taller: categorías, servicios publicados y expertise vehicular." />
 </svelte:head>
 
-<div class="max-w-7xl mx-auto px-4 py-12 space-y-8">
+<div class="container-responsive py-10">
+
   {#if loading}
-    <div class="rounded-3xl bg-white p-8 shadow text-gray-500">Cargando configuracion del catalogo...</div>
-  {:else if accessDenied}
-    <div class="rounded-3xl bg-amber-50 border border-amber-200 p-8 text-amber-900 space-y-4">
-      <div>
-        <h1 class="text-2xl font-bold">Acceso no habilitado</h1>
-        <p class="mt-2 text-sm">{error}</p>
-      </div>
-      <a href="/cliente/perfil" class="inline-flex items-center rounded-xl bg-white border border-amber-300 px-5 py-2 font-semibold hover:bg-amber-100 transition">
-        Volver a mi perfil
-      </a>
+    <div class="bg-iron-900 border border-steel-600/25 p-16 text-center">
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest animate-pulse">CARGANDO CONFIGURACIÓN DEL CATÁLOGO...</p>
     </div>
+
+  {:else if accessDenied}
+    <div class="border border-rust-700/50 bg-rust-600/10 p-8"
+         style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// ACCESO NO HABILITADO</p>
+      <h1 class="font-display text-3xl text-bone uppercase mb-3">MÓDULO NO DISPONIBLE</h1>
+      <p class="font-mono text-xs text-steel-500 leading-relaxed mb-6 max-w-xl">{error}</p>
+      <a href="/cliente/perfil" class="btn-outline">← VOLVER A MI PERFIL</a>
+    </div>
+
   {:else}
-    <section class="rounded-[2rem] bg-[linear-gradient(135deg,#0f172a_0%,#1e293b_40%,#1d4ed8_100%)] text-white shadow-xl overflow-hidden">
-      <div class="px-8 py-10 md:px-10 md:py-12 grid grid-cols-1 xl:grid-cols-[1.2fr,0.8fr] gap-8 items-start">
-        <div class="space-y-5">
-          <div class="space-y-2">
-            <p class="text-sm font-semibold uppercase tracking-[0.28em] text-sky-200">Catalogo operativo del taller</p>
-            <h1 class="text-3xl md:text-5xl font-black leading-tight">Define que hace tu taller, cuanto tarda y en que vehiculos es fuerte.</h1>
-            <p class="text-slate-200 max-w-3xl text-sm md:text-base">
-              Esta pantalla ya trabaja con categorias, servicios y expertise vehicular del backend. Selecciona solo lo que realmente ofreces y deja la propuesta lista para publicar.
-            </p>
-          </div>
 
-          <div class="flex flex-wrap gap-3">
-            <a href="/taller/perfil" class="inline-flex items-center rounded-xl border border-white/20 px-5 py-3 text-sm font-semibold text-white hover:bg-white/10 transition">
-              Volver al perfil
-            </a>
-            <button
-              type="button"
-              onclick={saveCatalog}
-              disabled={saving}
-              class="inline-flex items-center rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-900 hover:bg-slate-100 disabled:opacity-60 transition"
-            >
-              {saving ? 'Guardando...' : 'Guardar configuracion'}
-            </button>
-          </div>
+    <!-- ── Header ── -->
+    <div class="border-b border-steel-600/25 pb-8 mb-8">
+      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// CATÁLOGO DEL TALLER</p>
+      <h1 class="font-display text-5xl text-bone uppercase leading-none mb-2">CONFIGURA TUS SERVICIOS</h1>
+      <p class="font-mono text-xs text-steel-500 uppercase tracking-widest mb-8">
+        Selecciona solo lo que realmente ofreces · Precios · Tiempos · Expertise vehicular
+      </p>
+
+      <!-- Métricas -->
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-8">
+        <div class="bg-iron-900 border border-steel-600/25 p-4">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">SERVICIOS</p>
+          <p class="font-display text-4xl text-bone leading-none">{workshopServices.length}</p>
+          <p class="font-mono text-[9px] text-steel-600 mt-1">{activeServices} VISIBLES</p>
         </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-            <p class="text-xs uppercase tracking-wide text-sky-200">Servicios seleccionados</p>
-            <p class="mt-2 text-3xl font-black">{workshopServices.length}</p>
-            <p class="mt-1 text-sm text-slate-200">{activeServices} visibles al cliente</p>
-          </div>
-          <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-            <p class="text-xs uppercase tracking-wide text-sky-200">Cobertura actual</p>
-            <p class="mt-2 text-3xl font-black">{serviceCoverage}%</p>
-            <p class="mt-1 text-sm text-slate-200">{configuredCategories.length} categorias trabajadas</p>
-          </div>
-          <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-            <p class="text-xs uppercase tracking-wide text-sky-200">Especializados</p>
-            <p class="mt-2 text-3xl font-black">{specializedServices}</p>
-            <p class="mt-1 text-sm text-slate-200">Servicios diferenciales del taller</p>
-          </div>
-          <div class="rounded-2xl bg-white/10 p-4 backdrop-blur-sm">
-            <p class="text-xs uppercase tracking-wide text-sky-200">Expertise vehicular</p>
-            <p class="mt-2 text-3xl font-black">{vehicleExpertise.length}</p>
-            <p class="mt-1 text-sm text-slate-200">{publishedVehicleExpertise} con nivel pro o experto</p>
-          </div>
+        <div class="bg-iron-900 border border-steel-600/25 p-4">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">COBERTURA</p>
+          <p class="font-display text-4xl text-bone leading-none">{serviceCoverage}%</p>
+          <p class="font-mono text-[9px] text-steel-600 mt-1">{configuredCategories.length} CATEGORÍAS</p>
+        </div>
+        <div class="bg-iron-900 border border-steel-600/25 p-4">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">ESPECIALIZADOS</p>
+          <p class="font-display text-4xl text-bone leading-none">{specializedServices}</p>
+          <p class="font-mono text-[9px] text-steel-600 mt-1">SERVICIOS DIFERENCIALES</p>
+        </div>
+        <div class="bg-iron-900 border border-steel-600/25 p-4">
+          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">EXPERTISE</p>
+          <p class="font-display text-4xl text-bone leading-none">{vehicleExpertise.length}</p>
+          <p class="font-mono text-[9px] text-steel-600 mt-1">{publishedVehicleExpertise} PRO/EXPERTO</p>
         </div>
       </div>
-    </section>
 
+      <!-- Acciones -->
+      <div class="flex flex-wrap gap-3">
+        <a href="/taller/perfil" class="btn-ghost">← VOLVER AL PERFIL</a>
+        <button
+          type="button"
+          on:click={saveCatalog}
+          disabled={saving}
+          class="btn-rust disabled:opacity-50 disabled:cursor-not-allowed"
+          style="clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"
+        >
+          {saving ? 'GUARDANDO...' : 'GUARDAR CONFIGURACIÓN →'}
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Main grid ── -->
     <div class="grid grid-cols-1 xl:grid-cols-[1.2fr,0.8fr] gap-6 items-start">
+
+      <!-- ═══════════════════════════════
+           COLUMNA IZQUIERDA
+      ═══════════════════════════════ -->
       <div class="space-y-6">
-        <section class="bg-white rounded-[2rem] shadow p-6 md:p-8 space-y-6">
-          <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+
+        <!-- ── SECCIÓN: Servicios por categoría ── -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4 flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <p class="text-sm font-semibold uppercase tracking-wide text-blue-700">Servicios por categoria</p>
-              <h2 class="text-2xl font-black text-slate-900 mt-1">Arma el catalogo real del taller</h2>
-              <p class="text-sm text-slate-600 mt-2 max-w-3xl">
-                Cada servicio que actives crea o actualiza un registro en WorkshopService. Aqui defines disponibilidad, rango de precio, tiempo estimado y garantia.
+              <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// SERVICIOS</p>
+              <h2 class="font-display text-3xl text-bone uppercase leading-none mt-1">ARMA TU CATÁLOGO</h2>
+              <p class="font-mono text-[9px] text-steel-500 uppercase tracking-widest mt-1">
+                Disponibilidad · Precios · Tiempo estimado · Garantía
               </p>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              {configuredCategories.length} de {categories.length} categorias ya tienen al menos un servicio seleccionado.
+            <div class="border border-steel-600/30 px-4 py-2 shrink-0">
+              <span class="font-mono text-[9px] text-steel-600 uppercase tracking-widest">
+                {configuredCategories.length} DE {categories.length} CATEGORÍAS CONFIGURADAS
+              </span>
             </div>
           </div>
 
-          <div class="space-y-5">
+          <!-- Categorías -->
+          <div class="divide-y divide-steel-600/20">
             {#each categories as category}
-              <article class="rounded-[1.75rem] border border-slate-200 overflow-hidden bg-[linear-gradient(180deg,#ffffff_0%,#f8fafc_100%)]">
-                <div class="px-5 py-5 border-b border-slate-200 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
+              {@const selectedCount = category.services.filter((s) => getSelectedService(s.id)).length}
+              <div>
+                <!-- Category header -->
+                <div class="px-6 py-4 flex items-center justify-between gap-3 bg-iron-950/40">
                   <div>
-                    <h3 class="text-lg font-black text-slate-900">{category.name}</h3>
-                    <p class="text-sm text-slate-600 mt-1">{category.description || 'Categoria operativa disponible para el catalogo del taller.'}</p>
+                    <p class="font-display text-xl text-bone uppercase">{category.name}</p>
+                    {#if category.description}
+                      <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mt-0.5">{category.description}</p>
+                    {/if}
                   </div>
-                  <div class="flex items-center gap-2 text-xs font-semibold">
-                    <span class="rounded-full bg-slate-100 px-3 py-1 text-slate-700">{category.services.length} servicios base</span>
-                    <span class="rounded-full bg-blue-100 px-3 py-1 text-blue-700">
-                      {category.services.filter((service) => getSelectedService(service.id)).length} seleccionados
+                  <div class="flex items-center gap-2 shrink-0">
+                    <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/30 px-2 py-1 text-steel-600">
+                      {category.services.length} BASE
                     </span>
+                    {#if selectedCount > 0}
+                      <span class="font-mono text-[9px] uppercase tracking-widest border border-rust-600/60 text-rust-500 bg-rust-600/10 px-2 py-1">
+                        {selectedCount} SEL.
+                      </span>
+                    {/if}
                   </div>
                 </div>
 
-                <div class="p-5 grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <!-- Services list -->
+                <div class="divide-y divide-steel-600/10">
                   {#each category.services as service}
                     {@const selected = getSelectedService(service.id)}
-                    <div class={`rounded-[1.5rem] border p-5 transition ${selected ? 'border-blue-300 bg-blue-50/60 shadow-sm' : 'border-slate-200 bg-white hover:border-slate-300'}`}>
-                      <div class="flex flex-col gap-4 h-full">
-                        <div class="flex items-start justify-between gap-3">
-                          <div>
-                            <div class="flex flex-wrap items-center gap-2 mb-2">
-                              <h4 class="text-base font-bold text-slate-900">{service.name}</h4>
-                              <span class={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${selected ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
-                                {selected ? 'En catalogo' : 'Disponible'}
+                    <div class="transition-colors {selected ? 'bg-rust-600/5' : ''}">
+
+                      <!-- Service row -->
+                      <div class="px-6 py-4 flex items-center justify-between gap-4">
+                        <div class="flex-1 min-w-0">
+                          <div class="flex items-center gap-2 flex-wrap mb-1.5">
+                            <p class="font-mono text-xs text-bone uppercase tracking-widest">{service.name}</p>
+                            {#if selected}
+                              <span class="font-mono text-[9px] uppercase tracking-widest border border-rust-600/60 text-rust-500 bg-rust-600/10 px-2 py-0.5">
+                                EN CATÁLOGO
                               </span>
-                            </div>
-                            <p class="text-sm text-slate-600">{service.description || 'Servicio disponible en el catalogo base del sistema.'}</p>
+                            {/if}
                           </div>
-                          <button
-                            type="button"
-                            onclick={() => toggleService(category, service)}
-                            class={`rounded-xl px-4 py-2 text-sm font-semibold transition ${selected ? 'border border-red-200 text-red-700 hover:bg-red-50' : 'bg-slate-900 text-white hover:bg-slate-800'}`}
-                          >
-                            {selected ? 'Quitar' : 'Agregar'}
-                          </button>
+                          <div class="flex items-center gap-2 flex-wrap">
+                            <span class="font-mono text-[9px] text-steel-600 uppercase tracking-widest border border-steel-600/25 px-2 py-0.5">
+                              {serviceTypeLabels[service.service_type] || service.service_type}
+                            </span>
+                            <span class="font-mono text-[9px] text-steel-600 uppercase tracking-widest border border-steel-600/25 px-2 py-0.5">
+                              COMPLEJIDAD {complexityLabels[service.complexity] || service.complexity}
+                            </span>
+                          </div>
                         </div>
+                        <button
+                          type="button"
+                          on:click={() => toggleService(category, service)}
+                          class="font-mono text-[10px] uppercase tracking-widest px-4 py-2 transition-colors shrink-0
+                                 {selected
+                                   ? 'border border-rust-600/40 text-rust-400 hover:border-rust-500 hover:text-rust-300'
+                                   : 'border border-steel-600/40 text-steel-300 hover:text-bone hover:border-steel-400'}"
+                        >
+                          {selected ? '✕ QUITAR' : '+ AGREGAR'}
+                        </button>
+                      </div>
 
-                        <div class="flex flex-wrap gap-2 text-xs font-semibold">
-                          <span class="rounded-full bg-white border border-slate-200 px-3 py-1 text-slate-700">{serviceTypeLabels[service.service_type] || service.service_type}</span>
-                          <span class="rounded-full bg-white border border-slate-200 px-3 py-1 text-slate-700">Complejidad {complexityLabels[service.complexity] || service.complexity}</span>
-                        </div>
+                      <!-- Config panel when selected -->
+                      {#if selected}
+                        <div class="px-6 pb-6 space-y-5 border-t border-steel-600/15 bg-iron-800/30 pt-5">
 
-                        {#if selected}
-                          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-blue-200/70">
-                            <label class="text-sm text-slate-700">
-                              <span class="block mb-1 font-medium">Precio minimo</span>
+                          <!-- Precios y tiempos -->
+                          <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <div>
+                              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                                // PRECIO MÍN (S/.)
+                              </label>
                               <input
                                 type="number"
                                 min="0"
                                 step="0.01"
                                 value={selected.min_price ?? ''}
-                                oninput={(event) => updatePrice(service.id, 'min_price', (event.currentTarget as HTMLInputElement).value)}
-                                class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="120.00"
+                                on:input={(e) => updatePrice(service.id, 'min_price', (e.currentTarget as HTMLInputElement).value)}
+                                placeholder="0.00"
+                                class="input-industrial"
                               />
-                            </label>
-                            <label class="text-sm text-slate-700">
-                              <span class="block mb-1 font-medium">Precio maximo</span>
+                            </div>
+                            <div>
+                              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                                // PRECIO MÁX (S/.)
+                              </label>
                               <input
                                 type="number"
                                 min="0"
                                 step="0.01"
                                 value={selected.max_price ?? ''}
-                                oninput={(event) => updatePrice(service.id, 'max_price', (event.currentTarget as HTMLInputElement).value)}
-                                class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                placeholder="180.00"
+                                on:input={(e) => updatePrice(service.id, 'max_price', (e.currentTarget as HTMLInputElement).value)}
+                                placeholder="0.00"
+                                class="input-industrial"
                               />
-                            </label>
-                            <label class="text-sm text-slate-700">
-                              <span class="block mb-1 font-medium">Duracion estimada</span>
+                            </div>
+                            <div>
+                              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                                // DURACIÓN (MIN)
+                              </label>
                               <input
                                 type="number"
                                 min="15"
                                 step="15"
                                 value={selected.estimated_time_min}
-                                oninput={(event) => updateWorkshopService(service.id, { estimated_time_min: Number((event.currentTarget as HTMLInputElement).value) || 15 })}
-                                class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                on:input={(e) => updateWorkshopService(service.id, { estimated_time_min: Number((e.currentTarget as HTMLInputElement).value) || 15 })}
+                                class="input-industrial"
                               />
-                            </label>
-                            <label class="text-sm text-slate-700">
-                              <span class="block mb-1 font-medium">Moneda</span>
+                            </div>
+                            <div>
+                              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                                // MONEDA
+                              </label>
                               <input
                                 value={selected.currency}
                                 maxlength="10"
-                                oninput={(event) => updateWorkshopService(service.id, { currency: (event.currentTarget as HTMLInputElement).value.toUpperCase() || 'PEN' })}
-                                class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                on:input={(e) => updateWorkshopService(service.id, { currency: (e.currentTarget as HTMLInputElement).value.toUpperCase() || 'PEN' })}
+                                class="input-industrial"
                               />
-                            </label>
+                            </div>
                           </div>
 
-                          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1 text-sm text-slate-700">
-                            <label class="flex items-center gap-3 rounded-2xl border border-white/80 bg-white px-4 py-3 cursor-pointer">
-                              <input type="checkbox" checked={selected.available} onchange={(event) => updateWorkshopService(service.id, { available: (event.currentTarget as HTMLInputElement).checked })} class="w-4 h-4 text-blue-600 rounded" />
-                              <span>Visible al cliente</span>
-                            </label>
-                            <label class="flex items-center gap-3 rounded-2xl border border-white/80 bg-white px-4 py-3 cursor-pointer">
-                              <input type="checkbox" checked={selected.is_specialized} onchange={(event) => updateWorkshopService(service.id, { is_specialized: (event.currentTarget as HTMLInputElement).checked })} class="w-4 h-4 text-blue-600 rounded" />
-                              <span>Servicio diferencial</span>
-                            </label>
-                          </div>
-
-                          <div class="rounded-2xl border border-white/80 bg-white p-4 space-y-3">
-                            <label class="flex items-center gap-3 text-sm text-slate-700 cursor-pointer">
-                              <input type="checkbox" checked={selected.has_warranty} onchange={(event) => updateWorkshopService(service.id, { has_warranty: (event.currentTarget as HTMLInputElement).checked })} class="w-4 h-4 text-blue-600 rounded" />
-                              <span>Este servicio incluye garantia</span>
-                            </label>
-
-                            {#if selected.has_warranty}
-                              <label class="text-sm text-slate-700 block">
-                                <span class="block mb-1 font-medium">Dias de garantia</span>
+                          <!-- Checkboxes booleanos -->
+                          <div class="flex flex-wrap gap-5 border-t border-steel-600/15 pt-4">
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                              <div class="relative w-4 h-4 border flex items-center justify-center transition-colors
+                                          {selected.available ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
                                 <input
-                                  type="number"
-                                  min="0"
-                                  step="1"
-                                  value={selected.warranty_days}
-                                  oninput={(event) => updateWorkshopService(service.id, { warranty_days: Number((event.currentTarget as HTMLInputElement).value) || 0 })}
-                                  class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                  type="checkbox"
+                                  checked={selected.available}
+                                  on:change={(e) => updateWorkshopService(service.id, { available: (e.currentTarget as HTMLInputElement).checked })}
+                                  class="sr-only"
                                 />
-                              </label>
-                            {/if}
+                                {#if selected.available}
+                                  <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                  </svg>
+                                {/if}
+                              </div>
+                              <span class="font-mono text-[10px] text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">VISIBLE AL CLIENTE</span>
+                            </label>
+
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                              <div class="relative w-4 h-4 border flex items-center justify-center transition-colors
+                                          {selected.is_specialized ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
+                                <input
+                                  type="checkbox"
+                                  checked={selected.is_specialized}
+                                  on:change={(e) => updateWorkshopService(service.id, { is_specialized: (e.currentTarget as HTMLInputElement).checked })}
+                                  class="sr-only"
+                                />
+                                {#if selected.is_specialized}
+                                  <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                  </svg>
+                                {/if}
+                              </div>
+                              <span class="font-mono text-[10px] text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">SERVICIO DIFERENCIAL</span>
+                            </label>
+
+                            <label class="flex items-center gap-2 cursor-pointer group">
+                              <div class="relative w-4 h-4 border flex items-center justify-center transition-colors
+                                          {selected.has_warranty ? 'border-rust-600 bg-rust-600/20' : 'border-steel-600/50 hover:border-steel-400'}">
+                                <input
+                                  type="checkbox"
+                                  checked={selected.has_warranty}
+                                  on:change={(e) => updateWorkshopService(service.id, { has_warranty: (e.currentTarget as HTMLInputElement).checked })}
+                                  class="sr-only"
+                                />
+                                {#if selected.has_warranty}
+                                  <svg class="w-2.5 h-2.5 text-rust-500" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                  </svg>
+                                {/if}
+                              </div>
+                              <span class="font-mono text-[10px] text-steel-400 uppercase tracking-widest group-hover:text-bone transition-colors">INCLUYE GARANTÍA</span>
+                            </label>
                           </div>
-                        {/if}
-                      </div>
+
+                          <!-- Días de garantía -->
+                          {#if selected.has_warranty}
+                            <div class="max-w-xs">
+                              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">
+                                // DÍAS DE GARANTÍA
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="1"
+                                value={selected.warranty_days}
+                                on:input={(e) => updateWorkshopService(service.id, { warranty_days: Number((e.currentTarget as HTMLInputElement).value) || 0 })}
+                                class="input-industrial"
+                              />
+                            </div>
+                          {/if}
+                        </div>
+                      {/if}
                     </div>
                   {/each}
                 </div>
-              </article>
+              </div>
             {/each}
           </div>
-        </section>
+        </div>
 
-        <section class="bg-white rounded-[2rem] shadow p-6 md:p-8 space-y-6">
-          <div class="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+        <!-- ── SECCIÓN: Expertise vehicular ── -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4 flex items-start justify-between gap-4 flex-wrap">
             <div>
-              <p class="text-sm font-semibold uppercase tracking-wide text-emerald-700">Expertise vehicular</p>
-              <h2 class="text-2xl font-black text-slate-900 mt-1">Define en que marcas o modelos eres fuerte</h2>
-              <p class="text-sm text-slate-600 mt-2 max-w-3xl">
-                Esta configuracion alimenta WorkshopVehicleExpertise. Puedes trabajar a nivel de marca o bajar a modelo cuando quieras comunicar especializacion real.
-              </p>
+              <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// EXPERTISE VEHICULAR</p>
+              <h2 class="font-display text-3xl text-bone uppercase leading-none mt-1">FOCOS VEHICULARES</h2>
+              <p class="font-mono text-[9px] text-steel-500 uppercase tracking-widest mt-1">Define en qué marcas o modelos eres fuerte · WorkshopVehicleExpertise</p>
             </div>
-            <div class="rounded-2xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-600">
-              {vehicleExpertise.length} focos vehiculares registrados
+            <div class="border border-steel-600/30 px-4 py-2 shrink-0">
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest">
+                {vehicleExpertise.length} FOCO{vehicleExpertise.length !== 1 ? 'S' : ''} REGISTRADO{vehicleExpertise.length !== 1 ? 'S' : ''}
+              </p>
             </div>
           </div>
 
-          <div class="rounded-[1.75rem] border border-emerald-200 bg-emerald-50/70 p-5 space-y-4">
-            <div class="flex flex-wrap gap-3">
-              <button
-                type="button"
-                onclick={() => void handleGranularityChange('marca')}
-                class={`rounded-xl px-4 py-2 text-sm font-semibold transition ${vehiclePicker.granularity === 'marca' ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'}`}
-              >
-                Expertise por marca
-              </button>
-              <button
-                type="button"
-                onclick={() => void handleGranularityChange('modelo')}
-                class={`rounded-xl px-4 py-2 text-sm font-semibold transition ${vehiclePicker.granularity === 'modelo' ? 'bg-emerald-700 text-white' : 'bg-white text-slate-700 border border-slate-300 hover:bg-slate-50'}`}
-              >
-                Expertise por modelo
-              </button>
+          <!-- Picker form -->
+          <div class="p-6 space-y-5 border-b border-steel-600/20">
+
+            <!-- Granularidad toggle -->
+            <div>
+              <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-3">// NIVEL DE GRANULARIDAD</p>
+              <div class="flex gap-0">
+                <button
+                  type="button"
+                  on:click={() => handleGranularityChange('marca')}
+                  class="font-mono text-[10px] uppercase tracking-widest px-5 py-2.5 border transition-colors
+                         {vehiclePicker.granularity === 'marca'
+                           ? 'bg-rust-600 border-rust-600 text-bone'
+                           : 'border-steel-600/40 text-steel-400 hover:text-bone hover:border-steel-400'}"
+                >
+                  POR MARCA
+                </button>
+                <button
+                  type="button"
+                  on:click={() => handleGranularityChange('modelo')}
+                  class="font-mono text-[10px] uppercase tracking-widest px-5 py-2.5 border-y border-r transition-colors
+                         {vehiclePicker.granularity === 'modelo'
+                           ? 'bg-rust-600 border-rust-600 text-bone'
+                           : 'border-steel-600/40 text-steel-400 hover:text-bone hover:border-steel-400'}"
+                >
+                  POR MODELO
+                </button>
+              </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-[1fr,1fr,0.8fr] gap-4">
-              <label class="text-sm text-slate-700">
-                <span class="block mb-1 font-medium">Marca</span>
+            <!-- Selects -->
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div>
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// MARCA</label>
                 <select
                   value={vehiclePicker.marcaId}
-                  onchange={(event) => void handleBrandChange((event.currentTarget as HTMLSelectElement).value)}
-                  class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  on:change={(e) => handleBrandChange((e.currentTarget as HTMLSelectElement).value)}
+                  class="input-industrial"
                 >
                   <option value="">Selecciona una marca</option>
                   {#each vehicleBrands as brand}
                     <option value={brand.id}>{brand.nombre}</option>
                   {/each}
                 </select>
-              </label>
+              </div>
 
               {#if vehiclePicker.granularity === 'modelo'}
-                <label class="text-sm text-slate-700">
-                  <span class="block mb-1 font-medium">Modelo</span>
+                <div>
+                  <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// MODELO</label>
                   <select
                     value={vehiclePicker.modeloId}
-                    onchange={(event) => vehiclePicker = { ...vehiclePicker, modeloId: (event.currentTarget as HTMLSelectElement).value }}
+                    on:change={(e) => vehiclePicker = { ...vehiclePicker, modeloId: (e.currentTarget as HTMLSelectElement).value }}
                     disabled={!vehiclePicker.marcaId || loadingVehicleModels}
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 disabled:bg-slate-100 disabled:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    class="input-industrial disabled:opacity-40 disabled:cursor-not-allowed"
                   >
-                    <option value="">{loadingVehicleModels ? 'Cargando modelos...' : 'Selecciona un modelo'}</option>
+                    <option value="">{loadingVehicleModels ? 'CARGANDO...' : 'Selecciona un modelo'}</option>
                     {#each currentBrandModels as model}
                       <option value={model.id}>{model.nombre}</option>
                     {/each}
                   </select>
-                </label>
+                </div>
               {/if}
 
-              <label class="text-sm text-slate-700">
-                <span class="block mb-1 font-medium">Nivel</span>
+              <div>
+                <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// NIVEL</label>
                 <select
                   value={vehiclePicker.expertiseLevel}
-                  onchange={(event) => vehiclePicker = { ...vehiclePicker, expertiseLevel: (event.currentTarget as HTMLSelectElement).value as VehicleExpertiseLevel }}
-                  class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                  on:change={(e) => vehiclePicker = { ...vehiclePicker, expertiseLevel: (e.currentTarget as HTMLSelectElement).value as VehicleExpertiseLevel }}
+                  class="input-industrial"
                 >
                   {#each expertiseLevelOptions as level}
                     <option value={level.value}>{level.label}</option>
                   {/each}
                 </select>
-              </label>
+              </div>
             </div>
 
-            <label class="text-sm text-slate-700 block">
-              <span class="block mb-1 font-medium">Notas internas</span>
+            <!-- Notas -->
+            <div>
+              <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// NOTAS INTERNAS</label>
               <textarea
                 rows="3"
                 bind:value={vehiclePicker.notes}
-                class="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Ej: alto volumen de Toyota Corolla, diagnosticos frecuentes de caja CVT, etc."
+                placeholder="Ej: alto volumen de Toyota Corolla, diagnósticos frecuentes de caja CVT..."
+                class="input-industrial resize-none"
               ></textarea>
-            </label>
+            </div>
 
             <div class="flex justify-end">
-              <button type="button" onclick={addVehicleExpertise} class="rounded-xl bg-emerald-700 px-5 py-3 text-sm font-semibold text-white hover:bg-emerald-800 transition">
-                Agregar expertise
+              <button
+                type="button"
+                on:click={addVehicleExpertise}
+                class="bg-rust-600 text-bone hover:bg-rust-700 font-mono text-[10px] uppercase tracking-industrial
+                       px-5 py-2.5 transition-colors"
+                style="clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)"
+              >
+                + AGREGAR EXPERTISE
               </button>
             </div>
           </div>
 
-          <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <!-- Lista de expertise -->
+          <div class="divide-y divide-steel-600/15">
             {#each vehicleExpertise as item, index}
-              <div class="rounded-[1.5rem] border border-slate-200 bg-slate-50 p-5 space-y-4">
+              <div class="px-6 py-5 space-y-4">
+                <!-- Item header -->
                 <div class="flex items-start justify-between gap-3">
                   <div>
-                    <div class="flex flex-wrap items-center gap-2">
-                      <h3 class="text-base font-black text-slate-900">{item.label || item.modelo_nombre || item.marca_nombre || 'Vehiculo configurado'}</h3>
-                      <span class="rounded-full bg-white border border-slate-200 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{item.granularity === 'modelo' ? 'Modelo' : 'Marca'}</span>
+                    <div class="flex items-center gap-2 flex-wrap mb-1">
+                      <p class="font-mono text-xs text-bone uppercase tracking-widest">
+                        {item.label || item.modelo_nombre || item.marca_nombre || 'VEHÍCULO CONFIGURADO'}
+                      </p>
+                      <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 px-2 py-0.5 text-steel-500">
+                        {item.granularity === 'modelo' ? 'MODELO' : 'MARCA'}
+                      </span>
                     </div>
-                    <p class="text-sm text-slate-600 mt-1">{item.modelo_nombre ? `${item.marca_nombre || ''} ${item.modelo_nombre}`.trim() : item.marca_nombre || 'Expertise vehicular del taller.'}</p>
+                    {#if item.modelo_nombre}
+                      <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">
+                        {item.marca_nombre || ''} · {item.modelo_nombre}
+                      </p>
+                    {:else if item.marca_nombre}
+                      <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">{item.marca_nombre}</p>
+                    {/if}
+                    {#if item.total_jobs}
+                      <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mt-1">
+                        {item.total_jobs} TRABAJO{item.total_jobs !== 1 ? 'S' : ''} REGISTRADO{item.total_jobs !== 1 ? 'S' : ''}
+                      </p>
+                    {/if}
                   </div>
-                  <button type="button" onclick={() => removeVehicleExpertise(index)} class="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 transition">
-                    Quitar
+                  <button
+                    type="button"
+                    on:click={() => removeVehicleExpertise(index)}
+                    class="border border-rust-600/40 text-rust-400 hover:border-rust-500 hover:text-rust-300
+                           font-mono text-[10px] uppercase tracking-widest px-3 py-1.5 transition-colors shrink-0"
+                  >
+                    ✕ QUITAR
                   </button>
                 </div>
 
-                <label class="text-sm text-slate-700 block">
-                  <span class="block mb-1 font-medium">Nivel de expertise</span>
-                  <select
-                    value={item.expertise_level}
-                    onchange={(event) => updateVehicleExpertise(index, { expertise_level: (event.currentTarget as HTMLSelectElement).value as VehicleExpertiseLevel })}
-                    class="w-full rounded-xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  >
-                    {#each expertiseLevelOptions as level}
-                      <option value={level.value}>{level.label}</option>
-                    {/each}
-                  </select>
-                </label>
-
-                <label class="text-sm text-slate-700 block">
-                  <span class="block mb-1 font-medium">Notas internas</span>
-                  <textarea
-                    rows="3"
-                    value={item.notes}
-                    oninput={(event) => updateVehicleExpertise(index, { notes: (event.currentTarget as HTMLTextAreaElement).value })}
-                    class="w-full rounded-2xl border border-slate-300 bg-white px-3 py-2 focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                  ></textarea>
-                </label>
-
-                {#if item.total_jobs}
-                  <div class="rounded-2xl bg-white border border-slate-200 px-4 py-3 text-sm text-slate-600">
-                    {item.total_jobs} trabajos registrados en este foco vehicular.
+                <!-- Nivel + notas -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// NIVEL DE EXPERTISE</label>
+                    <select
+                      value={item.expertise_level}
+                      on:change={(e) => updateVehicleExpertise(index, { expertise_level: (e.currentTarget as HTMLSelectElement).value as VehicleExpertiseLevel })}
+                      class="input-industrial"
+                    >
+                      {#each expertiseLevelOptions as level}
+                        <option value={level.value}>{level.label}</option>
+                      {/each}
+                    </select>
                   </div>
-                {/if}
+                  <div>
+                    <label class="block font-mono text-[10px] text-steel-500 uppercase tracking-widest mb-2">// NOTAS INTERNAS</label>
+                    <textarea
+                      rows="2"
+                      value={item.notes}
+                      on:input={(e) => updateVehicleExpertise(index, { notes: (e.currentTarget as HTMLTextAreaElement).value })}
+                      class="input-industrial resize-none"
+                    ></textarea>
+                  </div>
+                </div>
               </div>
             {/each}
 
             {#if !vehicleExpertise.length}
-              <div class="lg:col-span-2 rounded-[1.5rem] border border-dashed border-slate-300 bg-slate-50 px-5 py-8 text-sm text-slate-500">
-                Aun no has configurado expertise vehicular. Agrega marcas o modelos para reforzar la propuesta comercial del taller.
+              <div class="px-6 py-10 text-center">
+                <p class="font-mono text-xs text-steel-700 uppercase tracking-widest">SIN EXPERTISE VEHICULAR CONFIGURADO</p>
+                <p class="font-mono text-[9px] text-steel-700 uppercase tracking-widest mt-1">
+                  Agrega marcas o modelos para reforzar la propuesta comercial
+                </p>
               </div>
             {/if}
           </div>
-        </section>
+        </div>
+
       </div>
 
-      <aside class="space-y-6 xl:sticky xl:top-6">
-        <section class="rounded-[2rem] bg-[#0f172a] text-white p-6 shadow space-y-5">
-          <div>
-            <p class="text-sm font-semibold uppercase tracking-wide text-cyan-300">Resumen listo para publicar</p>
-            <h2 class="text-2xl font-black mt-2">{customer?.company_name || customer?.full_name || 'Tu taller'}</h2>
-            <p class="text-sm text-slate-300 mt-2">Selecciona solo lo que el taller puede cumplir bien. Menos volumen y mejor precision suele convertir mejor.</p>
-          </div>
+      <!-- ═══════════════════════════════
+           SIDEBAR DERECHA
+      ═══════════════════════════════ -->
+      <aside class="space-y-6 xl:sticky xl:top-20">
 
-          <div class="grid grid-cols-2 gap-3 text-sm">
-            <div class="rounded-2xl bg-white/10 p-4">
-              <p class="text-slate-300">Activos</p>
-              <p class="mt-1 text-2xl font-black">{activeServices}</p>
+        <!-- Panel resumen -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// RESUMEN DEL CATÁLOGO</p>
+          </div>
+          <div class="p-6 space-y-5">
+            <div>
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">TALLER</p>
+              <p class="font-display text-2xl text-bone uppercase leading-none">
+                {customer?.company_name || customer?.full_name || 'TU TALLER'}
+              </p>
             </div>
-            <div class="rounded-2xl bg-white/10 p-4">
-              <p class="text-slate-300">Garantia</p>
-              <p class="mt-1 text-2xl font-black">{warrantyServices}</p>
+
+            <div class="grid grid-cols-2 gap-3 border-t border-steel-600/20 pt-5">
+              <div class="border border-steel-600/25 p-3">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">ACTIVOS</p>
+                <p class="font-display text-2xl text-bone leading-none">{activeServices}</p>
+              </div>
+              <div class="border border-steel-600/25 p-3">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CON GARANTÍA</p>
+                <p class="font-display text-2xl text-bone leading-none">{warrantyServices}</p>
+              </div>
+            </div>
+
+            <!-- Categorías cubiertas -->
+            <div class="border-t border-steel-600/20 pt-5">
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-3">CATEGORÍAS CUBIERTAS</p>
+              {#if selectedCategoryNames.length}
+                <div class="flex flex-wrap gap-2">
+                  {#each selectedCategoryNames as name}
+                    <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 px-2 py-1 text-steel-400">
+                      {name}
+                    </span>
+                  {/each}
+                </div>
+              {:else}
+                <p class="font-mono text-[9px] text-steel-700 uppercase tracking-widest">SIN SERVICIOS AÚN</p>
+              {/if}
+            </div>
+
+            <!-- Foco vehicular -->
+            <div class="border-t border-steel-600/20 pt-5">
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-3">FOCO VEHICULAR</p>
+              {#if vehicleExpertise.length}
+                <div class="space-y-2">
+                  {#each vehicleExpertise.slice(0, 5) as item}
+                    <div class="flex items-center justify-between gap-2">
+                      <span class="font-mono text-[10px] text-steel-400 uppercase truncate">
+                        {item.label || item.modelo_nombre || item.marca_nombre || '—'}
+                      </span>
+                      <span class="font-mono text-[9px] uppercase tracking-widest border border-steel-600/40 px-2 py-0.5 text-steel-500 shrink-0">
+                        {item.expertise_level}
+                      </span>
+                    </div>
+                  {/each}
+                  {#if vehicleExpertise.length > 5}
+                    <p class="font-mono text-[9px] text-steel-700 uppercase tracking-widest">
+                      +{vehicleExpertise.length - 5} MÁS
+                    </p>
+                  {/if}
+                </div>
+              {:else}
+                <p class="font-mono text-[9px] text-steel-700 uppercase tracking-widest">SIN FOCO VEHICULAR AÚN</p>
+              {/if}
             </div>
           </div>
+        </div>
 
-          <div class="rounded-2xl bg-white/10 p-4 space-y-3">
-            <p class="text-sm font-semibold text-white">Categorias cubiertas</p>
-            {#if selectedCategoryNames.length}
-              <div class="flex flex-wrap gap-2">
-                {#each selectedCategoryNames as categoryName}
-                  <span class="rounded-full bg-white/10 px-3 py-1 text-xs font-semibold text-slate-100">{categoryName}</span>
-                {/each}
+        <!-- Panel módulos conectados -->
+        <div class="bg-iron-900 border border-steel-600/25"
+             style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
+          <div class="border-b border-steel-600/25 px-6 py-4">
+            <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// MÓDULOS CONECTADOS</p>
+          </div>
+          <div class="p-6 space-y-3">
+            {#each [
+              'Selector base desde ServiceCategory y Service',
+              'Persistencia directa sobre WorkshopService',
+              'Especialidad vehicular sobre WorkshopVehicleExpertise',
+            ] as item}
+              <div class="flex items-start gap-3">
+                <span class="font-mono text-xs text-green-500 mt-0.5 flex-shrink-0">✓</span>
+                <p class="font-mono text-[10px] text-steel-400 uppercase tracking-widest leading-relaxed">{item}</p>
               </div>
-            {:else}
-              <p class="text-sm text-slate-300">Todavia no has agregado servicios al catalogo.</p>
-            {/if}
+            {/each}
           </div>
+        </div>
 
-          <div class="rounded-2xl bg-white/10 p-4 space-y-3">
-            <p class="text-sm font-semibold text-white">Foco vehicular</p>
-            {#if vehicleExpertise.length}
-              <div class="space-y-2">
-                {#each vehicleExpertise.slice(0, 5) as item}
-                  <div class="flex items-center justify-between gap-3 text-sm">
-                    <span class="text-slate-100">{item.label || item.modelo_nombre || item.marca_nombre}</span>
-                    <span class="rounded-full bg-white/10 px-2.5 py-1 text-[11px] font-semibold text-cyan-200">{item.expertise_level}</span>
-                  </div>
-                {/each}
-              </div>
-            {:else}
-              <p class="text-sm text-slate-300">Agrega al menos una marca o modelo para reforzar la propuesta del taller.</p>
-            {/if}
-          </div>
-        </section>
-
-        <section class="bg-white rounded-[2rem] p-6 shadow space-y-4">
-          <div>
-            <h2 class="text-lg font-black text-slate-900">Como queda conectado</h2>
-            <p class="text-sm text-slate-600 mt-2">Esta pantalla ya no es plantilla visual. Guarda sobre modelos reales del backend:</p>
-          </div>
-          <ul class="space-y-3 text-sm text-slate-700">
-            <li class="flex gap-3"><span class="text-emerald-600">✓</span><span>Selector base desde ServiceCategory y Service.</span></li>
-            <li class="flex gap-3"><span class="text-emerald-600">✓</span><span>Persistencia directa sobre WorkshopService.</span></li>
-            <li class="flex gap-3"><span class="text-emerald-600">✓</span><span>Especialidad vehicular sobre WorkshopVehicleExpertise.</span></li>
-          </ul>
-        </section>
-
+        <!-- Mensajes de estado -->
         {#if message}
-          <div class="bg-green-50 text-green-700 rounded-[1.5rem] p-4 text-sm shadow-sm">{message}</div>
+          <div class="border border-green-700/50 bg-green-600/10 px-5 py-4 flex items-center gap-3">
+            <span class="w-1.5 h-1.5 bg-green-500 flex-shrink-0"></span>
+            <p class="font-mono text-[10px] text-green-400 uppercase tracking-widest leading-relaxed">{message}</p>
+          </div>
         {/if}
-        {#if error}
-          <div class="bg-red-50 text-red-700 rounded-[1.5rem] p-4 text-sm shadow-sm">{error}</div>
+        {#if error && !accessDenied}
+          <div class="border border-rust-700/50 bg-rust-600/10 px-5 py-4 flex items-center gap-3">
+            <span class="w-1.5 h-1.5 bg-rust-600 flex-shrink-0"></span>
+            <p class="font-mono text-[10px] text-rust-400 uppercase tracking-widest leading-relaxed">{error}</p>
+          </div>
         {/if}
+
       </aside>
     </div>
   {/if}

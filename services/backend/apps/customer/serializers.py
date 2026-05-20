@@ -257,10 +257,12 @@ class CustomerRegisterSerializer(serializers.Serializer):
         while User.objects.filter(username=username).exists():
             username = f'{base}{i}'
             i += 1
+        is_individual = validated_data['customer_type'] == 'individual'
         user = User.objects.create_user(
             username=username,
             email=email,
             password=validated_data['password'],
+            is_active=is_individual,
         )
         customer = Customer.objects.create(
             user=user,

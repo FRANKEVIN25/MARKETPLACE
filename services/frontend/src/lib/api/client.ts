@@ -136,8 +136,8 @@ function extractResults<T>(response: PaginatedResponse<T> | T[]): T[] {
 }
 
 // Configuración base
-const API_URL = import.meta.env.PUBLIC_API_URL || 'http://localhost:8000';
-const API_TIMEOUT = parseInt(import.meta.env.PUBLIC_API_TIMEOUT || '10000');
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_TIMEOUT = parseInt(import.meta.env.VITE_API_TIMEOUT || '10000');
 
 // Instancia de Axios
 const apiClient: AxiosInstance = axios.create({
