@@ -21,6 +21,7 @@ Multi-tenant con aislamiento de datos por proveedor. Cada proveedor gestiona su 
 - [Setup Completo](docs/SETUP_COMPLETO.md)
 - [Fase 1: Backend](docs/FASE_1_BACKEND.md)
 - [Fase 2: Frontend](docs/FASE_2_FRONTEND.md)
+- [Estrategia SaaS 2026-2031](docs/ESTRATEGIA_SAAS_2026_2031.md)
 
 ## Quick Start
 ```bash
