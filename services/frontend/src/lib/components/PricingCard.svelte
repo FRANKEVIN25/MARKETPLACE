@@ -34,8 +34,7 @@
     {#if tier.price === 0}
       <span class="font-display text-4xl text-bone">GRATIS</span>
     {:else}
-      <span class="font-display text-4xl text-bone">S/. {tier.price}</span>
-      <span class="font-mono text-xs text-steel-500 ml-1 uppercase">/MES</span>
+      <span class="font-display text-4xl text-bone">{tier.price}</span>
     {/if}
   </div>
 

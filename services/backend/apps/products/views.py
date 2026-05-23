@@ -9,7 +9,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from .models import Category, Product, Store
 from .serializers import (
     CategorySerializer, ProductListSerializer, ProductDetailSerializer,
-    ProductCreateUpdateSerializer, StoreSerializer
+    ProductCreateUpdateSerializer, PublicCategoryTreeSerializer, StoreSerializer
 )
 from apps.marketplace.permissions import CanManageProducts, BelongsToGroup
 
@@ -35,10 +35,14 @@ class PublicCategoryListView(generics.ListAPIView):
 
     permission_classes = []  # Público
     authentication_classes = []
-    serializer_class = CategorySerializer
+    serializer_class = PublicCategoryTreeSerializer
 
     def get_queryset(self):
-        return Category.objects.filter(is_active=True).order_by('name')
+        return (
+            Category.objects.filter(is_active=True, parent__isnull=True)
+            .prefetch_related('children__children')
+            .order_by('import_code')
+        )
 
 
 class ProductViewSet(viewsets.ModelViewSet):

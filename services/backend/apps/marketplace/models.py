@@ -280,21 +280,21 @@ class Provider(models.Model):
             'max_products': 100,
             'max_orders_month': 50,
             'max_api_calls_day': 1000,
-            'price': 0,  # Gratis
+            'price': 199,  # Gratis
             'commission': 0.08,  # 8%
         },
         'pro': {
             'max_products': 1000,
             'max_orders_month': 500,
             'max_api_calls_day': 5000,
-            'price': 99,  # S/ 99/mes
+            'price': 399,  # S/ 99/mes
             'commission': 0.05,  # 5%
         },
         'premium': {
             'max_products': None,  # Ilimitado
             'max_orders_month': None,
             'max_api_calls_day': None,
-            'price': 299,  # S/ 299/mes
+            'price': 599,  # S/ 299/mes
             'commission': 0.03,  # 3%
         }
     }

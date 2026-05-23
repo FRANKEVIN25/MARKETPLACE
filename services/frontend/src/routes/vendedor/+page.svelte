@@ -140,9 +140,9 @@
 
   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     {#each [
-      { name: 'STARTER', price: 'GRATIS', highlight: false, badge: null },
-      { name: 'PRO', price: 'S/. 99/MES', highlight: true, badge: 'RECOMENDADO' },
-      { name: 'PREMIUM', price: 'S/. 299/MES', highlight: false, badge: null },
+      { name: 'STARTER', price: '199/MES', highlight: false, badge: null },
+      { name: 'PRO', price: '399/MES', highlight: true, badge: 'RECOMENDADO' },
+      { name: 'PREMIUM', price: '599/MES', highlight: false, badge: null },
     ] as plan}
       <div class="bg-iron-900 border {plan.highlight ? 'border-rust-600' : 'border-steel-600/25'} relative p-6"
            style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">

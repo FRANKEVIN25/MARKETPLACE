@@ -204,9 +204,6 @@
                 {#if workshop.specialized}
                   <span class="font-mono text-[9px] uppercase border border-rust-700/50 text-rust-500 px-2 py-0.5">★ ESPEC.</span>
                 {/if}
-                {#if workshop.erpIntegrated}
-                  <span class="font-mono text-[9px] uppercase border border-steel-600/40 text-steel-400 px-2 py-0.5">ERP</span>
-                {/if}
               </div>
             </div>
 

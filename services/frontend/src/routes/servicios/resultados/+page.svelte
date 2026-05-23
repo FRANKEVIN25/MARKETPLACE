@@ -183,8 +183,9 @@
       </div>
       <div class="p-4 space-y-3">
         <div>
-          <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">MARCA</label>
+          <label for="service-filter-marca" class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">MARCA</label>
           <select
+            id="service-filter-marca"
             bind:value={selectedMarcaId}
             onchange={handleMarcaChange}
             class="input-industrial text-xs"
@@ -196,8 +197,9 @@
           </select>
         </div>
         <div>
-          <label class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">MODELO</label>
+          <label for="service-filter-modelo" class="block font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">MODELO</label>
           <select
+            id="service-filter-modelo"
             bind:value={selectedModeloId}
             disabled={!selectedMarcaId || loadingModelos || modelos.length === 0}
             class="input-industrial text-xs disabled:opacity-50"
@@ -229,7 +231,7 @@
         {#each budgetOptions as option}
           <button
             type="button"
-            on:click={() => (selectedBudget = option.value)}
+            onclick={() => (selectedBudget = option.value)}
             class="w-full text-left px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
               {selectedBudget === option.value
                 ? 'bg-rust-600/20 border border-rust-600/60 text-rust-400'
@@ -251,7 +253,7 @@
         {#each trustOptions as opt}
           <button
             type="button"
-            on:click={() => (selectedTrust = opt.value)}
+            onclick={() => (selectedTrust = opt.value)}
             class="w-full text-left px-3 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
               {selectedTrust === opt.value
                 ? 'bg-rust-600/20 border border-rust-600/60 text-rust-400'
@@ -278,7 +280,7 @@
             {#each departments as dept}
               <button
                 type="button"
-                on:click={() => { selectedDepartment = dept; selectedProvince = 'all'; selectedDistrict = 'all'; }}
+                onclick={() => { selectedDepartment = dept; selectedProvince = 'all'; selectedDistrict = 'all'; }}
                 class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border transition-colors
                   {selectedDepartment === dept
                     ? 'border-rust-600 text-rust-400 bg-rust-600/10'
@@ -299,7 +301,7 @@
                 {#if selectedDepartment === 'all' || serviceListings.some((l) => l.department === selectedDepartment && l.province === prov) || prov === 'all'}
                   <button
                     type="button"
-                    on:click={() => { selectedProvince = prov; selectedDistrict = 'all'; }}
+                    onclick={() => { selectedProvince = prov; selectedDistrict = 'all'; }}
                     class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border transition-colors
                       {selectedProvince === prov
                         ? 'border-rust-600 text-rust-400 bg-rust-600/10'
@@ -320,7 +322,7 @@
             {#each districts as district}
               <button
                 type="button"
-                on:click={() => (selectedDistrict = district)}
+                onclick={() => (selectedDistrict = district)}
                 class="font-mono text-[9px] uppercase tracking-widest px-2 py-0.5 border transition-colors
                   {selectedDistrict === district
                     ? 'border-rust-600 text-rust-400 bg-rust-600/10'
@@ -381,7 +383,7 @@
       <div class="inline-flex border border-steel-600/40 shrink-0">
         <button
           type="button"
-          on:click={() => (viewMode = 'service')}
+          onclick={() => (viewMode = 'service')}
           class="px-4 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
             {viewMode === 'service'
               ? 'bg-rust-600/20 text-rust-400 border-r border-rust-600/60'
@@ -390,8 +392,7 @@
           POR SERVICIO
         </button>
         <button
-          type="button"
-          on:click={() => (viewMode = 'workshop')}
+          onclick={() => (viewMode = 'workshop')}
           class="px-4 py-2 font-mono text-[10px] uppercase tracking-widest transition-colors
             {viewMode === 'workshop'
               ? 'bg-rust-600/20 text-rust-400'
@@ -451,7 +452,6 @@
                   {#each [
                     `${rec.avgRating.toFixed(1)}/5 VALORACIÓN PROMEDIO`,
                     `EXPERTISE: ${rec.vehicleExpertise.slice(0, 2).join(' · ')}`,
-                    `${serviceLevelLabels[rec.serviceLevel]}${rec.erpIntegrated ? ' · ERP' : ''}`,
                   ] as signal}
                     <div class="flex items-center gap-2">
                       <span class="text-green-400 font-mono text-xs">✓</span>
@@ -511,9 +511,6 @@
                 {#if listing.specialized}
                   <span class="font-mono text-[9px] uppercase border border-rust-700/50 text-rust-500 px-2 py-0.5">★ ESPEC.</span>
                 {/if}
-                {#if listing.erpIntegrated}
-                  <span class="font-mono text-[9px] uppercase border border-steel-600/40 text-steel-400 px-2 py-0.5">ERP</span>
-                {/if}
               </div>
             </div>
 
@@ -569,9 +566,6 @@
               <div class="flex flex-col items-end gap-1.5">
                 {#if workshop.verified}
                   <span class="font-mono text-[9px] uppercase border border-green-700/50 text-green-400 px-2 py-0.5">✓ VERIF.</span>
-                {/if}
-                {#if workshop.erpIntegrated}
-                  <span class="font-mono text-[9px] uppercase border border-steel-600/40 text-steel-400 px-2 py-0.5">ERP</span>
                 {/if}
               </div>
             </div>

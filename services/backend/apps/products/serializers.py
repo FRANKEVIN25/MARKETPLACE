@@ -19,6 +19,28 @@ class CategorySerializer(serializers.ModelSerializer):
         read_only_fields = ['slug', 'import_code', 'created_at', 'updated_at']
 
 
+class PublicCategoryTreeSerializer(serializers.ModelSerializer):
+    children = serializers.SerializerMethodField()
+    children_count = serializers.SerializerMethodField()
+    level = serializers.IntegerField(read_only=True)
+
+    class Meta:
+        model = Category
+        fields = [
+            'id', 'name', 'slug', 'parent', 'import_code',
+            'description', 'is_active', 'level', 'children_count',
+            'children',
+        ]
+        read_only_fields = fields
+
+    def get_children_count(self, obj):
+        return len(self.get_children(obj))
+
+    def get_children(self, obj):
+        children = list(obj.children.filter(is_active=True).order_by('import_code'))
+        return PublicCategoryTreeSerializer(children, many=True, context=self.context).data
+
+
 class StoreSerializer(serializers.ModelSerializer):
     """Tiendas físicas del proveedor (puntos de retiro)."""
     provider_name = serializers.CharField(source='provider.name', read_only=True)
@@ -39,6 +61,8 @@ class ProductDetailSerializer(serializers.ModelSerializer):
     provider_name = serializers.CharField(source='provider.name', read_only=True)
     provider_slug = serializers.CharField(source='provider.slug', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True, allow_null=True)
+    autopart_side_display = serializers.CharField(source='get_autopart_side_display', read_only=True)
+    autopart_quality_display = serializers.CharField(source='get_autopart_quality_display', read_only=True)
     is_synced = serializers.BooleanField(read_only=True)
     provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     total_stock = serializers.IntegerField(source='total_stock_cached', read_only=True)
@@ -54,7 +78,9 @@ class ProductDetailSerializer(serializers.ModelSerializer):
             'category', 'category_name',
             'is_active', 'is_synced',
             'total_stock',
-            'autopart_side', 'autopart_quality', 'es_universal',
+            'autopart_side', 'autopart_side_display',
+            'autopart_quality', 'autopart_quality_display',
+            'es_universal',
             'created_at', 'updated_at'
         ]
         read_only_fields = [
@@ -77,6 +103,8 @@ class ProductListSerializer(serializers.ModelSerializer):
     provider_slug = serializers.CharField(source='provider.slug', read_only=True)
     provider_group = serializers.IntegerField(source='provider.id', read_only=True)
     category_name = serializers.CharField(source='category.name', read_only=True)
+    autopart_side_display = serializers.CharField(source='get_autopart_side_display', read_only=True)
+    autopart_quality_display = serializers.CharField(source='get_autopart_quality_display', read_only=True)
     total_stock = serializers.IntegerField(source='total_stock_cached', read_only=True)
     is_synced = serializers.BooleanField(read_only=True)
     price_with_tax = serializers.FloatField(read_only=True)
@@ -88,6 +116,8 @@ class ProductListSerializer(serializers.ModelSerializer):
             'provider_group', 'provider_name', 'provider_slug', 'product_type',
             'price', 'price_with_tax', 'tax_percent',
             'category_name', 'image_url',
+            'autopart_side', 'autopart_side_display',
+            'autopart_quality', 'autopart_quality_display',
             'is_active', 'is_published', 'total_stock',
             'is_synced', 'created_at'
         ]

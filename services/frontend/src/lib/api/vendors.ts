@@ -70,11 +70,11 @@ export function getTiers() {
     {
       id: 'starter' as const,
       name: 'Starter',
-      price: 'Gratis',
-      priceNumber: 0,
+      price: 'S/ 199/mes',
+      priceNumber: 199,
       commission: '8%',
       features: [
-        'Hasta 100 productos',
+        'Hasta 1000 productos',
         'Hasta 50 órdenes/mes',
         'Soporte por email',
         'Panel de control básico',
@@ -84,11 +84,11 @@ export function getTiers() {
     {
       id: 'pro' as const,
       name: 'Pro',
-      price: 'S/ 99/mes',
-      priceNumber: 99,
+      price: 'S/ 349/mes',
+      priceNumber: 349,
       commission: '5%',
       features: [
-        'Hasta 1,000 productos',
+        'Hasta 4,000 productos',
         'Hasta 500 órdenes/mes',
         'Soporte prioritario',
         'Analytics avanzados',
@@ -99,8 +99,8 @@ export function getTiers() {
     {
       id: 'premium' as const,
       name: 'Premium',
-      price: 'S/ 299/mes',
-      priceNumber: 299,
+      price: 'S/ 599/mes',
+      priceNumber: 599,
       commission: '3%',
       features: [
         'Productos ilimitados',

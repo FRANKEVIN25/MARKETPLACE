@@ -4,6 +4,7 @@ Admin de Productos - Configuración de Django Admin
 from mptt.admin import MPTTModelAdmin
 from .models import Category, Product, CompatibilidadProducto, Store
 from django.contrib import admin
+from django.utils.translation import ngettext
 from django.utils.html import format_html
 
 
@@ -50,6 +51,7 @@ class ProductAdmin(admin.ModelAdmin):
     ]
     autocomplete_fields = ['provider', 'category']
     inlines = [CompatibilidadProductoInline]
+    actions = ['mark_as_published', 'mark_as_unpublished']
 
     fieldsets = (
         ('Proveedor', {
@@ -98,6 +100,30 @@ class ProductAdmin(admin.ModelAdmin):
         return obj.is_synced
     is_synced.boolean = True
     is_synced.short_description = 'Sincronizado'
+
+    @admin.action(description='Publicar productos seleccionados')
+    def mark_as_published(self, request, queryset):
+        updated_count = queryset.update(is_published=True)
+        self.message_user(
+            request,
+            ngettext(
+                '%d producto fue marcado como publicado.',
+                '%d productos fueron marcados como publicados.',
+                updated_count,
+            ) % updated_count,
+        )
+
+    @admin.action(description='Quitar de publicación productos seleccionados')
+    def mark_as_unpublished(self, request, queryset):
+        updated_count = queryset.update(is_published=False)
+        self.message_user(
+            request,
+            ngettext(
+                '%d producto fue marcado como no publicado.',
+                '%d productos fueron marcados como no publicados.',
+                updated_count,
+            ) % updated_count,
+        )
 
 
 @admin.register(CompatibilidadProducto)

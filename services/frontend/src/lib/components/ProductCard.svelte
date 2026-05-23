@@ -1,4 +1,20 @@
 <script lang="ts">
+  const SIDE_LABELS = {
+    left: 'Izquierda',
+    right: 'Derecha',
+    front: 'Delantera',
+    rear: 'Posterior',
+    both: 'Ambos lados',
+    na: 'No aplica',
+  } as const;
+
+  const QUALITY_LABELS = {
+    original: 'Original',
+    oem: 'OEM',
+    aftermarket_premium: 'Alternativo Premium',
+    aftermarket_standard: 'Alternativo Estándar',
+  } as const;
+
   export let product: {
     id: number;
     nombre?: string;
@@ -18,6 +34,10 @@
     image?: string;
     stock?: number;
     sku?: string;
+    autopart_side?: keyof typeof SIDE_LABELS;
+    autopart_side_display?: string;
+    autopart_quality?: keyof typeof QUALITY_LABELS;
+    autopart_quality_display?: string;
   };
 
   // Map API properties
@@ -29,6 +49,12 @@
   $: imagen     = product.image_url || product.imagen || product.image;
   $: sku        = product.sku || `ECO-${String(product.id).padStart(6, '0')}`;
   $: inStock    = product.stock === undefined || product.stock > 0;
+  $: lado = product.autopart_side_display
+    || (product.autopart_side ? SIDE_LABELS[product.autopart_side] : undefined);
+  $: calidad = product.autopart_quality_display
+    || (product.autopart_quality ? QUALITY_LABELS[product.autopart_quality] : undefined);
+  $: mostrarLado = Boolean(lado && product.autopart_side !== 'na');
+  $: mostrarCalidad = Boolean(calidad);
 
   function formatPrice(p: number | string): string {
     const n = parseFloat(p.toString());
@@ -116,6 +142,21 @@
 
     <!-- Horizontal rule -->
     <div class="border-t border-steel-600/25 mb-3"></div>
+
+    {#if mostrarLado || mostrarCalidad}
+      <div class="mb-4 flex flex-wrap gap-2">
+        {#if mostrarLado}
+          <span class="border border-steel-600/40 bg-iron-800 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-steel-300">
+            LADO: {lado}
+          </span>
+        {/if}
+        {#if mostrarCalidad}
+          <span class="border border-rust-600/35 bg-rust-600/10 px-2 py-1 font-mono text-[9px] uppercase tracking-widest text-rust-300">
+            CALIDAD: {calidad}
+          </span>
+        {/if}
+      </div>
+    {/if}
 
     <!-- Price block -->
     <div class="flex items-baseline gap-1.5 mb-4">

@@ -42,10 +42,11 @@
 
       <!-- ── Logo ── -->
       <a href="/" class="flex items-center gap-3 group">
-        <div class="w-9 h-9 bg-rust-600 flex items-center justify-center group-hover:bg-rust-700 transition-colors relative"
-             style="clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)">
-          <span class="font-display text-2xl text-bone leading-none select-none">E</span>
-        </div>
+        <img
+          src="/logo.png"
+          alt="ECOMPARTS"
+          class="h-11 w-11 object-contain transition-transform duration-150 group-hover:scale-105"
+        />
         <div class="flex flex-col leading-none">
           <span class="font-display text-2xl text-bone tracking-widest leading-none group-hover:text-rust-400 transition-colors">ECOMPARTS</span>
           <span class="font-mono text-[8px] text-steel-500 tracking-widest uppercase">MARKETPLACE · PERÚ</span>

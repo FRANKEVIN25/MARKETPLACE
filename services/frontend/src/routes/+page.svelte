@@ -1,6 +1,8 @@
 <script lang="ts">
   import type { PageData } from './$types';
+  import BrandMarquee from '$lib/components/BrandMarquee.svelte';
   import ProductCard from '$lib/components/ProductCard.svelte';
+  import VendorRecruitmentFloat from '$lib/components/VendorRecruitmentFloat.svelte';
   import { onMount } from 'svelte';
 
   export let data: PageData;
@@ -8,6 +10,19 @@
   // Animated stats
   let statsVisible = false;
   let searchQuery = '';
+  const brands = [
+    { name: 'Chery', src: '/brands/chery2.png' },
+    { name: 'Changan', src: '/brands/changan.png' },
+    { name: 'kia', src: '/brands/kia.png' },
+    { name: 'mitsu', src: '/brands/mitsubishi.png' },
+    { name: 'honda', src: '/brands/honda2.png' },
+    { name: 'chero', src: '/brands/chero.png' },
+    { name: 'ford', src: '/brands/ford.svg' },
+    { name: 'isuzu', src: '/brands/isuzu.svg' },
+    { name: 'isuzu', src: '/brands/tesla2.png' },
+    { name: 'volvo', src: '/brands/volvo.svg' },
+    { name: 'cadillac', src: '/brands/cadillac.svg' }
+  ];
 
   onMount(() => {
     // Trigger stat counters on load
@@ -29,33 +44,7 @@
   <meta name="description" content="Marketplace B2B de autopartes en Perú. Repuestos de calidad, precio justo, entrega rápida." />
 </svelte:head>
 
-<!-- ══════════════════════════════════════════════
-     VENDOR RECRUITMENT STRIP
-═══════════════════════════════════════════════ -->
-<div class="bg-iron-900 border-b border-steel-600/30">
-  <div class="container-responsive py-3">
-    <div class="flex flex-col sm:flex-row items-center justify-between gap-3">
-      <div class="flex items-center gap-4">
-        <div class="w-px h-8 bg-rust-600 hidden sm:block"></div>
-        <div>
-          <p class="font-mono text-xs text-bone uppercase tracking-industrial">¿Vendes autopartes?</p>
-          <p class="font-mono text-[10px] text-steel-500 uppercase tracking-widest">Únete a ECOMPARTS · Llega a miles de clientes B2B</p>
-        </div>
-      </div>
-      <div class="flex items-center gap-2">
-        <a href="/vendedor"
-           class="font-mono text-[11px] uppercase tracking-industrial text-steel-300 border border-steel-600/60 px-4 py-1.5 hover:border-steel-400 hover:text-bone transition-colors">
-          VER PLANES
-        </a>
-        <a href="/vendedor/registro"
-           class="font-mono text-[11px] uppercase tracking-industrial text-bone bg-rust-600 px-4 py-1.5 hover:bg-rust-700 transition-colors"
-           style="clip-path: polygon(0 0, calc(100% - 6px) 0, 100% 6px, 100% 100%, 0 100%)">
-          REGISTRARME →
-        </a>
-      </div>
-    </div>
-  </div>
-</div>
+<VendorRecruitmentFloat />
 
 <!-- ══════════════════════════════════════════════
      HERO SECTION — INDUSTRIAL BRUTAL
@@ -72,39 +61,43 @@
     </span>
   </div>
 
-  <div class="container-responsive py-20 md:py-32 relative z-10">
+  <div class="container-responsive py-10 md:py-16 relative z-10">
 
     <!-- ── B2B Badge ── -->
-    <div class="inline-flex items-center gap-3 border border-rust-600/60 bg-rust-600/10 px-4 py-2 mb-8">
+    <div class="inline-flex items-center gap-3 border border-rust-600/60 bg-rust-600/10 px-4 py-2 mb-6">
       <span class="relative flex h-2 w-2">
         <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-rust-500 opacity-75"></span>
         <span class="relative inline-flex h-2 w-2 rounded-full bg-rust-600"></span>
       </span>
-      <span class="font-mono text-[11px] text-rust-500 uppercase tracking-widest">B2B · PERÚ · AUTOPARTES · INDUSTRIA</span>
+      <span class="font-mono text-[11px] text-rust-500 uppercase tracking-widest">B2C · B2B · PERÚ · AUTOPARTES · INDUSTRIA</span>
     </div>
 
     <!-- ── Main headline ── -->
     <h1 class="font-display uppercase leading-none mb-8 max-w-5xl">
       <span class="block text-[clamp(52px,9vw,110px)] text-bone">EL REPUESTO</span>
-      <span class="block text-[clamp(52px,9vw,110px)] text-rust-600">CORRECTO.</span>
-      <span class="block text-[clamp(52px,9vw,110px)] text-bone">PRECIO JUSTO.</span>
-      <span class="block text-[clamp(52px,9vw,110px)] text-steel-400">HOY.</span>
+      <span class="block text-[clamp(52px,9vw,110px)] text-rust-600">QUE BUSCAS</span>
+      <span class="block text-[clamp(52px,9vw,110px)] text-bone">AL PRECIO JUSTO</span>
+      <span class="block text-[clamp(52px,9vw,110px)] text-steel-400">¡HOY!</span>
     </h1>
 
     <!-- ── Sub-copy ── -->
-    <p class="font-mono text-sm text-steel-400 uppercase tracking-industrial mb-12 max-w-xl">
+    <p class="font-mono text-sm text-steel-400 uppercase tracking-industrial mb-8 max-w-xl">
       Compara precios · Múltiples proveedores · Entrega en todo el Perú
     </p>
 
     <!-- ── Stats row ── -->
     <div class="flex flex-wrap gap-8 mb-12 {statsVisible ? 'counter-animate' : 'opacity-0'}">
       <div class="stat-block">
-        <span class="font-display text-4xl md:text-5xl text-rust-600 leading-none">+5,000</span>
+        <span class="font-display text-4xl md:text-5xl text-rust-600 leading-none">+50,000</span>
         <span class="font-mono text-[9px] text-steel-500 uppercase tracking-widest mt-1">PRODUCTOS</span>
       </div>
       <div class="stat-block">
         <span class="font-display text-4xl md:text-5xl text-rust-600 leading-none">+120</span>
         <span class="font-mono text-[9px] text-steel-500 uppercase tracking-widest mt-1">PROVEEDORES</span>
+      </div>
+      <div class="stat-block">
+        <span class="font-display text-4xl md:text-5xl text-rust-600 leading-none">+80</span>
+        <span class="font-mono text-[9px] text-steel-500 uppercase tracking-widest mt-1">Marcas</span>
       </div>
       <div class="stat-block">
         <span class="font-display text-4xl md:text-5xl text-rust-600 leading-none">24H</span>
@@ -117,7 +110,7 @@
     </div>
 
     <!-- ── Search bar ── -->
-    <form on:submit={handleSearch} class="flex max-w-2xl mb-10">
+    <form on:submit={handleSearch} class="flex max-w-2xl mb-6">
       <div class="relative flex-1">
         <input
           type="text"
@@ -308,3 +301,9 @@
     </div>
   </div>
 </section>
+
+
+<!-- ══════════════════════════════════════════════
+     deslizamiento continuo  de marcas
+═══════════════════════════════════════════════ -->
+<BrandMarquee {brands}/>

@@ -116,9 +116,12 @@ export interface Category {
   name: string;             // Nombre de la categoría
   slug: string;             // URL amigable (estable; no cambia con el nombre)
   parent?: number;          // ID de categoría padre (si es subcategoría)
+  import_code?: string;     // Código estable generado en backend
   description?: string;     // Descripción
   is_active: boolean;       // ¿Está activa?
+  level?: number;           // Nivel MPTT expuesto para UI jerárquica
   children_count: number;   // Cantidad de subcategorías
+  children?: Category[];    // Hijos anidados para la API pública
 }
 
 // ============================================
@@ -157,6 +160,10 @@ export interface Product {
   tax_percent: string; 
   category?: number | string; // ID o nombre de la categoría (según endpoint)
   category_name?: string;   // Nombre de la categoría
+  autopart_side?: 'left' | 'right' | 'front' | 'rear' | 'both' | 'na';
+  autopart_side_display?: string;
+  autopart_quality?: 'original' | 'oem' | 'aftermarket_premium' | 'aftermarket_standard';
+  autopart_quality_display?: string;
   es_universal: boolean;    // ¿Compatible con todos los vehículos?
   total_stock: number;      // Stock total sumado de todos los almacenes
   stock_items?: StockItem[]; // Detalle de stock por almacén (opcional en listados)

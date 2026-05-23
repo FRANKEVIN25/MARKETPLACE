@@ -1,12 +1,14 @@
 import type { PageLoad } from './$types';
 import { api } from '$lib/api/client';
 
+const PAGE_SIZE = 15;
+
 export const load: PageLoad = async ({ url }) => {
   try {
     const params = url.searchParams;
 
     const page = Number(params.get('page') ?? '1');
-    const page_size = Number(params.get('page_size') ?? '24');
+    const page_size = PAGE_SIZE;
 
     // Categoría desde la URL (acepta category_id o category por compatibilidad)
     const categoryIdParam = params.get('category_id') ?? params.get('category');
@@ -41,8 +43,10 @@ export const load: PageLoad = async ({ url }) => {
       api.categories.list(),
     ]);
 
+    const products = (response.results || []).slice(0, PAGE_SIZE);
+
     return {
-      products: response.results || [],
+      products,
       totalCount: response.count || 0,
       marcas,
       categories,

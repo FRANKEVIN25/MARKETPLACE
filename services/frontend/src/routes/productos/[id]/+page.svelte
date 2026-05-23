@@ -26,6 +26,8 @@
   // Agrupar stock por almacén
   $: stockItems = product.stock_items || product.stock_por_almacen || [];
   $: providerUrl = product.provider_slug ? `/proveedores/${product.provider_slug}` : null;
+  $: autopartSide = product.autopart_side_display || (product.autopart_side && product.autopart_side !== 'na' ? product.autopart_side : null);
+  $: autopartQuality = product.autopart_quality_display || product.autopart_quality || null;
   $: stockPorAlmacen = stockItems.reduce((acc: Record<string, StockItem[]>, item: StockItem) => {
     const ciudad = item.warehouse_city || 'Sin ciudad';
     if (!acc[ciudad]) acc[ciudad] = [];
@@ -175,7 +177,7 @@
         </p>
       </div>
 
-      <!-- FICHA MECÁNICA — specs grid -->
+      <!-- FICHA TÉCNICA  — specs grid -->
       <div class="bg-iron-900 border border-steel-600/25"
            style="clip-path: polygon(0 0, calc(100% - 12px) 0, 100% 12px, 100% 100%, 0 100%)">
         <div class="border-b border-steel-600/25 px-5 py-3">
@@ -186,17 +188,34 @@
             <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">SKU / REFERENCIA</p>
             <p class="font-mono text-sm text-bone">{product.reference}</p>
           </div>
-          {#if product.manufacturer_code}
+          {#if autopartSide}
             <div class="px-5 py-4 border-b border-steel-600/20">
-              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CÓDIGO OEM</p>
-              <p class="font-mono text-sm text-bone">{product.manufacturer_code}</p>
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">LADO</p>
+              <p class="font-mono text-sm text-bone">{autopartSide}</p>
             </div>
           {:else}
             <div class="px-5 py-4 border-b border-steel-600/20">
-              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CÓDIGO OEM</p>
+              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">LADO</p>
               <p class="font-mono text-sm text-steel-600">—</p>
             </div>
           {/if}
+          {#if autopartQuality}
+              <div class="px-5 py-4 border-b border-steel-600/20">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CALIDAD</p>
+                <p class="font-mono text-sm text-bone">{autopartQuality}</p>
+              </div>
+            {:else}
+              <div class="px-5 py-4 border-b border-steel-600/20">
+                <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CALIDAD</p>
+                <p class="font-mono text-sm text-steel-500">—</p>
+              </div>
+            {/if}
+          <div class="px-5 py-4 border-b border-steel-600/20">
+            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">STOCK TOTAL</p>
+            <p class="font-mono text-sm {estaDisponible ? 'text-green-400' : 'text-rust-500'}">
+              {totalStock} {totalStock === 1 ? 'UNIDAD' : 'UNIDADES'}
+            </p>
+          </div>
           <div class="px-5 py-4 border-b border-steel-600/20">
             <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">PROVEEDOR</p>
             {#if providerUrl}
@@ -207,29 +226,6 @@
               <p class="font-mono text-sm text-bone">{product.provider_name || '—'}</p>
             {/if}
           </div>
-          <div class="px-5 py-4 border-b border-steel-600/20">
-            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">STOCK TOTAL</p>
-            <p class="font-mono text-sm {estaDisponible ? 'text-green-400' : 'text-rust-500'}">
-              {totalStock} {totalStock === 1 ? 'UNIDAD' : 'UNIDADES'}
-            </p>
-          </div>
-          <div class="px-5 py-4">
-            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">IMPUESTO (IGV)</p>
-            <p class="font-mono text-sm text-bone">{impuesto}%</p>
-          </div>
-          {#if product.es_universal}
-            <div class="px-5 py-4">
-              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">COMPATIBILIDAD</p>
-              <span class="font-mono text-[10px] text-bone border border-steel-600/40 px-2 py-0.5 uppercase">
-                UNIVERSAL
-              </span>
-            </div>
-          {:else}
-            <div class="px-5 py-4">
-              <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">COMPATIBILIDAD</p>
-              <p class="font-mono text-sm text-steel-500">POR VEHÍCULO</p>
-            </div>
-          {/if}
         </div>
       </div>
 
@@ -305,62 +301,31 @@
     </div>
   </div>
 
+
   <!-- ── Descripción ── -->
   {#if product.description}
-    <div class="mt-12 bg-iron-900 border border-steel-600/25 p-8"
+    <div class="mt-12 bg-iron-900 border border-steel-600/25 p-8 mb-4"
          style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
       <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-4">// DESCRIPCIÓN DEL PRODUCTO</p>
       <p class="font-mono text-sm text-steel-400 leading-relaxed whitespace-pre-wrap">{product.description}</p>
     </div>
   {/if}
 
-  <!-- ── Info técnica adicional ── -->
-  <div class="mt-6 bg-iron-900 border border-steel-600/25"
-       style="clip-path: polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)">
-    <div class="border-b border-steel-600/25 px-8 py-4">
-      <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest">// INFORMACIÓN TÉCNICA</p>
+    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        {#each [
+          { titulo: 'ENVÍO NACIONAL', detalle: 'Despachos coordinados a Lima y provincias con tu agencia favorita.' },
+          { titulo: 'RECOJO EN TIENDA', detalle: 'Retira con el proveedor según disponibilidad.' },
+          { titulo: 'Descuentos exclusivos', detalle: 'A más hitorial de compras, mas descuentos.' },
+          { titulo: 'FORMAS DE PAGO', detalle: 'Transferencia, depósito y opciones según proveedor.' }
+        ] as beneficio}
+          <div class="border border-steel-600/25 bg-iron-900/70 px-4 py-3"
+               style="clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%)">
+            <p class="font-mono text-[9px] text-rust-500 uppercase tracking-widest mb-1">{beneficio.titulo}</p>
+            <p class="font-mono text-xs text-steel-400 leading-relaxed">{beneficio.detalle}</p>
+          </div>
+        {/each}
     </div>
-    <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-8">
-      <div class="space-y-5">
-        <div>
-          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">REFERENCIA INTERNA</p>
-          <p class="font-mono text-sm text-bone">{product.reference}</p>
-        </div>
-        {#if product.manufacturer_code}
-          <div>
-            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CÓDIGO DE FABRICANTE</p>
-            <p class="font-mono text-sm text-bone">{product.manufacturer_code}</p>
-          </div>
-        {/if}
-        {#if product.category_name}
-          <div>
-            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">CATEGORÍA</p>
-            <p class="font-mono text-sm text-bone">{product.category_name}</p>
-          </div>
-        {/if}
-      </div>
-      <div class="space-y-5">
-        <div>
-          <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-1">STOCK TOTAL DISPONIBLE</p>
-          <p class="font-mono text-sm {estaDisponible ? 'text-green-400' : 'text-rust-500'}">
-            {totalStock} {totalStock === 1 ? 'unidad' : 'unidades'}
-          </p>
-        </div>
-        {#if product.es_universal}
-          <div>
-            <p class="font-mono text-[9px] text-steel-600 uppercase tracking-widest mb-2">COMPATIBILIDAD</p>
-            <div class="flex items-center gap-2 border border-steel-600/30 p-3 w-fit">
-              <svg class="w-4 h-4 text-bone" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5"
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span class="font-mono text-xs text-bone uppercase tracking-widest">COMPATIBLE CON TODOS LOS VEHÍCULOS</span>
-            </div>
-          </div>
-        {/if}
-      </div>
-    </div>
-  </div>
+
 </div>
 
 <!-- ── Toast de confirmación ── -->

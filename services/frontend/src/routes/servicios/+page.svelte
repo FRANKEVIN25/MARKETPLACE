@@ -126,16 +126,15 @@
 
 <!-- Hero de servicios -->
 <div class="bg-iron-900 border-b border-steel-600/30">
-  <div class="container-responsive py-10">
-    <p class="font-mono text-[10px] text-rust-600 uppercase tracking-widest mb-2">// RED DE TALLERES</p>
+  <div class="container-responsive py-6">
     <h1 class="font-display text-5xl md:text-6xl text-bone uppercase leading-none mb-3">SERVICIOS<br/>DE TALLER</h1>
-    <p class="font-mono text-xs text-steel-500 uppercase tracking-widest">
-      Búsqueda guiada · Matching por vehículo · Historial verificado
+    <p class="font-mono text-xs text-steel-800 uppercase tracking-widest">
+      Búsqueda guiada · Matching por vehículo · Más de 500 talleres
     </p>
   </div>
 </div>
 
-<div class="container-responsive py-10">
+<div class="container-responsive py-6">
   <div class="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-8 items-start">
 
     <!-- ══════════════════════════════════
