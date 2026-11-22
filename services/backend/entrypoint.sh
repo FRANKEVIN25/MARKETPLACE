@@ -32,7 +32,8 @@ if [ "$1" = "gunicorn" ] || [ "$1" = "python" ]; then
     }
     echo "⚙️ Configurando Odoo (módulos, permisos, aislamiento)..."
     python manage.py setup_odoo || {
-        echo "⚠️ Warning: setup_odoo falló (Odoo puede no estar listo aún)"
+        echo "❌ No se pudo completar la configuración de Odoo"
+        exit 1
     }
 fi
 echo "🚀 Iniciando servicio..."

@@ -19,6 +19,11 @@ staticfiles/
 # Environment
 .env
 .env.local
+.env.lab
+.env.k8s
+.lab/
+.tools/
+.serena/
 *.backup
 
 # Backups

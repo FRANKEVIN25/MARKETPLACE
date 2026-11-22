@@ -18,6 +18,8 @@ Multi-tenant con aislamiento de datos por proveedor. Cada proveedor gestiona su 
 
 ## Documentación
 
+- [Bloque 1: laboratorio de Odoo en Docker Compose](docs/BLOQUE_1_DOCKER_COMPOSE.md)
+- [Bloque 2: una replica de Odoo en Minikube](docs/BLOQUE_2_MINIKUBE.md)
 - [Setup Completo](docs/SETUP_COMPLETO.md)
 - [Fase 1: Backend](docs/FASE_1_BACKEND.md)
 - [Fase 2: Frontend](docs/FASE_2_FRONTEND.md)

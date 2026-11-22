@@ -9,13 +9,15 @@ services:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
       POSTGRES_DB: ${POSTGRES_DB}
+      ODOO_DB: ${ODOO_DB:-ecomparts_odoo_shared}
+      DJANGO_DB_NAME: ${DJANGO_DB_NAME:-ecomparts_marketplace}
     volumes:
       - postgres-data-v2:/var/lib/postgresql/data
       - ./services/postgres/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
     networks:
       - ecomparts-net
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -U ${POSTGRES_USER} -d ${POSTGRES_DB:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -46,11 +48,14 @@ services:
   # Odoo 18 - ERP (SHARED MULTI-COMPANY)
   # ============================================
   odoo:
-    build:
+    image: ${ODOO_IMAGE:-ecomparts-odoo:local}
+    build: &odoo-build
       context: ./services/odoo
       dockerfile: Dockerfile
     container_name: ecomparts-odoo-shared
     depends_on:
+      odoo_init:
+        condition: service_completed_successfully
       postgres:
         condition: service_healthy
       redis:
@@ -58,16 +63,17 @@ services:
     ports:
       - "${ODOO_PORT:-8070}:8069"
       - "8072:8072"  # Longpolling
-    volumes:
+    volumes: &odoo-volumes
       - ./services/odoo/addons:/mnt/extra-addons
       - odoo-web-data-v2:/var/lib/odoo
       - odoo-filestore-v2:/var/lib/odoo/filestore
-    environment:
+    environment: &odoo-environment
       - HOST=postgres
       - PORT=5432
       - USER=${POSTGRES_USER}
       - PASSWORD=${POSTGRES_PASSWORD}
-      - ODOO_DB=${ODOO_DB}
+      - ODOO_DB=${ODOO_DB:-ecomparts_odoo_shared}
+      - ODOO_INIT_MODULES=${ODOO_INIT_MODULES:-base,web,sale_management,stock,ecomp,orders_odoo,multi_company_products,odoo_django_webhook}
       - ODOO_ADMIN_PASSWORD=${ODOO_ADMIN_PASSWORD}
       - ODOO_ADMIN_LOGIN=${ODOO_ADMIN_LOGIN}
       - ODOO_ADMIN_PASS=${ODOO_ADMIN_PASS}
@@ -85,6 +91,20 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  # Inicialización explícita antes de aceptar tráfico o arrancar Django.
+  odoo_init:
+    image: ${ODOO_IMAGE:-ecomparts-odoo:local}
+    build: *odoo-build
+    command: ["bootstrap"]
+    environment: *odoo-environment
+    volumes: *odoo-volumes
+    depends_on:
+      postgres:
+        condition: service_healthy
+    networks:
+      - ecomparts-net
+    restart: "no"
 
   # ============================================
   # Django Backend - API REST
@@ -141,6 +161,12 @@ services:
       - ecomparts-net
     restart: unless-stopped
     # ⭐ NUEVO: Límites de recursos para Django
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8000/api/v1/health/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 120s
 
   # ============================================
   # Celery Worker - Tareas Asíncronas
@@ -181,7 +207,7 @@ services:
       odoo:
         condition: service_healthy
       backend:
-        condition: service_started
+        condition: service_healthy
     networks:
       - ecomparts-net
     restart: unless-stopped
@@ -217,7 +243,7 @@ services:
       redis:
         condition: service_healthy
       backend:
-        condition: service_started
+        condition: service_healthy
       celery_worker:
         condition: service_started
     networks:

@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bullseye
+FROM python:3.11-slim-bookworm
 
 # Metadata
 LABEL maintainer="ECOMPARTS PERÚ"
@@ -38,6 +38,7 @@ COPY . .
 # Crear directorios necesarios
 RUN mkdir -p staticfiles media logs && \
     touch logs/django.log && \
+    sed -i 's/\r$//' entrypoint.sh && \
     chmod +x entrypoint.sh
 
 # Usuario no-root

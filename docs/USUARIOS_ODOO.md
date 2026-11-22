@@ -54,6 +54,8 @@ Grupos que hoy asigna el script:
 
 - `base.group_user`
 - `base.group_system`
+- `sales_team.group_sale_manager`
+- `stock.group_stock_manager`
 
 Interpretacion:
 
@@ -97,12 +99,12 @@ Archivo fuente:
 
 Estado actual:
 
-- Si se ha usado en este proyecto, pero de forma manual.
-- No se ejecuta automaticamente al levantar Docker Compose.
-- No lo llama el entrypoint de Odoo.
-- No esta copiado dentro de la imagen Odoo como parte del arranque.
+- Se copia dentro de la imagen Odoo en `/opt/odoo/scripts/`.
+- El servicio `odoo_init` lo ejecuta automaticamente despues de inicializar la base y los addons.
+- El entrypoint utiliza `bootstrap.sh` cuando recibe el comando `bootstrap`.
+- Se puede ejecutar manualmente para mantenimiento o recuperacion.
 
-Esto significa que hoy es un script operativo de mantenimiento/bootstrap, no un paso automatico del deploy.
+El arranque del laboratorio y la gestion de sus credenciales se describen en [Bloque 1 Docker Compose](BLOQUE_1_DOCKER_COMPOSE.md).
 
 ### Que hace hoy el script
 
@@ -115,7 +117,6 @@ Esto significa que hoy es un script operativo de mantenimiento/bootstrap, no un 
 
 ### Que no hace hoy el script
 
-- No se autoejecuta en el arranque del contenedor.
 - No crea ni inicializa la base de datos Odoo.
 - No instala ni actualiza modulos.
 - No elimina usuarios sobrantes o heredados.
@@ -126,7 +127,7 @@ Esto significa que hoy es un script operativo de mantenimiento/bootstrap, no un 
 Conclusión practica:
 
 - Para bootstrap de usuarios, el script esta suficientemente completo.
-- Para un proceso de provisionamiento productivo totalmente automatizado, todavia es una pieza manual y no reemplaza una rutina completa de post-inicializacion.
+- La inicializacion de la base y los addons la coordina `bootstrap.sh`; este script se ocupa de las cuentas y sus grupos.
 
 ## Como ejecutarlo correctamente
 
@@ -177,12 +178,12 @@ Si ambos comandos pasan, la autenticacion y los permisos base del usuario de ser
 - No reutilizar passwords de ejemplo; reemplazarlos por secretos fuertes y unicos.
 - Mantener `admin2` y `service` separados tambien en gestion operativa y auditoria.
 - No configurar Django para entrar con la cuenta administrativa.
-- Ejecutar el script como parte del runbook de recuperacion, o automatizarlo en una etapa explicita de post-init si mas adelante se quiere cero intervencion manual.
+- Mantener la etapa `odoo_init` y utilizar la ejecucion manual del script cuando se requiera recuperar las cuentas.
 - Si se endurecen permisos del usuario de servicio, validar primero flujos de sincronizacion, actualizacion de modulos y provisiones multi-company.
 
 ## Resumen operativo
 
 - `admin2@ecomparts.local` es la cuenta administrativa humana.
 - `service@ecomparts.local` es la cuenta tecnica de integracion.
-- Django debe usar siempre `service@ecomparts.local / Service!2025`.
-- El script actual sirve para recrear ambos usuarios, pero hoy se ejecuta manualmente.
+- Django utiliza `ODOO_USERNAME` y `ODOO_PASSWORD`, alineados con `ODOO_SERVICE_LOGIN` y `ODOO_SERVICE_PASS`.
+- Compose ejecuta el script mediante `odoo_init`; las credenciales aleatorias del laboratorio se conservan en `.env.lab`.

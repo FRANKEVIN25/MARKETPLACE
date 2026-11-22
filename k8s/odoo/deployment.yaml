@@ -1,0 +1,75 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: odoo
+  namespace: ecomparts
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: odoo
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: odoo
+        app.kubernetes.io/part-of: ecomparts
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: odoo
+          image: ecomparts-odoo:block2
+          imagePullPolicy: Never
+          ports:
+            - name: http
+              containerPort: 8069
+            - name: websocket
+              containerPort: 8072
+          envFrom:
+            - configMapRef:
+                name: odoo-config
+            - secretRef:
+                name: ecomparts-secrets
+          resources:
+            requests:
+              cpu: 500m
+              memory: 768Mi
+            limits:
+              cpu: 1500m
+              memory: 1536Mi
+          startupProbe:
+            httpGet:
+              path: /web/health?db_server_status=true
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 60
+          readinessProbe:
+            httpGet:
+              path: /web/health?db_server_status=true
+              port: http
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          livenessProbe:
+            httpGet:
+              path: /web/health
+              port: http
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/odoo
+            - name: config
+              mountPath: /etc/odoo/odoo.conf.tpl
+              subPath: odoo.conf.tpl
+              readOnly: true
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: odoo-data
+        - name: config
+          configMap:
+            name: odoo-config
