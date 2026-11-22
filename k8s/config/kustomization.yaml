@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: ecomparts
+configMapGenerator:
+  - name: odoo-config
+    files:
+      - odoo.conf.tpl
+    literals:
+      - ODOO_DB=ecomparts_odoo_shared
+      - ODOO_INIT_MODULES=base,web,sale_management,stock,ecomp,orders_odoo,multi_company_products,odoo_django_webhook
+generatorOptions:
+  disableNameSuffixHash: true

@@ -1,0 +1,26 @@
+[options]
+db_host = postgres
+db_port = 5432
+db_name = ${ODOO_DB}
+dbfilter = ^${ODOO_DB}$
+db_user = ${POSTGRES_USER}
+db_password = ${POSTGRES_PASSWORD}
+db_maxconn = 8
+admin_passwd = ${ODOO_ADMIN_PASSWORD}
+addons_path = /opt/odoo/odoo-server/odoo/addons,/opt/odoo/odoo-server/addons,/mnt/extra-addons
+data_dir = /var/lib/odoo
+http_interface = 0.0.0.0
+http_port = 8069
+gevent_port = 8072
+workers = 2
+max_cron_threads = 0
+without_demo = all
+list_db = False
+proxy_mode = False
+limit_time_cpu = 120
+limit_time_real = 240
+limit_memory_soft = 402653184
+limit_memory_hard = 536870912
+log_level = info
+logfile = False
+server_wide_modules = base,web

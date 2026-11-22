@@ -1,0 +1,200 @@
+{
+    "profile":  "ecomparts-k8s",
+    "checked_at_utc":  "2026-11-22T22:37:14.2590664Z",
+    "kubernetes_version":  "v1.37.0",
+    "odoo_replicas":  1,
+    "workers_per_pod":  2,
+    "cron_threads":  0,
+    "image":  {
+                  "image_id":  "sha256:43f43e9752efe516348e4a9ff4a00c9bdcb563656ac0b43dda24b824f525c685",
+                  "image":  "ecomparts-odoo:block2-43f43e9752ef"
+              },
+    "service":  {
+                    "namespace":  "ecomparts",
+                    "cluster_ip":  "10.96.6.43",
+                    "uid":  "bd71baf4-49b0-41fb-9def-aa2053899289",
+                    "name":  "odoo"
+                },
+    "odoo_pod":  {
+                     "after_uid":  "ca42d698-908f-4e4c-b5f4-a7ef485d281f",
+                     "before_uid":  "86de6b10-5751-48f6-8a48-83d6b5f3f8e4",
+                     "resources":  {
+                                       "limits":  {
+                                                      "cpu":  "1500m",
+                                                      "memory":  "1536Mi"
+                                                  },
+                                       "requests":  {
+                                                        "cpu":  "500m",
+                                                        "memory":  "768Mi"
+                                                    }
+                                   }
+                 },
+    "postgres_pod":  {
+                         "after_uid":  "00239e4d-a8e8-478e-869d-fb0cb1799308",
+                         "before_uid":  "b97cb01f-20dc-465a-ab21-f1f2605c8ef4",
+                         "resources":  {
+                                           "limits":  {
+                                                          "cpu":  "500m",
+                                                          "memory":  "512Mi"
+                                                      },
+                                           "requests":  {
+                                                            "cpu":  "100m",
+                                                            "memory":  "128Mi"
+                                                        }
+                                       }
+                     },
+    "pvc":  [
+                {
+                    "phase":  "Bound",
+                    "name":  "data-postgres-0",
+                    "capacity":  "4Gi",
+                    "volume":  "pvc-98cfe0ec-f892-4a46-b745-878e0b10c337"
+                },
+                {
+                    "phase":  "Bound",
+                    "name":  "odoo-data",
+                    "capacity":  "2Gi",
+                    "volume":  "pvc-81ed93ea-6c7b-45c3-8286-d30297e09dac"
+                }
+            ],
+    "observed_pod_metrics":  [
+                                 "odoo-67b98bc5f4-mtvdm   393m   417Mi   ",
+                                 "postgres-0   27m   35Mi   "
+                             ],
+    "observed_resource_metrics":  [
+                                      {
+                                          "kind":  "PodMetrics",
+                                          "apiVersion":  "metrics.k8s.io/v1beta1",
+                                          "metadata":  {
+                                                           "name":  "odoo-67b98bc5f4-mtvdm",
+                                                           "namespace":  "ecomparts",
+                                                           "creationTimestamp":  "2026-11-22T22:37:13Z",
+                                                           "labels":  {
+                                                                          "app.kubernetes.io/name":  "odoo",
+                                                                          "app.kubernetes.io/part-of":  "ecomparts",
+                                                                          "pod-template-hash":  "67b98bc5f4"
+                                                                      }
+                                                       },
+                                          "timestamp":  "2026-11-22T22:36:57Z",
+                                          "window":  "19.081225792s",
+                                          "containers":  [
+                                                             {
+                                                                 "name":  "odoo",
+                                                                 "usage":  {
+                                                                               "cpu":  "392661565n",
+                                                                               "memory":  "427688Ki"
+                                                                           }
+                                                             }
+                                                         ]
+                                      },
+                                      {
+                                          "kind":  "PodMetrics",
+                                          "apiVersion":  "metrics.k8s.io/v1beta1",
+                                          "metadata":  {
+                                                           "name":  "postgres-0",
+                                                           "namespace":  "ecomparts",
+                                                           "creationTimestamp":  "2026-11-22T22:37:13Z",
+                                                           "labels":  {
+                                                                          "app.kubernetes.io/name":  "postgres",
+                                                                          "app.kubernetes.io/part-of":  "ecomparts",
+                                                                          "apps.kubernetes.io/pod-index":  "0",
+                                                                          "controller-revision-hash":  "postgres-6f7778956f",
+                                                                          "statefulset.kubernetes.io/pod-name":  "postgres-0"
+                                                                      }
+                                                       },
+                                          "timestamp":  "2026-11-22T22:37:09Z",
+                                          "window":  "18.653166272s",
+                                          "containers":  [
+                                                             {
+                                                                 "name":  "postgres",
+                                                                 "usage":  {
+                                                                               "cpu":  "26421519n",
+                                                                               "memory":  "36544Ki"
+                                                                           }
+                                                             }
+                                                         ]
+                                      }
+                                  ],
+    "functional_checks":  {
+                              "project":  "ecomparts-k8s",
+                              "database":  "ecomparts_odoo_shared",
+                              "base_url":  "http://127.0.0.1:18070",
+                              "checked_at_utc":  "2026-11-22T22:36:36.287652+00:00",
+                              "modules":  [
+                                              "base",
+                                              "ecomp",
+                                              "multi_company_products",
+                                              "odoo_django_webhook",
+                                              "orders_odoo",
+                                              "sale_management",
+                                              "stock",
+                                              "web"
+                                          ],
+                              "companies":  [
+                                                {
+                                                    "company":  "A",
+                                                    "login":  "ok",
+                                                    "catalog":  "ok",
+                                                    "stock":  "ok",
+                                                    "order":  "ok",
+                                                    "isolation":  "ok"
+                                                },
+                                                {
+                                                    "company":  "B",
+                                                    "login":  "ok",
+                                                    "catalog":  "ok",
+                                                    "stock":  "ok",
+                                                    "order":  "ok",
+                                                    "isolation":  "ok"
+                                                },
+                                                {
+                                                    "company":  "C",
+                                                    "login":  "ok",
+                                                    "catalog":  "ok",
+                                                    "stock":  "ok",
+                                                    "order":  "ok",
+                                                    "isolation":  "ok"
+                                                }
+                                            ],
+                              "status":  "passed"
+                          },
+    "persistence":  {
+                        "profile":  "ecomparts-k8s",
+                        "marker":  "LAB-K8S-8ff7fac579a74a268865004a07843efe",
+                        "partner_id":  18,
+                        "attachment_id":  532,
+                        "content_sha256":  "6fc6e9e7eb281cba3821e789c492be05b13e065d1790b19d005a1fe4dfa53878",
+                        "stored_in_filestore":  true,
+                        "checks":  [
+                                       {
+                                           "stage":  "after_odoo_recreation",
+                                           "record":  "ok",
+                                           "attachment":  "ok",
+                                           "checked_at_utc":  "2026-11-22T22:36:46.508621+00:00"
+                                       },
+                                       {
+                                           "stage":  "after_postgres_recreation",
+                                           "record":  "ok",
+                                           "attachment":  "ok",
+                                           "checked_at_utc":  "2026-11-22T22:36:58.146378+00:00"
+                                       }
+                                   ]
+                    },
+    "status":  "passed",
+    "minikube_version":  "v1.39.0",
+    "namespace":  "ecomparts",
+    "cluster_settings":  {
+                             "memory_mb":  4096,
+                             "cpus":  4,
+                             "driver":  "docker",
+                             "runtime":  "containerd://2.3.4"
+                         },
+    "odoo_source_commit":  "465ae31c1aea5a9a3f84e2f328d55d2cc9d435aa",
+    "postgres_version":  "16.14",
+    "installed_module_count":  64,
+    "initialization_job_succeeded":  1,
+    "odoo_login_http_status":  200,
+    "repository_branch":  "Kubernetes",
+    "repository_base_commit":  "820156e92e16df8826397aefe7a52e13bd66ee35",
+    "repository_changes_committed_at_validation":  false
+}

@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bullseye
+FROM python:3.11-slim-bookworm
 
 ARG ODOO_VERSION=18.0
 ARG ODOO_HOME=/opt/odoo
@@ -36,7 +36,8 @@ RUN useradd -m -d ${ODOO_HOME} -U -r ${ODOO_USER}
 # Clonar Odoo 18
 WORKDIR ${ODOO_HOME}
 
-RUN git clone --depth 1 --branch ${ODOO_VERSION} \
+RUN git -c http.version=HTTP/1.1 -c http.lowSpeedLimit=1024 -c http.lowSpeedTime=60 \
+    clone --progress --depth 1 --branch ${ODOO_VERSION} \
     https://github.com/odoo/odoo.git ${ODOO_HOME}/odoo-server
 
 # 🔧 PARCHE: cbor2 a versión funcional
@@ -63,14 +64,17 @@ COPY config/odoo.conf.tpl /etc/odoo/odoo.conf.tpl
 
 # Permisos
 RUN chown -R ${ODOO_USER}:${ODOO_USER} \
-    ${ODOO_HOME} \
     /mnt/extra-addons \
     /etc/odoo \
     /var/lib/odoo
 
 # Copiar entrypoint para procesamiento de templates y variables
 COPY entrypoint.sh /opt/odoo/entrypoint.sh
-RUN chmod +x /opt/odoo/entrypoint.sh && chown ${ODOO_USER}:${ODOO_USER} /opt/odoo/entrypoint.sh
+COPY bootstrap.sh /opt/odoo/bootstrap.sh
+COPY scripts/ /opt/odoo/scripts/
+RUN sed -i 's/\r$//' /opt/odoo/entrypoint.sh /opt/odoo/bootstrap.sh \
+    && chmod +x /opt/odoo/entrypoint.sh /opt/odoo/bootstrap.sh \
+    && chown -R ${ODOO_USER}:${ODOO_USER} /opt/odoo/entrypoint.sh /opt/odoo/bootstrap.sh /opt/odoo/scripts
 
 # Crear directorios para filestore
 RUN mkdir -p /opt/odoo/.local/share/Odoo && chown -R ${ODOO_USER}:${ODOO_USER} /opt/odoo/.local/share/Odoo

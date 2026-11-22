@@ -8,27 +8,32 @@ Configura Odoo automáticamente al arrancar el backend.
 """
 import logging
 import time
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 logger = logging.getLogger(__name__)
 
-REQUIRED_MODULES = ['orders_odoo', 'multi_company_products']
+REQUIRED_MODULES = ['ecomp', 'orders_odoo', 'multi_company_products', 'odoo_django_webhook']
 
 # Grupos correctos para usuarios proveedor
-PROVIDER_GROUPS_ADD = [23, 45, 26]   # Ventas/Admin, Inventario/Admin, Facturación
-PROVIDER_GROUPS_REMOVE = [21, 22, 44]  # grupos básicos que se reemplazan
+PROVIDER_GROUPS_ADD = [
+    'sales_team.group_sale_manager',
+    'stock.group_stock_manager',
+    'account.group_account_invoice',
+]
+PROVIDER_GROUPS_REMOVE = [
+    'sales_team.group_sale_salesman',
+    'sales_team.group_sale_salesman_all_leads',
+    'stock.group_stock_user',
+]
 
-# Reglas de aislamiento a aplicar {rule_id: domain}
-# Nota: estos IDs corresponden a registros existentes en la instancia Odoo
-# actual. Los dominios deben respetar los campos reales de cada modelo para no
-# romper el arranque al ejecutar setup_odoo en cada boot.
+# Los XML IDs identifican las mismas reglas en bases inicializadas desde cero.
 ISOLATION_RULES = {
-    71:  "['|', ('company_id', 'in', company_ids), ('company_id', '=', False)]",  # product.supplierinfo
-    161: "[('move_ids.move_type', 'in', ('out_invoice', 'out_refund'))]",         # account.move.send.batch.wizard
-    105: "[('company_id', 'in', company_ids)]",                                    # account.move
-    137: "[(1, '=', 1)]",                                                          # payment.token
-    109: "[('company_ids', 'parent_of', company_ids)]",                           # account.account
-    111: "[('company_id', 'in', company_ids)]",                                    # account.tax.group
+    'product.product_supplierinfo_comp_rule': "['|', ('company_id', 'in', company_ids), ('company_id', '=', False)]",
+    'sale.account_invoice_send_batch_rule_see_all': "[('move_ids.move_type', 'in', ('out_invoice', 'out_refund'))]",
+    'account.account_move_comp_rule': "[('company_id', 'in', company_ids)]",
+    'account_payment.payment_token_billing_rule': "[(1, '=', 1)]",
+    'account.account_comp_rule': "[('company_ids', 'parent_of', company_ids)]",
+    'account.tax_group_comp_rule': "[('company_id', 'in', company_ids)]",
 }
 
 
@@ -51,8 +56,7 @@ class Command(BaseCommand):
         # Esperar a que Odoo esté disponible
         odoo = self._wait_for_odoo()
         if not odoo:
-            self.stderr.write('❌ Odoo no disponible, saltando configuración')
-            return
+            raise CommandError('Odoo no disponible para completar la configuración')
 
         # 1. Instalar módulos
         if not options.get('skip_modules'):
@@ -112,11 +116,24 @@ class Command(BaseCommand):
             except Exception as e:
                 self.stderr.write(f'  ❌ Error instalando {module_name}: {e}')
 
+    def _resolve_external_id(self, odoo, xml_id, model):
+        """Resuelve un XML ID sin depender de los IDs de otra base de datos."""
+        module, name = xml_id.split('.', 1)
+        records = odoo.execute_kw(
+            'ir.model.data', 'search_read',
+            [[['module', '=', module], ['name', '=', name], ['model', '=', model]]],
+            {'fields': ['res_id'], 'limit': 1},
+        )
+        if not records:
+            raise CommandError(f'No se encontró {xml_id} ({model})')
+        return records[0]['res_id']
+
     def _apply_isolation_rules(self, odoo):
         """Aplica reglas de aislamiento multi-company"""
         self.stdout.write('🔒 Aplicando reglas de aislamiento...')
-        for rule_id, domain in ISOLATION_RULES.items():
+        for xml_id, domain in ISOLATION_RULES.items():
             try:
+                rule_id = self._resolve_external_id(odoo, xml_id, 'ir.rule')
                 # Verificar que la regla existe
                 rules = odoo.execute_kw(
                     'ir.rule', 'search_read',
@@ -124,8 +141,7 @@ class Command(BaseCommand):
                     {'fields': ['id', 'name', 'domain_force']}
                 )
                 if not rules:
-                    self.stdout.write(f'  ⚠️  Regla [{rule_id}] no encontrada, saltando')
-                    continue
+                    raise CommandError(f'Regla {xml_id} no encontrada')
 
                 current_domain = rules[0]['domain_force']
                 if current_domain == domain:
@@ -135,11 +151,13 @@ class Command(BaseCommand):
                 odoo.execute_kw('ir.rule', 'write', [[rule_id], {'domain_force': domain}])
                 self.stdout.write(f'  ✅ Regla [{rule_id}] actualizada: {rules[0]["name"]}')
             except Exception as e:
-                self.stderr.write(f'  ❌ Error en regla [{rule_id}]: {e}')
+                raise CommandError(f'Error configurando la regla {xml_id}: {e}') from e
 
     def _configure_provider_permissions(self, odoo):
         """Configura permisos correctos para todos los usuarios proveedor"""
         self.stdout.write('👥 Configurando permisos de proveedores...')
+        groups_add = [self._resolve_external_id(odoo, xml_id, 'res.groups') for xml_id in PROVIDER_GROUPS_ADD]
+        groups_remove = [self._resolve_external_id(odoo, xml_id, 'res.groups') for xml_id in PROVIDER_GROUPS_REMOVE]
         try:
             from apps.marketplace.models import Provider
             for provider in Provider.objects.filter(odoo_user_id__isnull=False):
@@ -155,8 +173,8 @@ class Command(BaseCommand):
 
                     current_groups = user[0]['groups_id']
                     needs_update = (
-                        any(g not in current_groups for g in PROVIDER_GROUPS_ADD) or
-                        any(g in current_groups for g in PROVIDER_GROUPS_REMOVE)
+                        any(g not in current_groups for g in groups_add) or
+                        any(g in current_groups for g in groups_remove)
                     )
 
                     if not needs_update:
@@ -167,8 +185,8 @@ class Command(BaseCommand):
                         'res.users', 'write',
                         [[uid], {
                             'groups_id': (
-                                [(3, gid) for gid in PROVIDER_GROUPS_REMOVE] +
-                                [(4, gid) for gid in PROVIDER_GROUPS_ADD]
+                                [(3, gid) for gid in groups_remove] +
+                                [(4, gid) for gid in groups_add]
                             )
                         }]
                     )

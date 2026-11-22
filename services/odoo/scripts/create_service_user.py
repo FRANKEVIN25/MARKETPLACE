@@ -20,6 +20,8 @@ SERVICE_PASS = os.environ.get(
 ADMIN_GROUPS = [
     "base.group_user",
     "base.group_system",
+    "sales_team.group_sale_manager",
+    "stock.group_stock_manager",
 ]
 
 SERVICE_GROUPS = [

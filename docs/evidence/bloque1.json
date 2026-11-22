@@ -1,0 +1,236 @@
+{
+    "block":  1,
+    "validated_on":  "2026-11-22",
+    "status":  "infraestructura_validada_pendiente_revision_cruzada_y_commit",
+    "repository_base_commit":  "820156e92e16df8826397aefe7a52e13bd66ee35",
+    "docker_engine":  "28.5.1",
+    "docker_compose":  "2.40.3",
+    "odoo_source_commit":  "465ae31c1aea5a9a3f84e2f328d55d2cc9d435aa",
+    "postgres_version":  "16.14",
+    "redis_version":  "Redis server v=7.4.11 sha=00000000:0 malloc=jemalloc-5.3.0 bits=64 build=fbf7a7d03c2e9219",
+    "images":  [
+                   {
+                       "ID":  "sha256:7f623c43a9063047e7382f3edb61d0919e8a7a02a3c053ea020406fcc0e09846",
+                       "ContainerName":  "ecomparts-lab-celery-worker",
+                       "Repository":  "ecomparts-lab-celery_worker",
+                       "Tag":  "latest",
+                       "Platform":  "linux/amd64",
+                       "Size":  229191139,
+                       "LastTagTime":  "2026-11-22T21:56:03.347721753Z"
+                   },
+                   {
+                       "ID":  "sha256:81090ce9318bff00864102831df60c86964fdd27c608fc1a9d9adc16f277ff1e",
+                       "ContainerName":  "ecomparts-lab-flower",
+                       "Repository":  "ecomparts-lab-flower",
+                       "Tag":  "latest",
+                       "Platform":  "linux/amd64",
+                       "Size":  229191132,
+                       "LastTagTime":  "2026-11-22T21:56:03.332436783Z"
+                   },
+                   {
+                       "ID":  "sha256:8b518818bea5a154ea207af2d2d8763b22205a388f14c98bac48cf8b0a1d3397",
+                       "ContainerName":  "ecomparts-lab-celery-beat",
+                       "Repository":  "ecomparts-lab-celery_beat",
+                       "Tag":  "latest",
+                       "Platform":  "linux/amd64",
+                       "Size":  229191137,
+                       "LastTagTime":  "2026-11-22T21:56:03.353918819Z"
+                   },
+                   {
+                       "ID":  "sha256:16bc17c64a573ef34162af9298258d1aec548232985b33ed7b1eac33ba35c229",
+                       "ContainerName":  "ecomparts-lab-postgres",
+                       "Repository":  "postgres",
+                       "Tag":  "16-alpine",
+                       "Platform":  "linux/amd64",
+                       "Size":  110036633,
+                       "LastTagTime":  "2026-05-22T15:32:41.345627277Z"
+                   },
+                   {
+                       "ID":  "sha256:ff02b58f971e7d7d156a1267e283fcbbeee91773b6aa36c49dac28ecfe28eadf",
+                       "ContainerName":  "ecomparts-lab-redis",
+                       "Repository":  "redis",
+                       "Tag":  "7-alpine",
+                       "Platform":  "linux/amd64",
+                       "Size":  16276863,
+                       "LastTagTime":  "2026-09-02T01:12:59.796818158Z"
+                   },
+                   {
+                       "ID":  "sha256:9c04e3e7ea8994201a92cb5ffc03fdf6818145bebb6e1d882c8f3263a5c76104",
+                       "ContainerName":  "ecomparts-lab-odoo",
+                       "Repository":  "ecomparts-odoo",
+                       "Tag":  "lab",
+                       "Platform":  "linux/amd64",
+                       "Size":  820004149,
+                       "LastTagTime":  "2026-11-22T21:55:58.624114307Z"
+                   },
+                   {
+                       "ID":  "sha256:9c04e3e7ea8994201a92cb5ffc03fdf6818145bebb6e1d882c8f3263a5c76104",
+                       "ContainerName":  "ecomparts-lab-odoo_init-1",
+                       "Repository":  "ecomparts-odoo",
+                       "Tag":  "lab",
+                       "Platform":  "linux/amd64",
+                       "Size":  820004149,
+                       "LastTagTime":  "2026-11-22T21:55:58.624114307Z"
+                   },
+                   {
+                       "ID":  "sha256:0a660b419bebcd0c076a5240b9cc9fa24d6e42b3e201a4453ad2f2072cbdd118",
+                       "ContainerName":  "ecomparts-lab-backend",
+                       "Repository":  "ecomparts-lab-backend",
+                       "Tag":  "latest",
+                       "Platform":  "linux/amd64",
+                       "Size":  229191133,
+                       "LastTagTime":  "2026-11-22T21:56:03.351714999Z"
+                   }
+               ],
+    "api_health":  {
+                       "status":  "healthy",
+                       "message":  "ECOMPARTS API is running"
+                   },
+    "odoo_login_http_status":  200,
+    "regression_tests":  {
+                             "suite":  "apps.sync",
+                             "failed":  0,
+                             "passed":  3
+                         },
+    "runs":  [
+                 {
+                     "project":  "ecomparts-lab-repeticion",
+                     "database":  "ecomparts_odoo_shared",
+                     "checked_at_utc":  "2026-11-22T21:53:15.049070+00:00",
+                     "modules":  [
+                                     "base",
+                                     "ecomp",
+                                     "multi_company_products",
+                                     "odoo_django_webhook",
+                                     "orders_odoo",
+                                     "sale_management",
+                                     "stock",
+                                     "web"
+                                 ],
+                     "companies":  [
+                                       {
+                                           "company":  "A",
+                                           "login":  "ok",
+                                           "catalog":  "ok",
+                                           "stock":  "ok",
+                                           "order":  "ok",
+                                           "isolation":  "ok"
+                                       },
+                                       {
+                                           "company":  "B",
+                                           "login":  "ok",
+                                           "catalog":  "ok",
+                                           "stock":  "ok",
+                                           "order":  "ok",
+                                           "isolation":  "ok"
+                                       },
+                                       {
+                                           "company":  "C",
+                                           "login":  "ok",
+                                           "catalog":  "ok",
+                                           "stock":  "ok",
+                                           "order":  "ok",
+                                           "isolation":  "ok"
+                                       }
+                                   ],
+                     "status":  "passed",
+                     "execution_type":  "fresh_volumes"
+                 },
+                 {
+                     "project":  "ecomparts-lab",
+                     "database":  "ecomparts_odoo_shared",
+                     "checked_at_utc":  "2026-11-22T21:57:53.664666+00:00",
+                     "modules":  [
+                                     "base",
+                                     "ecomp",
+                                     "multi_company_products",
+                                     "odoo_django_webhook",
+                                     "orders_odoo",
+                                     "sale_management",
+                                     "stock",
+                                     "web"
+                                 ],
+                     "companies":  [
+                                       {
+                                           "company":  "A",
+                                           "login":  "ok",
+                                           "catalog":  "ok",
+                                           "stock":  "ok",
+                                           "order":  "ok",
+                                           "isolation":  "ok"
+                                       },
+                                       {
+                                           "company":  "B",
+                                           "login":  "ok",
+                                           "catalog":  "ok",
+                                           "stock":  "ok",
+                                           "order":  "ok",
+                                           "isolation":  "ok"
+                                       },
+                                       {
+                                           "company":  "C",
+                                           "login":  "ok",
+                                           "catalog":  "ok",
+                                           "stock":  "ok",
+                                           "order":  "ok",
+                                           "isolation":  "ok"
+                                       }
+                                   ],
+                     "status":  "passed",
+                     "execution_type":  "restart_with_persisted_data"
+                 }
+             ],
+    "services":  [
+                     {
+                         "service":  "backend",
+                         "state":  "running",
+                         "health":  "healthy",
+                         "exit_code":  0
+                     },
+                     {
+                         "service":  "celery_beat",
+                         "state":  "running",
+                         "health":  "",
+                         "exit_code":  0
+                     },
+                     {
+                         "service":  "celery_worker",
+                         "state":  "running",
+                         "health":  "",
+                         "exit_code":  0
+                     },
+                     {
+                         "service":  "flower",
+                         "state":  "running",
+                         "health":  "",
+                         "exit_code":  0
+                     },
+                     {
+                         "service":  "odoo",
+                         "state":  "running",
+                         "health":  "healthy",
+                         "exit_code":  0
+                     },
+                     {
+                         "service":  "odoo_init",
+                         "state":  "exited",
+                         "health":  "",
+                         "exit_code":  0
+                     },
+                     {
+                         "service":  "postgres",
+                         "state":  "running",
+                         "health":  "healthy",
+                         "exit_code":  0
+                     },
+                     {
+                         "service":  "redis",
+                         "state":  "running",
+                         "health":  "healthy",
+                         "exit_code":  0
+                     }
+                 ],
+    "scope":  "Pedidos directos en Odoo; recorrido completo del marketplace pendiente del bloque 5.",
+    "installed_module_count":  64,
+    "repository_changes_committed_at_validation":  false
+}
