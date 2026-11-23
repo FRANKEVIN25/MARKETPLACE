@@ -5,8 +5,12 @@ metadata:
   namespace: ecomparts
 spec:
   replicas: 1
+  revisionHistoryLimit: 3
   strategy:
-    type: Recreate
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
   selector:
     matchLabels:
       app.kubernetes.io/name: odoo
@@ -16,6 +20,9 @@ spec:
         app.kubernetes.io/name: odoo
         app.kubernetes.io/part-of: ecomparts
     spec:
+      # The shared RWO volume belongs to this single-node laboratory.
+      nodeSelector:
+        ecomparts.io/odoo-storage: "true"
       terminationGracePeriodSeconds: 30
       containers:
         - name: odoo

@@ -51,25 +51,27 @@ def main():
         user = Odoo(args.url_a, database, login, values["ODOO_ADMIN_PASS"] + "-" + letter)
         company_id = find_one(admin, "res.company", [["name", "=", f"LAB - Compania {letter}"]])
         require(company_id, f"Falta compania {letter}")
-        user.url = args.url_b.rstrip("/")
-        require(user.call("/web/session/get_session_info", {})["uid"] == user.uid,
-                f"Sesion de {letter} no continuo en Pod B")
-        companies = user.execute("res.users", "read", [[user.uid]], fields=["company_ids"])[0]
-        require(companies["company_ids"] == [company_id], f"Permisos incorrectos de {letter}")
-        context = {"allowed_company_ids": [company_id]}
-        own = user.execute("product.product", "search", [[
-            ["name", "=", f"LAB - Producto {letter}"],
-        ]], context=context)
-        require(len(own) == 1, f"Producto de {letter} no visible en Pod B")
-        foreign = next(other for other in "ABC" if other != letter)
-        hidden = user.execute("product.product", "search", [[
-            ["name", "=", f"LAB - Producto {foreign}"],
-        ]], context=context)
-        require(not hidden, f"Producto de {foreign} visible para {letter}")
+        for label, url in (("A", args.url_a), ("B", args.url_b)):
+            user.url = url.rstrip("/")
+            require(user.call("/web/session/get_session_info", {})["uid"] == user.uid,
+                    f"La cookie de {letter} no es valida en Pod {label}")
+            companies = user.execute("res.users", "read", [[user.uid]], fields=["company_ids"])[0]
+            require(companies["company_ids"] == [company_id], f"Permisos incorrectos de {letter} en Pod {label}")
+            context = {"allowed_company_ids": [company_id]}
+            own = user.execute("product.product", "search", [[
+                ["name", "=", f"LAB - Producto {letter}"],
+            ]], context=context)
+            require(len(own) == 1, f"Producto de {letter} no visible en Pod {label}")
+            for foreign in (other for other in "ABC" if other != letter):
+                hidden = user.execute("product.product", "search", [[
+                    ["name", "=", f"LAB - Producto {foreign}"],
+                ]], context=context)
+                require(not hidden, f"Producto de {foreign} visible para {letter} en Pod {label}")
         checks.append(letter)
     print(json.dumps({
         "status": "passed", "pod_a": args.pod_a, "pod_b": args.pod_b,
         "session": "shared", "attachment": "shared", "company_checks": checks,
+        "isolation_checked_on": [args.pod_a, args.pod_b],
         "marker": marker, "partner_id": partner_id, "attachment_id": attachment_id,
     }, indent=2))
 

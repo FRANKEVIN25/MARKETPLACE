@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Install', 'Up', 'Status', 'Forward', 'Check', 'Stop')]
+    [ValidateSet('Install', 'Up', 'Status', 'Forward', 'Check', 'Scale', 'Stop')]
     [string]$Action = 'Up',
     [ValidatePattern('^ecomparts-k8s(?:-[a-z0-9-]+)?$')]
     [string]$ClusterProfile = 'ecomparts-k8s',
@@ -9,6 +9,8 @@ param(
     [int]$Cpus = 4,
     [ValidateRange(3072, 16384)]
     [int]$MemoryMb = 4096,
+    [ValidateRange(1, 3)]
+    [int]$Replicas = 2,
     [switch]$Seed
 )
 
@@ -168,6 +170,82 @@ function Apply-ImageManifest([string]$Path, [string]$Container, [string]$Image) 
     Invoke-Kube @('apply', '-f', $renderedPath)
 }
 
+function Set-LaboratoryStorageNode {
+    $nodes = ((Invoke-Kube @('get', 'nodes', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    if (@($nodes.items).Count -ne 1) {
+        throw 'El almacenamiento RWO de este laboratorio requiere exactamente un nodo. No se modifica el despliegue.'
+    }
+    $node = $nodes.items[0]
+    if (-not @($node.status.conditions | Where-Object { $_.type -eq 'Ready' -and $_.status -eq 'True' }).Count) {
+        throw 'El nodo de almacenamiento no esta listo.'
+    }
+    Invoke-Kube @('label', 'node', $node.metadata.name, 'ecomparts.io/odoo-storage=true', '--overwrite') | Out-Host
+    return $node.metadata.name
+}
+
+function Set-FixedReplicas {
+    $hpas = ((Invoke-Kube @('get', 'hpa', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    if (@($hpas.items).Count) { throw 'Hay un HPA activo. Desactivalo explicitamente antes de preparar replicas fijas.' }
+    $jobs = ((Invoke-Kube @('get', 'jobs', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    if (@($jobs.items | Where-Object { $_.metadata.name -like 'bench-*' -and $_.status.active -gt 0 }).Count) {
+        throw 'Hay una corrida de carga activa. Espera su cierre antes de cambiar replicas.'
+    }
+    $config = ((Invoke-Kube @('get', 'configmap', 'odoo-config', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    $template = $config.data.'odoo.conf.tpl'
+    if ($template -notmatch '(?m)^max_cron_threads\s*=\s*0\s*$' -or $template -notmatch '(?m)^workers\s*=\s*2\s*$') {
+        throw 'La comparacion requiere workers=2 y max_cron_threads=0 en la configuracion desplegada.'
+    }
+    $pvc = ((Invoke-Kube @('get', 'pvc', 'odoo-data', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    if ($pvc.status.phase -ne 'Bound' -or @($pvc.spec.accessModes) -notcontains 'ReadWriteOnce') {
+        throw 'Se requiere el PVC odoo-data RWO enlazado antes de escalar.'
+    }
+    $nodeName = Set-LaboratoryStorageNode
+    $deployment = ((Invoke-Kube @('get', 'deployment', 'odoo', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    $image = @($deployment.spec.template.spec.containers | Where-Object name -eq 'odoo')[0].image
+    $rendered = ((Invoke-Kube @('set', 'image', '--local', '-f', 'k8s/odoo/deployment.yaml', ('odoo=' + $image), '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    $rendered.spec.replicas = $Replicas
+    $manifestPath = Join-Path $statePath ($ClusterProfile + '-fixed-manifest.json')
+    Save-Json $manifestPath $rendered
+    Invoke-Kube @('apply', '-f', $manifestPath)
+    Invoke-Kube @('rollout', 'status', 'deployment/odoo', '--timeout=300s')
+    $pods = ((Invoke-Kube @('get', 'pods', '-l', 'app.kubernetes.io/name=odoo', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    $active = @($pods.items | Where-Object { -not $_.metadata.deletionTimestamp })
+    if ($active.Count -ne $Replicas) { throw 'El numero de Pods activos no coincide con el escenario solicitado.' }
+    $podEvidence = @()
+    foreach ($pod in $active) {
+        if ($pod.spec.nodeName -ne $nodeName) { throw 'Los Pods de Odoo no comparten el nodo de almacenamiento.' }
+        $claim = @($pod.spec.volumes | Where-Object name -eq 'data')[0].persistentVolumeClaim.claimName
+        if ($claim -ne 'odoo-data') { throw 'Un Pod no usa el PVC compartido de Odoo.' }
+        if (-not @($pod.status.conditions | Where-Object { $_.type -eq 'Ready' -and $_.status -eq 'True' }).Count) {
+            throw 'Un Pod de Odoo no esta listo.'
+        }
+        $container = @($pod.spec.containers | Where-Object name -eq 'odoo')[0]
+        $podEvidence += @{
+            name = $pod.metadata.name; uid = $pod.metadata.uid; node = $pod.spec.nodeName
+            image = $container.image; resources = $container.resources; claim = $claim
+            image_id = @($pod.status.containerStatuses | Where-Object name -eq 'odoo')[0].imageID
+        }
+    }
+    $endpoints = ((Invoke-Kube @('get', 'endpointslices', '-l', 'kubernetes.io/service-name=odoo', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    $readyEndpoints = @($endpoints.items | ForEach-Object { $_.endpoints } | Where-Object { $_.conditions.ready -eq $true })
+    if ($readyEndpoints.Count -ne $Replicas) { throw 'Los destinos disponibles del Service no coinciden con las replicas.' }
+    $service = ((Invoke-Kube @('get', 'service', 'odoo', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    $snapshotPath = Join-Path $statePath ($ClusterProfile + '-fixed-' + $Replicas + '.json')
+    Save-Json $snapshotPath @{
+        captured_at_utc = [DateTime]::UtcNow.ToString('o'); profile = $ClusterProfile
+        source_commit = ((Invoke-Native 'git' @('rev-parse', 'HEAD') -Capture) -join '').Trim()
+        tracked_working_tree_status = @(Invoke-Native 'git' @('status', '--porcelain', '--untracked-files=no') -Capture)
+        launcher_sha256 = (Get-FileHash -LiteralPath 'scripts/kubernetes.ps1' -Algorithm SHA256).Hash
+        deployment_manifest_sha256 = (Get-FileHash -LiteralPath 'k8s/odoo/deployment.yaml' -Algorithm SHA256).Hash
+        config_template_sha256 = (Get-FileHash -LiteralPath 'k8s/config/odoo.conf.tpl' -Algorithm SHA256).Hash
+        replicas = $Replicas; hpa = $false; workers_per_pod = 2; max_cron_threads = 0
+        node = $nodeName; storage_scope = 'single-node RWO shared sessions and filestore'
+        service_uid = $service.metadata.uid; ready_endpoints = $readyEndpoints.Count; pods = $podEvidence
+    }
+    Start-Forward
+    Write-Host "Escenario fijo listo: $Replicas replicas. Evidencia: $snapshotPath"
+}
+
 try {
     Install-VerifiedBinary 'minikube.exe' 'https://github.com/kubernetes/minikube/releases/download/v1.39.0/minikube-windows-amd64.exe'
     Install-VerifiedBinary 'kubectl.exe' ('https://dl.k8s.io/release/' + $kubernetesVersion + '/bin/windows/amd64/kubectl.exe')
@@ -179,6 +257,7 @@ try {
         'Up' {
             Invoke-Native $minikubePath @('start', ('--profile=' + $ClusterProfile), '--driver=docker', '--container-runtime=containerd', ('--kubernetes-version=' + $kubernetesVersion), ('--cpus=' + $Cpus), ('--memory=' + $MemoryMb), '--wait=all', '--wait-timeout=6m')
             Invoke-Native $minikubePath @('addons', 'enable', 'metrics-server', '-p', $ClusterProfile)
+            $null = Set-LaboratoryStorageNode
             Invoke-Native 'docker' @('build', '--tag', 'ecomparts-odoo:block2', 'services/odoo')
             $imageId = (Invoke-Native 'docker' @('image', 'inspect', '--format', '{{.Id}}', 'ecomparts-odoo:block2') -Capture).Trim()
             $imageTag = 'ecomparts-odoo:block2-' + $imageId.Replace('sha256:', '').Substring(0, 12)
@@ -207,6 +286,7 @@ try {
             Invoke-Kube @('get', 'pods,services,pvc')
         }
         'Forward' { Start-Forward }
+        'Scale' { Set-FixedReplicas }
         'Status' {
             Invoke-Kube @('get', 'pods,services,pvc')
             Invoke-Kube @('top', 'pods')
