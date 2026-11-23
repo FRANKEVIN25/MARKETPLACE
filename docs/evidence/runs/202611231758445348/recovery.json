@@ -1,0 +1,106 @@
+{
+    "run_id":  "202611231758445348",
+    "users":  20,
+    "samples":  [
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:16.7563409Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:17.3952036Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:18.0379840Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:18.6902802Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:19.3009820Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:19.9385144Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:20.5439076Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:21.1844675Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:21.8027558Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    },
+                    {
+                        "timestamp_utc":  "2026-11-23T22:59:22.4336848Z",
+                        "ready_pods":  [
+                                           "odoo-7ddb8dfc79-l6wl9",
+                                           "odoo-7ddb8dfc79-sgx5n"
+                                       ]
+                    }
+                ],
+    "deleted_uid":  "c618a21a-24b8-4f22-b48a-8ba3bf00288d",
+    "effective_load_before_deletion":  {
+                                           "Timestamp":  "1795474756",
+                                           "User Count":  "20",
+                                           "Type":  "",
+                                           "Name":  "Aggregated",
+                                           "Requests/s":  "63.000000",
+                                           "Failures/s":  "0.000000",
+                                           "50%":  "12",
+                                           "66%":  "12",
+                                           "75%":  "13",
+                                           "80%":  "13",
+                                           "90%":  "15",
+                                           "95%":  "17",
+                                           "98%":  "21",
+                                           "99%":  "29",
+                                           "99.9%":  "44",
+                                           "99.99%":  "44",
+                                           "100%":  "44",
+                                           "Total Request Count":  "1722",
+                                           "Total Failure Count":  "0",
+                                           "Total Median Response Time":  "11",
+                                           "Total Average Response Time":  "14.556108922763915",
+                                           "Total Min Response Time":  "8.75311699996928",
+                                           "Total Max Response Time":  "538.019601999963",
+                                           "Total Average Content Size":  "500.3002322880372"
+                                       },
+    "recovery_seconds":  6.008,
+    "deleted_pod":  "odoo-7ddb8dfc79-dmb5j",
+    "measurement_scope":  "delete request to observation of two ready non-terminating Pods; polling every 500ms plus API latency",
+    "service_uid_after":  "bd71baf4-49b0-41fb-9def-aa2053899289",
+    "service_uid_before":  "bd71baf4-49b0-41fb-9def-aa2053899289",
+    "deletion_requested_at_utc":  "2026-11-23T22:59:16.4418670Z",
+    "ready_before":  [
+                         "odoo-7ddb8dfc79-dmb5j",
+                         "odoo-7ddb8dfc79-sgx5n"
+                     ],
+    "two_ready_observed_at_utc":  "2026-11-23T22:59:22.4336848Z",
+    "restored":  true
+}

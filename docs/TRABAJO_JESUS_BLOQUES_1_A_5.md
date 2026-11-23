@@ -180,3 +180,11 @@ pendiente la arquitectura duradera de varias replicas. Los scripts de los
 bloques 4 y 5 estan preparados, pero faltan corridas comparables, HPA y la
 prueba del pedido completo de Django a Odoo en Kubernetes. No marcar un bloque
 como cerrado sin esas evidencias.
+
+## Continuacion de Frank, 23 de noviembre de 2026
+
+La revision y la configuracion reproducible de dos replicas en el nodo del
+laboratorio se documentan en [Bloque 3](BLOQUE_3_REPLICAS.md). La estrategia,
+la afinidad del almacenamiento y el verificador se actualizaron en la rama
+`frank/kubernetes-continuacion`. El [registro de revision](REVISION_JESUS_Y_CONTINUACION.md)
+separa lo validado de las condiciones que faltan antes del benchmark formal.

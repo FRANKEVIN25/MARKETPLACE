@@ -1,0 +1,127 @@
+{
+  "stage": "Frank block 3, local validation; cross-review pending",
+  "date_lima": "2026-11-23",
+  "jesus_base_commit": "f480b1da4c4d094cf7c92dea934bd8efdb57720a",
+  "configuration_after_recovery": {
+    "launcher_sha256": "0DC1065BB351CAC1268B9E9F7B85B3915D64D0924582AF990F7C75AEAC221B86",
+    "captured_at_utc": "2026-11-23T23:02:53.7475646Z",
+    "node": "ecomparts-k8s",
+    "profile": "ecomparts-k8s",
+    "config_template_sha256": "0CDA0892ABEAEC98C2ADA2D2F3A596622AD8BBA69F3720CA6A5B04874A09B296",
+    "workers_per_pod": 2,
+    "storage_scope": "single-node RWO shared sessions and filestore",
+    "max_cron_threads": 0,
+    "service_uid": "bd71baf4-49b0-41fb-9def-aa2053899289",
+    "deployment_manifest_sha256": "F91F06BF2E48A9F983BE172262AE63585EED10EA53D2EDC40AACB04D96C7DC0C",
+    "pods": [
+      {
+        "image_id": "sha256:25a8652c7889751360d9859ded1b8e56230619b2835f4a87a7dd8bc40fb81589",
+        "name": "odoo-7ddb8dfc79-l6wl9",
+        "uid": "6d948215-7e7d-49a3-8635-01c284bde4a1",
+        "node": "ecomparts-k8s",
+        "resources": {
+          "limits": {
+            "cpu": "1500m",
+            "memory": "1536Mi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "768Mi"
+          }
+        },
+        "image": "ecomparts-odoo:block2-43f43e9752ef",
+        "claim": "odoo-data"
+      },
+      {
+        "image_id": "sha256:25a8652c7889751360d9859ded1b8e56230619b2835f4a87a7dd8bc40fb81589",
+        "name": "odoo-7ddb8dfc79-sgx5n",
+        "uid": "2ece44db-28a5-4fa9-a2c2-11959f479d4d",
+        "node": "ecomparts-k8s",
+        "resources": {
+          "limits": {
+            "cpu": "1500m",
+            "memory": "1536Mi"
+          },
+          "requests": {
+            "cpu": "500m",
+            "memory": "768Mi"
+          }
+        },
+        "image": "ecomparts-odoo:block2-43f43e9752ef",
+        "claim": "odoo-data"
+      }
+    ],
+    "replicas": 2,
+    "tracked_working_tree_status": [],
+    "hpa": false,
+    "ready_endpoints": 2,
+    "source_commit": "7b9557021881a0d96d5cee534d07a860d842f5b0"
+  },
+  "effective_runtime_configuration": [
+    {
+      "settings": {
+        "workers": "2",
+        "max_cron_threads": "0",
+        "db_maxconn": "8",
+        "data_dir": "/var/lib/odoo"
+      },
+      "pod": "odoo-7ddb8dfc79-l6wl9"
+    },
+    {
+      "settings": {
+        "workers": "2",
+        "max_cron_threads": "0",
+        "db_maxconn": "8",
+        "data_dir": "/var/lib/odoo"
+      },
+      "pod": "odoo-7ddb8dfc79-sgx5n"
+    }
+  ],
+  "cross_replica_check_after_recovery": {
+    "status": "passed",
+    "pod_a": "odoo-7ddb8dfc79-l6wl9",
+    "pod_b": "odoo-7ddb8dfc79-sgx5n",
+    "session": "shared",
+    "attachment": "shared",
+    "company_checks": [
+      "A",
+      "B",
+      "C"
+    ],
+    "isolation_checked_on": [
+      "odoo-7ddb8dfc79-l6wl9",
+      "odoo-7ddb8dfc79-sgx5n"
+    ],
+    "marker": "BENCH-REPLICA-a3561d2b40dd4c1f93036c990e9a81fe",
+    "partner_id": 23,
+    "attachment_id": 537
+  },
+  "availability_smoke": {
+    "run_id": "202611231758445348",
+    "commit": "f480b1da4c4d094cf7c92dea934bd8efdb57720a",
+    "mode": "read",
+    "pods": 2,
+    "hpa": false,
+    "users": 20,
+    "repeat": 1,
+    "requests": 5522,
+    "failures": 3,
+    "error_pct": 0.054,
+    "measurement_seconds": 86.788,
+    "average_ms": 14.08,
+    "p95_ms": 18,
+    "successful_rps": 63.592,
+    "csv": "docs/evidence/runs/202611231758445348/run_stats.csv",
+    "timeline": "docs/evidence/runs/202611231758445348/infrastructure.csv"
+  },
+  "recovery": {
+    "seconds": 6.008,
+    "restored": true,
+    "service_identity_preserved": true,
+    "measurement_scope": "delete request to observation of two ready non-terminating Pods; polling every 500ms plus API latency",
+    "source": "docs/evidence/runs/202611231758445348/recovery.json"
+  },
+  "scope": "One node, 4 CPU, 4096 MB. Single PostgreSQL. This is not a capacity benchmark or a multi-node test.",
+  "source_state": "The load run was made on the base commit plus the working-tree changes listed in metadata.json; the final configuration snapshot points to the subsequent infrastructure commit. Do not treat this as a clean-commit benchmark.",
+  "excluded_attempt": "202611231756379684: cancelled because BENCH data were incomplete; not included in measured results."
+}
