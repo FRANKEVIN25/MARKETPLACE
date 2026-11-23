@@ -1,0 +1,32 @@
+{
+  "run_id": "202611222145155138",
+  "commit": "a9236956984607e8ece3a3584d86b58df6213581",
+  "mode": "read",
+  "users": 5,
+  "working_tree_status": [
+    " M README.md",
+    " M scripts/kubernetes.ps1",
+    "?? docs/TRABAJO_JESUS_BLOQUES_1_A_5.md",
+    "?? docs/evidence/jesus-bloque1.json",
+    "?? scripts/benchmark_dataset.py",
+    "?? scripts/locustfile.py",
+    "?? scripts/run_benchmark.ps1",
+    "?? scripts/summarize_benchmark.py",
+    "?? scripts/test_benchmark_tools.py",
+    "?? scripts/verify_odoo_replicas.py",
+    "?? services/backend/apps/orders/management/commands/verify_marketplace_order.py"
+  ],
+  "locust_script_sha256": "026B7E383B1370357BCAF949448E751CEFAD6B3D6BACBB2E50F6A2961459018B",
+  "pods_expected": 1,
+  "repeat": 1,
+  "spawn_rate": 1,
+  "duration_seconds": 30,
+  "hpa": false,
+  "started_at_utc": "2026-11-23T02:45:16.1875794Z",
+  "locust_image": "locustio/locust:2.47.0",
+  "company_weights": "A:B:C = 1:2:3",
+  "read_mix": "catalogue:stock = 3:2",
+  "finished_at_utc": "2026-11-23T02:45:51.8420793Z",
+  "locust_exit_code": "0",
+  "job_succeeded": true
+}

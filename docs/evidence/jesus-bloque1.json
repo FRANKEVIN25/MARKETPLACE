@@ -1,0 +1,35 @@
+{
+  "branch": "Kubernetes",
+  "base_commit": "a923695",
+  "environment": "Docker Compose ecomparts-lab, Odoo local",
+  "validated_at_utc": "2026-11-23T01:43:30Z",
+  "fixture": {
+    "companies": ["A", "B", "C"],
+    "products_per_company": 12,
+    "stock_per_product": 1000,
+    "seed_repeat": "passed",
+    "verify": "passed"
+  },
+  "functional_check": {
+    "modules_installed": 8,
+    "login_catalogue_stock_order_isolation": "passed for A, B and C"
+  },
+  "locust_smoke": {
+    "read": {
+      "users": 5,
+      "duration_seconds": 20,
+      "catalogue_requests": 139,
+      "stock_requests": 97,
+      "failures": 0
+    },
+    "write": {
+      "users": 1,
+      "duration_seconds": 15,
+      "measured_orders": 39,
+      "failures": 0,
+      "cleanup_run_id": "smoke1",
+      "orders_removed_including_warmup": 40
+    }
+  },
+  "scope": "Validacion funcional y de carga corta. No es un benchmark de escalabilidad ni una prueba de Kubernetes."
+}

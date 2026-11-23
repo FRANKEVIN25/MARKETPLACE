@@ -1,0 +1,7 @@
+"timestamp_utc","desired_replicas","ready_replicas","postgres_connections","pod_metrics"
+"2026-11-23T02:46:41.4138909Z","1","1","6","odoo-686c94f457-rklht   97m   430Mi    | postgres-0              45m   58Mi    "
+"2026-11-23T02:46:47.1076086Z","1","1","6","odoo-686c94f457-rklht   97m   430Mi    | postgres-0              45m   58Mi    "
+"2026-11-23T02:46:52.7905379Z","1","1","6","odoo-686c94f457-rklht   97m   430Mi    | postgres-0              45m   58Mi    "
+"2026-11-23T02:46:58.4707335Z","1","1","6","odoo-686c94f457-rklht   97m   430Mi    | postgres-0              45m   58Mi    "
+"2026-11-23T02:47:04.1385087Z","1","1","6","odoo-686c94f457-rklht   97m   430Mi    | postgres-0              45m   58Mi    "
+"2026-11-23T02:47:09.7914489Z","1","1","6","bench-202611222146357743-hvwm9   49m   43Mi     | odoo-686c94f457-rklht            56m   432Mi    | postgres-0                       30m   61Mi    "

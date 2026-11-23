@@ -1,0 +1,29 @@
+{
+  "branch": "Kubernetes",
+  "base_commit": "a923695",
+  "environment": "Minikube ecomparts-k8s, one node, 4 CPU, 3072 MB, two Odoo Pods",
+  "validated_at_utc": "2026-11-23T02:52:21Z",
+  "cross_replica_check": {
+    "pods": ["odoo-686c94f457-6hhmp", "odoo-686c94f457-rklht"],
+    "session_cookie_continuation": "passed",
+    "shared_attachment": "passed",
+    "company_isolation_A_B_C": "passed"
+  },
+  "pod_deletion_during_read_load": {
+    "run_id": "202611222150154038",
+    "users": 20,
+    "duration_seconds": 120,
+    "deleted_pod": "odoo-686c94f457-z5vzz",
+    "deleted_at_utc": "2026-11-23T02:50:58.1231964Z",
+    "two_ready_pods_restored_at_utc": "2026-11-23T02:51:11.3694578Z",
+    "two_ready_pods_recovery_seconds": 13.246,
+    "requests": 6978,
+    "failures": 3,
+    "failure_percentage": 0.043,
+    "failure_observed_at_utc": "2026-11-23T02:51:02Z",
+    "p95_ms_approx": 46,
+    "successful_operations_per_second": 60.05
+  },
+  "raw_results": "docs/evidence/runs/202611222150154038/ (versioned CSV and final statistics)",
+  "scope": "Single-node functional and failover smoke test. No multi-node shared-storage validation, formal capacity comparison, or HPA test."
+}
