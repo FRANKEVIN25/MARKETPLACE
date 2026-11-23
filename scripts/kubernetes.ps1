@@ -108,7 +108,8 @@ function Stop-Forward {
     $forwardState = Get-Content -LiteralPath $forwardStatePath -Raw | ConvertFrom-Json
     $forwardProcess = Get-Process -Id $forwardState.pid -ErrorAction SilentlyContinue
     if ($forwardProcess) {
-        if ($forwardProcess.Path -ne $kubectlPath -or $forwardProcess.StartTime.ToUniversalTime().ToString('o') -ne $forwardState.started_at_utc) {
+        $savedStartUtc = ([DateTime]$forwardState.started_at_utc).ToUniversalTime().ToString('o')
+        if ($forwardProcess.Path -ne $kubectlPath -or $forwardProcess.StartTime.ToUniversalTime().ToString('o') -ne $savedStartUtc) {
             throw 'El PID del tunel ya no corresponde al proceso creado por este laboratorio.'
         }
         Stop-Process -Id $forwardProcess.Id
@@ -245,7 +246,7 @@ try {
                     foreach ($measuredPod in @($appPod, $postgresPod)) {
                         $metricPath = '/apis/metrics.k8s.io/v1beta1/namespaces/ecomparts/pods/' + $measuredPod.metadata.name
                         $metric = ((Invoke-Kube @('get', '--raw', $metricPath) -Capture) -join "`n") | ConvertFrom-Json
-                        if ([DateTime]::Parse($metric.timestamp) -lt [DateTime]::Parse($measuredPod.metadata.creationTimestamp)) {
+                        if ([DateTime]$metric.timestamp -lt [DateTime]$measuredPod.metadata.creationTimestamp) {
                             throw 'La muestra de metricas es anterior al Pod de reemplazo.'
                         }
                         $freshMetrics += $metric

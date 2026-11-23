@@ -1,0 +1,41 @@
+{
+  "branch": "Kubernetes",
+  "base_commit": "a923695",
+  "environment": "Minikube ecomparts-k8s, one Odoo Pod, 4 CPU, 3072 MB",
+  "validated_at_utc": "2026-11-23T02:47:10Z",
+  "functional_check": {
+    "companies": ["A", "B", "C"],
+    "login_catalogue_stock_order_isolation": "passed",
+    "persistence_after_odoo_pod_replacement": "passed",
+    "persistence_after_postgres_pod_replacement": "passed",
+    "metrics_server": "passed"
+  },
+  "fixture": {
+    "products_per_company": 12,
+    "stock_per_product": 1000,
+    "verify": "passed"
+  },
+  "smoke_runs": [
+    {
+      "run_id": "202611222145155138",
+      "mode": "read",
+      "users": 5,
+      "requests": 409,
+      "failures": 0,
+      "p95_ms_approx": 14,
+      "successful_operations_per_second": 15.96
+    },
+    {
+      "run_id": "202611222146357743",
+      "mode": "write",
+      "users": 1,
+      "requests": 80,
+      "failures": 0,
+      "p95_ms_approx": 65,
+      "successful_operations_per_second": 2.723,
+      "orders_removed_after_run": 80
+    }
+  ],
+  "raw_results": "docs/evidence/runs/<run_id>/ (versioned CSV and final statistics)",
+  "scope": "Functional validation and short smoke runs only. The 1/2/3-Pod benchmark and HPA remain pending."
+}
