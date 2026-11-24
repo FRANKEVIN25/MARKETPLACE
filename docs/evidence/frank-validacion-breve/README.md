@@ -9,3 +9,5 @@ Cada carpeta conserva configuración efectiva, reparto y concurrencia de usuario
 `integration.json` registra pedidos LAB creados por HTTP, verificación de compañías y líneas en Odoo y logs correlacionados del worker Celery real. La primera ejecución encontró un error de ID de cliente; después de corregirlo se repitió con un cliente nuevo. Los secretos y tokens no forman parte de esta carpeta.
 
 Las pruebas de recuperación del bloque 3 y las corridas originales de Jesús se mantienen en sus ubicaciones históricas y no se agrupan con estas ventanas.
+
+`committed-runner-check.json` añade una comprobación posterior del ejecutor publicado en `f455b20`, con árbol versionado limpio, 1930 solicitudes y cero fallos. Verifica las copias y hashes de las fuentes y la captura de los límites Docker. Es otra prueba breve, separada de las cuatro corridas seleccionadas y de la matriz formal.

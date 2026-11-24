@@ -81,6 +81,8 @@ python scripts/integration_lab.py --stop
 
 ## Evidencia y cierre pendiente
 
+Después de guardar la implementación en el commit `f455b20`, se comprobó otra vez el ejecutor con dos Pods, 20 usuarios y 30 s medidos: 1930 solicitudes y cero fallos. El árbol versionado estaba limpio y las copias de fuentes coincidieron con sus hashes. Esta comprobación adicional se conserva en [committed-runner-check.json](evidence/frank-validacion-breve/committed-runner-check.json), separada del piloto y de la matriz formal. Las simulaciones de reanudación también comprobaron que una celda medida no se duplica y que los borradores de una ejecución fallida se limpian antes del reintento.
+
 Ver [informe](INFORME_VALIDACION_BREVE.md), [entrega a Jesús](ENTREGA_JESUS_PRUEBAS_FINALES.md) y [datos seleccionados](evidence/frank-validacion-breve/summary.json). La prueba histórica de recuperación de un Pod se conserva separada en [bloque 3](BLOQUE_3_REPLICAS.md): 5522 solicitudes, tres fallos y 6,008 s hasta observar dos Pods listos. Tiene un protocolo y un objetivo diferentes.
 
 Jesús debe ejecutar la matriz formal y revisar las conclusiones. Después corresponde actualizar el informe y la presentación con las comparaciones completas y acordar la integración de las ramas. Esta entrega no aprueba ni fusiona su PR automáticamente.
