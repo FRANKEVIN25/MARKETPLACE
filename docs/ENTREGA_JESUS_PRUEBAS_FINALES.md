@@ -6,16 +6,20 @@ Usar la rama `frank/kubernetes-continuacion`, basada en tu commit `f480b1d`. Inc
 
 Frank terminó la implementación de infraestructura de este alcance y una validación breve. Quedan la matriz formal, el análisis de errores del pico, la revisión cruzada y la conclusión comparativa. Las pruebas cortas no completan esas tareas.
 
+El código validado está en `f455b20`; `6e46ccf` añade la comprobación posterior con árbol versionado limpio. Para compartir el encargo, usar el [mensaje breve para Jesús](MENSAJE_PARA_JESUS.md).
+
 ## Preparación en tu equipo
 
 Actualizar tu copia sin descartar cambios locales. Puedes revisar esta rama desde otra copia de trabajo. No fusionar automáticamente el PR #3 ni sobrescribir `Kubernetes`.
 
 ```powershell
 git fetch origin
-git switch --track origin/frank/kubernetes-continuacion
+git switch -c jesus/pruebas-finales origin/frank/kubernetes-continuacion
 ```
 
-Si la rama ya existe localmente, usar `git switch frank/kubernetes-continuacion` y revisar `git status` antes de actualizar. Los secretos `.env.lab` y `.env.k8s` y las herramientas `.tools` no viajan por Git. Seguir los bloques [1](BLOQUE_1_DOCKER_COMPOSE.md) y [2](BLOQUE_2_MINIKUBE.md) para preparar credenciales, Docker, kubectl y Minikube. Necesitas Python y Docker Compose con soporte `!override`. El script usa el contexto `ecomparts-k8s`, namespace `ecomparts` y kubeconfig local `.lab/kubeconfig`.
+El comando crea tu rama de pruebas a partir de la continuación actualizada de Frank. Si `jesus/pruebas-finales` ya existe localmente, usar `git switch jesus/pruebas-finales` y revisar sus cambios antes de incorporar actualizaciones. No ejecutar `reset --hard` ni descartar trabajo propio para cambiar de rama.
+
+Los secretos `.env.lab` y `.env.k8s` y las herramientas `.tools` no viajan por Git. Seguir los bloques [1](BLOQUE_1_DOCKER_COMPOSE.md) y [2](BLOQUE_2_MINIKUBE.md) para preparar credenciales, Docker, kubectl y Minikube. Necesitas Python y Docker Compose con soporte `!override`. El script usa el contexto `ecomparts-k8s`, namespace `ecomparts` y kubeconfig local `.lab/kubeconfig`.
 
 ```powershell
 .\scripts\kubernetes.ps1 -Action Up
@@ -97,3 +101,7 @@ python scripts/summarize_benchmark.py --purpose benchmark
 ```
 
 El resumen separa familias y rechaza repeticiones formales duplicadas. No infiere que exista una matriz completa a partir de unas filas. El checkpoint y la cobertura de las 36 celdas son necesarios para ese cierre.
+
+## Publicar tu entrega
+
+Guardar código y evidencias públicas seleccionadas en `jesus/pruebas-finales`, conservando los intentos fallidos para el análisis y excluyendo credenciales y archivos locales. Publicar esa rama y abrir un PR hacia `frank/kubernetes-continuacion` para la revisión conjunta. El acuerdo de integración hacia `Kubernetes` se hace después de revisar los resultados.
