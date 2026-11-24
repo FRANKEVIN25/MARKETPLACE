@@ -18,6 +18,10 @@ Multi-tenant con aislamiento de datos por proveedor. Cada proveedor gestiona su 
 
 ## Documentación
 
+- [Informe de validación breve y alcance del cierre](docs/INFORME_VALIDACION_BREVE.md)
+- [Presentación editable, PowerPoint e informe imprimible](docs/PRESENTACION_VALIDACION_BREVE.md)
+- [Bloques 4 y 5: protocolo, HPA e integración](docs/BLOQUES_4_Y_5_VALIDACION_BREVE.md)
+- [Pruebas finales preparadas para Jesús](docs/ENTREGA_JESUS_PRUEBAS_FINALES.md)
 - [Bloque 1: laboratorio de Odoo en Docker Compose](docs/BLOQUE_1_DOCKER_COMPOSE.md)
 - [Bloque 2: una replica de Odoo en Minikube](docs/BLOQUE_2_MINIKUBE.md)
 - [Bloque 3: dos replicas, almacenamiento y recuperacion](docs/BLOQUE_3_REPLICAS.md)

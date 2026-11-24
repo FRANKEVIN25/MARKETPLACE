@@ -1,0 +1,9 @@
+timestamp_utc,desired_replicas,ready_replicas,postgres_connections,pod_metrics,hpa_status
+2026-11-23T23:48:43.144200+00:00,1,1,6,odoo-7ddb8dfc79-86dql   4m    423Mi    | postgres-0              11m   65Mi,
+2026-11-23T23:48:49.111897+00:00,1,1,6,odoo-7ddb8dfc79-86dql   4m    423Mi    | postgres-0              11m   65Mi,
+2026-11-23T23:48:54.956082+00:00,1,1,6,odoo-7ddb8dfc79-86dql   4m    423Mi    | postgres-0              11m   65Mi,
+2026-11-23T23:49:00.865111+00:00,1,1,6,bench-202611231848375800-f2fm4   137m   45Mi     | odoo-7ddb8dfc79-86dql            183m   424Mi    | postgres-0                       22m    65Mi,
+2026-11-23T23:49:06.749132+00:00,1,1,6,bench-202611231848375800-f2fm4   137m   45Mi     | odoo-7ddb8dfc79-86dql            183m   424Mi    | postgres-0                       22m    65Mi,
+2026-11-23T23:49:12.680397+00:00,1,1,6,bench-202611231848375800-f2fm4   137m   45Mi     | odoo-7ddb8dfc79-86dql            183m   424Mi    | postgres-0                       22m    65Mi,
+2026-11-23T23:49:18.551374+00:00,1,1,6,bench-202611231848375800-f2fm4   137m   45Mi     | odoo-7ddb8dfc79-86dql            183m   424Mi    | postgres-0                       22m    65Mi,
+2026-11-23T23:49:24.428703+00:00,1,1,6,bench-202611231848375800-f2fm4   137m   45Mi     | odoo-7ddb8dfc79-86dql            183m   424Mi    | postgres-0                       22m    65Mi,

@@ -36,7 +36,17 @@ while ((Get-Date) -lt $deadline) {
         try { $history = Kube @('exec', $jobPods[0].metadata.name, '--', 'cat', '/results/run_stats_history.csv') }
         catch { $history = @() }
         $sample = @(($history -join "`n") | ConvertFrom-Csv | Where-Object Name -eq 'Aggregated') | Select-Object -Last 1
-        if ($sample -and [int]$sample.'User Count' -eq $Users -and [int]$sample.'Total Request Count' -ge 100) {
+        $measuring = $true
+        if ($metadata.protocol_version -ge 2) {
+            try {
+                $phase = ((Kube @('exec', $jobPods[0].metadata.name, '--', 'cat', '/results/phase.json')) -join "`n") | ConvertFrom-Json
+                $measurementPhase = @($phase.phases | Where-Object phase -eq 'measurement') | Select-Object -Last 1
+                $measuring = $phase.phase -eq 'measurement' -and $measurementPhase -and $sample -and
+                    [double]$sample.Timestamp -ge ([DateTimeOffset]::Parse($measurementPhase.at_utc).ToUnixTimeSeconds() + 1)
+            }
+            catch { $measuring = $false }
+        }
+        if ($measuring -and $sample -and [int]$sample.'User Count' -eq $Users -and [int]$sample.'Total Request Count' -ge 100) {
             $loadSample = $sample
             $loadPod = $jobPods[0].metadata.name
             break

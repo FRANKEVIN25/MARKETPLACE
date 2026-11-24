@@ -1,0 +1,123 @@
+{
+  "protocol_version": 3,
+  "run_id": "202611231850377000",
+  "commit": "a5873ab9957ef8725e789f7b17c38931090a4614",
+  "working_tree_status": [
+    " M scripts/kubernetes.ps1",
+    " M scripts/locustfile.py",
+    " M scripts/observe_odoo_recovery.ps1",
+    " M scripts/run_benchmark.ps1",
+    " M scripts/summarize_benchmark.py",
+    " M scripts/test_benchmark_tools.py"
+  ],
+  "mode": "read",
+  "purpose": "smoke",
+  "users": 20,
+  "experiment_id": "final-brief-20261123",
+  "pods_expected": 3,
+  "repeat": 1,
+  "hpa": false,
+  "spawn_rate": 5,
+  "duration_seconds": 30,
+  "warmup_seconds": 5,
+  "seed": 2026,
+  "company_weights": "A:B:C = 1:2:3 largest remainder",
+  "read_mix": "catalogue:stock = 3:2",
+  "request_connection": "close; same cookie across new connections to Service",
+  "locust_script_sha256": "7a669f299dc4273f7f6642a69dc0d5418ec250954347f4be32805eb5d17f71e1",
+  "protocol_script_sha256": "e7fec5bc25410596c5106782cbf5f59849f275c0c9d0b275b38f0c0676a6be89",
+  "runner_script_sha256": "da230ee7a0e7446c651c7a36f8a71009857191d70bde15030494a023b02f8d9f",
+  "configuration": {
+    "node": {
+      "name": "ecomparts-k8s",
+      "capacity": {
+        "cpu": "16",
+        "ephemeral-storage": "1081101176832",
+        "hugepages-1Gi": "0",
+        "hugepages-2Mi": "0",
+        "memory": "7805120Ki",
+        "pods": "110"
+      },
+      "allocatable": {
+        "cpu": "16",
+        "ephemeral-storage": "1081101176832",
+        "hugepages-1Gi": "0",
+        "hugepages-2Mi": "0",
+        "memory": "7805120Ki",
+        "pods": "110"
+      },
+      "kubelet_version": "v1.37.0"
+    },
+    "node_container_limits": {
+      "Memory": 4294967296,
+      "NanoCpus": 4000000000,
+      "CpuQuota": 0,
+      "CpuPeriod": 0,
+      "CpusetCpus": ""
+    },
+    "odoo": {
+      "image": "ecomparts-odoo:block2-43f43e9752ef",
+      "image_id": "sha256:25a8652c7889751360d9859ded1b8e56230619b2835f4a87a7dd8bc40fb81589",
+      "resources": {
+        "limits": {
+          "cpu": "1500m",
+          "memory": "1536Mi"
+        },
+        "requests": {
+          "cpu": "500m",
+          "memory": "768Mi"
+        }
+      },
+      "options": {
+        "workers": "2",
+        "max_cron_threads": "0",
+        "db_maxconn": "8",
+        "data_dir": "/var/lib/odoo"
+      },
+      "configuration_sha256": "0cda0892abeaec98c2ada2d2f3a596622ad8bba69f3720ca6a5b04874a09b296",
+      "strategy": {
+        "rollingUpdate": {
+          "maxSurge": 0,
+          "maxUnavailable": 1
+        },
+        "type": "RollingUpdate"
+      },
+      "session_affinity": "None"
+    },
+    "postgres": {
+      "image": "postgres:16-alpine",
+      "image_id": "sha256:fff3594bf464bea0f502788874403882d8bbbe618b3250f8649e7e42fd118020",
+      "resources": {
+        "limits": {
+          "cpu": "500m",
+          "memory": "512Mi"
+        },
+        "requests": {
+          "cpu": "100m",
+          "memory": "128Mi"
+        }
+      },
+      "max_connections": "100"
+    },
+    "load_generator": {
+      "image": "locustio/locust:2.47.0",
+      "resources": {
+        "requests": {
+          "cpu": "250m",
+          "memory": "256Mi"
+        },
+        "limits": {
+          "cpu": "1000m",
+          "memory": "1Gi"
+        }
+      },
+      "image_id": "docker.io/locustio/locust@sha256:90fdf5b9632e67bb556d17784095652871be68318c5074731d911d4caaa42cc3"
+    }
+  },
+  "started_at_utc": "2026-11-23T23:50:37.511331+00:00",
+  "job_succeeded": true,
+  "locust_exit_code": "0",
+  "finished_at_utc": "2026-11-23T23:51:26.549616+00:00",
+  "comparison_signature": "37e2f344ed67fa705ec0dfc3ae5779f2d02cad7c5114f613b4ce32a30005a05b",
+  "first_observed_traffic": {}
+}

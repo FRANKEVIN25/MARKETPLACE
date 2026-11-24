@@ -15,6 +15,7 @@ from locust import HttpUser, between, events
 import requests
 
 from verify_odoo_lab import config
+from benchmark_protocol import VERSION, company_plan
 
 
 def settings():
@@ -30,25 +31,96 @@ if MODE not in ("read", "write"):
 RUN_ID = os.environ.get("BENCH_RUN_ID", "")
 if MODE == "write" and (not RUN_ID or not RUN_ID.isalnum()):
     raise ValueError("BENCH_RUN_ID alfanumerico es obligatorio para escrituras")
-MEASURE_START = None
-MEASURE_USERS = None
+TARGET_USERS = int(os.environ.get('BENCH_USERS', '20'))
+WARMUP = int(os.environ.get('BENCH_WARMUP_SECONDS', '30'))
+DURATION = int(os.environ.get('BENCH_MEASURE_SECONDS', '300'))
+SEED = int(os.environ.get('BENCH_SEED', '2026'))
+PLAN = company_plan(TARGET_USERS)
+NEXT_USER = 0
+READY = {}
+ACTIVE = set()
+WORKLOAD_AT = None
+SETUP_FAILURES = 0
+PROTOCOL = {'protocol_version': VERSION, 'valid': False, 'phase': 'startup', 'phases': []}
+MEASURING = False
+random.seed(SEED)
 
 
-@events.spawning_complete.add_listener
-def record_measurement_start(user_count, **kwargs):
-    global MEASURE_START, MEASURE_USERS
-    MEASURE_START = time.monotonic()
-    MEASURE_USERS = user_count
+def phase(name):
+    from datetime import datetime, timezone
+    PROTOCOL['phase'] = name
+    PROTOCOL['phases'].append({'phase': name, 'at_utc': datetime.now(timezone.utc).isoformat()})
+    output = os.environ.get('BENCH_PHASE_FILE')
+    if output:
+        Path(output).write_text(json.dumps(PROTOCOL) + '\n', encoding='utf-8')
+
+
+@events.test_start.add_listener
+def start_protocol(environment, **kwargs):
+    import gevent
+
+    def control():
+        global MEASURING, WORKLOAD_AT
+        phase('session_preparation')
+        deadline = time.monotonic() + max(180, TARGET_USERS / max(1, float(os.environ.get('BENCH_SPAWN_RATE', '5')))+120)
+        while len(READY) != TARGET_USERS or environment.runner.user_count != TARGET_USERS:
+            if SETUP_FAILURES or time.monotonic() > deadline:
+                PROTOCOL['invalid_reason'] = 'User preparation failed or target concurrency was not reached'
+                environment.process_exit_code = 2
+                environment.runner.quit()
+                return
+            gevent.sleep(.2)
+        PROTOCOL['prepared_users'] = len(READY)
+        PROTOCOL['company_users'] = {letter: list(READY.values()).count(letter) for letter in 'ABC'}
+        WORKLOAD_AT = time.monotonic()
+        phase('workload_ramp')
+        ramp_deadline = WORKLOAD_AT + TARGET_USERS/max(1, float(os.environ.get('BENCH_SPAWN_RATE', '5'))) + 30
+        while len(ACTIVE) != TARGET_USERS:
+            if SETUP_FAILURES or time.monotonic() > ramp_deadline:
+                PROTOCOL['invalid_reason'] = 'Workload ramp failed to reach target concurrency'
+                environment.process_exit_code = 2
+                environment.runner.quit()
+                return
+            gevent.sleep(.1)
+        phase('warmup')
+        gevent.sleep(WARMUP)
+        if SETUP_FAILURES or len(ACTIVE) != TARGET_USERS:
+            PROTOCOL['invalid_reason'] = 'Concurrency changed during warmup'
+            environment.process_exit_code = 2
+            environment.runner.quit()
+            return
+        environment.stats.reset_all()
+        PROTOCOL['started_monotonic'] = time.monotonic()
+        PROTOCOL['warmup_seconds'] = WARMUP
+        PROTOCOL['requested_measurement_seconds'] = DURATION
+        PROTOCOL['minimum_users_during_measurement'] = TARGET_USERS
+        MEASURING = True
+        phase('measurement')
+        deadline = PROTOCOL['started_monotonic'] + DURATION
+        while time.monotonic() < deadline:
+            count = min(len(ACTIVE), environment.runner.user_count)
+            PROTOCOL['minimum_users_during_measurement'] = min(PROTOCOL['minimum_users_during_measurement'], count)
+            gevent.sleep(min(.25, max(0, deadline-time.monotonic())))
+        MEASURING = False
+        PROTOCOL['measurement_seconds'] = round(time.monotonic()-PROTOCOL['started_monotonic'], 3)
+        PROTOCOL['valid'] = (not SETUP_FAILURES and PROTOCOL['minimum_users_during_measurement'] == TARGET_USERS)
+        phase('finished')
+        environment.runner.quit()
+
+    gevent.spawn(control)
 
 
 @events.quitting.add_listener
 def record_measurement_end(environment, **kwargs):
     output = os.environ.get("BENCH_TIMING_FILE")
-    if output and MEASURE_START is not None:
-        Path(output).write_text(json.dumps({
-            "measurement_seconds": round(time.monotonic() - MEASURE_START, 3),
-            "users": MEASURE_USERS,
-        }) + "\n", encoding="utf-8")
+    PROTOCOL['setup_failures'] = SETUP_FAILURES
+    PROTOCOL['users'] = TARGET_USERS
+    if not PROTOCOL.get('valid') or environment.stats.total.num_requests < 1:
+        PROTOCOL['valid'] = False
+        environment.process_exit_code = 2
+    if output:
+        record = {key: value for key, value in PROTOCOL.items() if key != 'started_monotonic'}
+        Path(output).write_text(json.dumps(record) + '\n', encoding='utf-8')
 
 
 class EcompartsUser(HttpUser):
@@ -77,6 +149,9 @@ class EcompartsUser(HttpUser):
             except ValueError:
                 response.failure(f"Respuesta no JSON, HTTP {response.status_code}")
                 return None
+            if not isinstance(body, dict):
+                response.failure('Respuesta JSON-RPC no es un objeto')
+                return None
             if response.status_code >= 400:
                 response.failure(f"HTTP {response.status_code}")
                 return None
@@ -95,10 +170,44 @@ class EcompartsUser(HttpUser):
         }, name, nonempty=nonempty)
 
     def on_start(self):
-        self.letter = random.choices("ABC", weights=[1, 2, 3], k=1)[0]
+        global NEXT_USER, SETUP_FAILURES
+        self.bench_index = NEXT_USER
+        NEXT_USER += 1
+        self.letter = PLAN[self.bench_index]
+        for attempt in range(3):
+            try:
+                self._prepare()
+                READY[self.bench_index] = self.letter
+                import gevent
+                while WORKLOAD_AT is None:
+                    gevent.sleep(.05)
+                offset = self.bench_index/max(1, float(os.environ.get('BENCH_SPAWN_RATE', '5')))
+                gevent.sleep(max(0, WORKLOAD_AT+offset-time.monotonic()))
+                ACTIVE.add(self.bench_index)
+                return
+            except Exception as error:
+                setup = getattr(self, '_setup_connection', None)
+                if setup:
+                    setup.close()
+                PROTOCOL.setdefault('setup_attempt_errors', []).append({
+                    'user_index': self.bench_index, 'company': self.letter,
+                    'attempt': attempt+1, 'error_type': type(error).__name__})
+                if attempt < 2:
+                    import gevent
+                    gevent.sleep(2*(attempt+1))
+        from locust.exception import StopUser
+        SETUP_FAILURES += 1
+        raise StopUser()
+
+    def on_stop(self):
+        READY.pop(getattr(self, 'bench_index', -1), None)
+        ACTIVE.discard(getattr(self, 'bench_index', -1))
+
+    def _prepare(self):
         login = f"lab-{self.letter.lower()}@ecomparts.local"
         password = VALUES["ODOO_ADMIN_PASS"] + "-" + self.letter
         setup = requests.Session()
+        self._setup_connection = setup
         setup.trust_env = False
         session = self._setup_rpc(setup, "/web/session/authenticate", {
             "db": VALUES["ODOO_DB"], "login": login, "password": password,
@@ -130,6 +239,9 @@ class EcompartsUser(HttpUser):
             self.partner_id = partners[0]["id"]
             self.warehouse_id = warehouses[0]["id"]
         self.client.cookies.update(setup.cookies)
+        # A new TCP connection lets the Service route to newly ready Pods.
+        # The session cookie stays unchanged and must work across replicas.
+        self.client.headers.update({'Connection': 'close'})
         setup.close()
 
     def read_catalogue(self):

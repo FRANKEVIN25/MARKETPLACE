@@ -1,5 +1,5 @@
 param(
-    [ValidateSet('Install', 'Up', 'Status', 'Forward', 'Check', 'Scale', 'Stop')]
+    [ValidateSet('Install', 'Up', 'Status', 'Forward', 'Check', 'Scale', 'HpaOn', 'HpaOff', 'Stop')]
     [string]$Action = 'Up',
     [ValidatePattern('^ecomparts-k8s(?:-[a-z0-9-]+)?$')]
     [string]$ClusterProfile = 'ecomparts-k8s',
@@ -246,6 +246,38 @@ function Set-FixedReplicas {
     Write-Host "Escenario fijo listo: $Replicas replicas. Evidencia: $snapshotPath"
 }
 
+function Assert-NoActiveLoad {
+    $jobs = ((Invoke-Kube @('get', 'jobs', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    if (@($jobs.items | Where-Object { $_.metadata.name -like 'bench-*' -and $_.status.active -gt 0 }).Count) {
+        throw 'Hay una corrida BENCH activa. Espera su cierre antes de modificar el HPA.'
+    }
+}
+
+function Enable-LaboratoryHpa {
+    Assert-NoActiveLoad
+    $hpas = ((Invoke-Kube @('get', 'hpa', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+    if (-not @($hpas.items).Count) {
+        $Replicas = 1
+        Set-FixedReplicas
+    }
+    Invoke-Kube @('get', '--raw', '/apis/metrics.k8s.io/v1beta1/namespaces/ecomparts/pods') -Capture | Out-Null
+    Invoke-Kube @('apply', '-f', 'k8s/autoscaling/odoo-hpa.yaml')
+    $active = $false
+    for ($attempt = 0; $attempt -lt 24; $attempt++) {
+        $hpa = ((Invoke-Kube @('get', 'hpa', 'odoo', '-o', 'json') -Capture) -join "`n") | ConvertFrom-Json
+        $active = @($hpa.status.conditions | Where-Object { $_.type -eq 'ScalingActive' -and $_.status -eq 'True' }).Count -gt 0
+        if ($active) { break }
+        Start-Sleep -Seconds 5
+    }
+    if (-not $active) { throw 'El HPA no recibe metricas validas. Revisa metrics-server y los requests de CPU.' }
+    Save-Json (Join-Path $statePath ($ClusterProfile + '-hpa.json')) @{
+        captured_at_utc = [DateTime]::UtcNow.ToString('o'); spec = $hpa.spec; status = $hpa.status
+        cpu_request_per_pod = '500m'; target_cpu_percent = 70
+        scope = 'Single-node laboratory; 60-second downscale stabilization'
+    }
+    Write-Host 'HPA activo: 1 a 3 Pods, CPU objetivo 70% del request de 500m por Pod.'
+}
+
 try {
     Install-VerifiedBinary 'minikube.exe' 'https://github.com/kubernetes/minikube/releases/download/v1.39.0/minikube-windows-amd64.exe'
     Install-VerifiedBinary 'kubectl.exe' ('https://dl.k8s.io/release/' + $kubernetesVersion + '/bin/windows/amd64/kubectl.exe')
@@ -287,6 +319,12 @@ try {
         }
         'Forward' { Start-Forward }
         'Scale' { Set-FixedReplicas }
+        'HpaOn' { Enable-LaboratoryHpa }
+        'HpaOff' {
+            Assert-NoActiveLoad
+            Invoke-Kube @('delete', 'hpa', 'odoo', '--ignore-not-found=true')
+            Set-FixedReplicas
+        }
         'Status' {
             Invoke-Kube @('get', 'pods,services,pvc')
             Invoke-Kube @('top', 'pods')

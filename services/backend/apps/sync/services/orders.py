@@ -27,6 +27,17 @@ from apps.sync.odoo_connector import OdooConnector
 logger = logging.getLogger(__name__)
 
 
+def _single_created_id(result):
+    """A create with a list of values returns [id] over Odoo JSON-RPC."""
+    if isinstance(result, (list, tuple)):
+        if len(result) != 1:
+            raise ValueError('Se esperaba exactamente un registro creado en Odoo')
+        result = result[0]
+    if isinstance(result, bool) or not isinstance(result, int) or result <= 0:
+        raise ValueError('Odoo no devolvio un identificador valido')
+    return result
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # Mapas de estado Django → campo Odoo
 # ─────────────────────────────────────────────────────────────────────────────
@@ -120,7 +131,7 @@ def _get_utm_source_id(odoo: OdooConnector, name: str = 'ECOMPARTS Marketplace')
         source_ids = odoo.execute_kw('utm.source', 'search', [[['name', '=', name]]])
         if source_ids:
             return source_ids[0]
-        source_id = odoo.execute_kw('utm.source', 'create', [[{'name': name}]])
+        source_id = _single_created_id(odoo.execute_kw('utm.source', 'create', [[{'name': name}]]))
         logger.info("utm.source '%s' creado en Odoo: ID %s", name, source_id)
         return source_id
     except Exception as e:
@@ -180,7 +191,7 @@ def _get_or_create_partner(odoo: OdooConnector, customer):
             'vat': customer.document_number or '',
             'customer_rank': 1,
         }
-        partner_id = odoo.execute_kw('res.partner', 'create', [[partner_data]])
+        partner_id = _single_created_id(odoo.execute_kw('res.partner', 'create', [[partner_data]]))
         logger.info("Partner creado: ID %s", partner_id)
         return partner_id
 
@@ -303,7 +314,7 @@ def sync_suborder_to_odoo(suborder):
                 {'context': _company_context(provider.odoo_company_id)},
             )
             # JSON-RPC create multi → [id]; create simple → id
-            sale_order_id = result[0] if isinstance(result, (list, tuple)) else result
+            sale_order_id = _single_created_id(result)
 
         # 5. Guardar ID en Django
         suborder.odoo_sale_id = sale_order_id

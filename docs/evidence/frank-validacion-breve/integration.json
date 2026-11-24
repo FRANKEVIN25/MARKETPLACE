@@ -1,0 +1,53 @@
+{
+  "at_utc": "2026-11-23T23:55:39.309514+00:00",
+  "project": "ecomparts-lab-integration",
+  "api_url": "http://127.0.0.1:18001",
+  "odoo_url": "http://ecomparts-k8s:30069",
+  "scope": "authenticated HTTP API; real Celery worker; draft sale in correct company",
+  "celery_eager": false,
+  "valid": true,
+  "cases": [
+    {
+      "company": "A",
+      "company_id": 2,
+      "product_id": 1,
+      "odoo_product_id": 4,
+      "provider_id": 1,
+      "order_http_status": 201,
+      "order_id": 4,
+      "sub_order_number": "ORD-2026-00004-A",
+      "payment_proof_http_status": 201,
+      "verification": "OK SubOrder ORD-2026-00004-A: Django id=4, Odoo sale.order id=6, compania=2, lineas=1"
+    },
+    {
+      "company": "B",
+      "company_id": 3,
+      "product_id": 2,
+      "odoo_product_id": 16,
+      "provider_id": 2,
+      "order_http_status": 201,
+      "order_id": 5,
+      "sub_order_number": "ORD-2026-00005-A",
+      "payment_proof_http_status": 201,
+      "verification": "OK SubOrder ORD-2026-00005-A: Django id=5, Odoo sale.order id=7, compania=3, lineas=1"
+    },
+    {
+      "company": "C",
+      "company_id": 4,
+      "product_id": 3,
+      "odoo_product_id": 28,
+      "provider_id": 3,
+      "order_http_status": 201,
+      "order_id": 6,
+      "sub_order_number": "ORD-2026-00006-A",
+      "payment_proof_http_status": 201,
+      "verification": "OK SubOrder ORD-2026-00006-A: Django id=6, Odoo sale.order id=8, compania=4, lineas=1"
+    }
+  ],
+  "worker_container": "ecomparts-lab-integration-celery-worker",
+  "worker_task_evidence": [
+    "ecomparts-lab-integration-celery-worker  | INFO 2026-11-23 18:55:44,788 orders Sale Order creada en Odoo: ID 6 → SubOrder ORD-2026-00004-A",
+    "ecomparts-lab-integration-celery-worker  | INFO 2026-11-23 18:55:45,454 orders Sale Order creada en Odoo: ID 7 → SubOrder ORD-2026-00005-A",
+    "ecomparts-lab-integration-celery-worker  | INFO 2026-11-23 18:55:46,012 orders Sale Order creada en Odoo: ID 8 → SubOrder ORD-2026-00006-A"
+  ]
+}

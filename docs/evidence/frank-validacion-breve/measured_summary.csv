@@ -1,0 +1,5 @@
+run_id,purpose,pods,users,measurement_seconds,requests,failures,error_pct,p95_ms,successful_rps,comparison_eligible
+202611231848375800,smoke,1,20,30.001,1938,0,0.0,23,64.598,False
+202611231849378000,smoke,2,20,30.001,1926,0,0.0,34,64.198,False
+202611231850377000,smoke,3,20,30.0,1947,0,0.0,18,64.9,False
+202611231840403600,hpa,HPA,100,120.0,15048,18,0.12,2100,125.25,False

@@ -1,9 +1,32 @@
 from unittest.mock import Mock, patch
+from types import SimpleNamespace
 
 from django.core.management.base import CommandError
 from django.test import SimpleTestCase
 
 from .management.commands.setup_odoo import Command
+from .services.orders import _get_or_create_partner, _get_utm_source_id, _single_created_id
+
+
+class OdooCreatedIdTests(SimpleTestCase):
+    def test_first_order_for_a_new_customer_uses_an_integer_partner_id(self):
+        customer = SimpleNamespace(user=SimpleNamespace(email='new@lab.local',
+            first_name='Ana', last_name='LAB', username='ana'), document_number='', phone='')
+        for created in (42, [42]):
+            with self.subTest(created=created):
+                connector = Mock()
+                connector.execute_kw.side_effect = [[], created]
+                self.assertEqual(_get_or_create_partner(connector, customer), 42)
+
+    def test_new_utm_source_uses_an_integer_relation_id(self):
+        connector = Mock()
+        connector.execute_kw.side_effect = [[], [17]]
+        self.assertEqual(_get_utm_source_id(connector), 17)
+
+    def test_invalid_or_multiple_created_ids_are_rejected(self):
+        for value in (None, False, [], [1, 2], '42', 0):
+            with self.subTest(value=value), self.assertRaises(ValueError):
+                _single_created_id(value)
 
 
 class OdooRuleSetupTests(SimpleTestCase):

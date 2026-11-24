@@ -174,6 +174,8 @@ recorrido por la API.
 
 ## Estado
 
+**Actualización de Frank, posterior a este registro:** el HPA y el recorrido API con Celery real fueron comprobados en los [bloques 4 y 5](BLOQUES_4_Y_5_VALIDACION_BREVE.md). El protocolo se corrigió y se preparó la [matriz para Jesús](ENTREGA_JESUS_PRUEBAS_FINALES.md). El estado siguiente describe la entrega original de Jesús, conservada para trazabilidad.
+
 Los bloques 1 y 2 de Jesus fueron validados y tienen evidencia. El bloque 3
 tiene evidencia funcional y de fallo de Pod en Minikube de un nodo; queda
 pendiente la arquitectura duradera de varias replicas. Los scripts de los

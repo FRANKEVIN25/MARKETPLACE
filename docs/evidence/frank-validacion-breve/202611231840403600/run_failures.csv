@@ -1,0 +1,3 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,catalogue,"CatchResponseError('Respuesta no JSON, HTTP 0')",10,2026-11-23T23:41:54Z,2026-11-23T23:42:13Z
+POST,stock,"CatchResponseError('Respuesta no JSON, HTTP 0')",8,2026-11-23T23:41:38Z,2026-11-23T23:42:13Z

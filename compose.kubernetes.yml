@@ -1,0 +1,22 @@
+# Isolated integration project. Credentials are generated in .lab, never here.
+services:
+  backend:
+    environment:
+      LAB_MODE: "1"
+      LAB_INTEGRATION_PROJECT: ecomparts-lab-integration
+      LAB_E2E_PASSWORD: ${LAB_E2E_PASSWORD}
+      LAB_E2E_ODOO_PASSWORD_PREFIX: ${LAB_E2E_ODOO_PASSWORD_PREFIX}
+    networks:
+      - ecomparts-net
+      - odoo-kubernetes
+  celery_worker:
+    environment:
+      LAB_MODE: "1"
+      LAB_INTEGRATION_PROJECT: ecomparts-lab-integration
+    networks:
+      - ecomparts-net
+      - odoo-kubernetes
+networks:
+  odoo-kubernetes:
+    external: true
+    name: ${MINIKUBE_DOCKER_NETWORK:-minikube}

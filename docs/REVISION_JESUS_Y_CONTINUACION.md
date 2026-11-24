@@ -2,6 +2,8 @@
 
 Fecha: 23 de noviembre de 2026. Esta es la revisión y entrega del siguiente paso, no el informe final del experimento.
 
+**Actualización posterior:** los hallazgos de esta revisión se atendieron en los [bloques 4 y 5](BLOQUES_4_Y_5_VALIDACION_BREVE.md). HPA e integración API tienen evidencia breve. La matriz formal y la revisión cruzada quedan en la [entrega a Jesús](ENTREGA_JESUS_PRUEBAS_FINALES.md). El texto siguiente conserva la revisión inicial como registro histórico.
+
 ## Trabajo revisado
 
 - Plan: [Odoo multiempresa en Kubernetes](https://docs.google.com/document/d/1bhAJbVwwfICd8ajIzh4CxHmDQNWdyLeU_AU3XM7Y6FE/edit).

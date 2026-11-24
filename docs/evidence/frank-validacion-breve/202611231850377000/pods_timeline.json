@@ -1,0 +1,210 @@
+[
+  {
+    "at_utc": "2026-11-23T23:50:42.949022+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-23T23:50:48.887366+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-23T23:50:54.772922+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-23T23:51:00.632592+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-23T23:51:06.607446+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-23T23:51:12.488570+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-23T23:51:18.338521+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  },
+  {
+    "at_utc": "2026-11-23T23:51:24.282964+00:00",
+    "pods": [
+      {
+        "name": "odoo-7ddb8dfc79-76k2c",
+        "uid": "790347b4-3f17-4809-b381-b243359923f8",
+        "created_at_utc": "2026-11-23T23:49:28Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-86dql",
+        "uid": "e49e2bcf-8c22-442e-8659-9c9a7ae0fd26",
+        "created_at_utc": "2026-11-23T23:36:07Z",
+        "ready": true,
+        "terminating": false
+      },
+      {
+        "name": "odoo-7ddb8dfc79-j4mxg",
+        "uid": "9214020b-8e95-48ae-9383-ad6f098fa273",
+        "created_at_utc": "2026-11-23T23:50:29Z",
+        "ready": true,
+        "terminating": false
+      }
+    ]
+  }
+]

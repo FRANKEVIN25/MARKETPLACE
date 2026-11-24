@@ -1,0 +1,412 @@
+[
+  {
+    "run_id": "202611231828534800",
+    "job_succeeded": false,
+    "users": 200,
+    "reason": "session preparation/concurrency gate failed; excluded from measured results",
+    "timing": {
+      "protocol_version": 2,
+      "valid": false,
+      "phase": "ramp_and_setup",
+      "phases": [
+        {
+          "phase": "ramp_and_setup",
+          "at_utc": "2026-11-23T23:28:55.391353+00:00"
+        }
+      ],
+      "invalid_reason": "User preparation failed or target concurrency was not reached",
+      "setup_failures": 28,
+      "users": 200
+    }
+  },
+  {
+    "run_id": "202611231832012000",
+    "job_succeeded": false,
+    "users": 200,
+    "reason": "session preparation/concurrency gate failed; excluded from measured results",
+    "timing": {
+      "protocol_version": 2,
+      "valid": false,
+      "phase": "ramp_and_setup",
+      "phases": [
+        {
+          "phase": "ramp_and_setup",
+          "at_utc": "2026-11-23T23:32:03.015585+00:00"
+        }
+      ],
+      "invalid_reason": "User preparation failed or target concurrency was not reached",
+      "setup_failures": 1,
+      "users": 200
+    }
+  },
+  {
+    "run_id": "202611231834558700",
+    "job_succeeded": false,
+    "users": 200,
+    "reason": "session preparation/concurrency gate failed; excluded from measured results",
+    "timing": {
+      "protocol_version": 2,
+      "valid": false,
+      "phase": "ramp_and_setup",
+      "phases": [
+        {
+          "phase": "ramp_and_setup",
+          "at_utc": "2026-11-23T23:34:57.293652+00:00"
+        }
+      ],
+      "setup_attempt_errors": [
+        {
+          "user_index": 88,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 139,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 137,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 138,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 135,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 136,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 109,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 105,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 156,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 155,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 158,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 159,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 135,
+          "company": "B",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 138,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 86,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 105,
+          "company": "B",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 190,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 192,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 194,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 193,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 45,
+          "company": "A",
+          "attempt": 1,
+          "error_type": "ConnectTimeout"
+        },
+        {
+          "user_index": 46,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectTimeout"
+        },
+        {
+          "user_index": 47,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectTimeout"
+        },
+        {
+          "user_index": 49,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectTimeout"
+        },
+        {
+          "user_index": 163,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 164,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 161,
+          "company": "B",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 160,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 162,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 171,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 174,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 170,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 183,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 181,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 180,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 182,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 184,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 183,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 180,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 182,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 174,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 170,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 171,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 162,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 160,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 161,
+          "company": "B",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 164,
+          "company": "C",
+          "attempt": 2,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 68,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 179,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 177,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 175,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 144,
+          "company": "C",
+          "attempt": 1,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 171,
+          "company": "C",
+          "attempt": 3,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 174,
+          "company": "C",
+          "attempt": 3,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 170,
+          "company": "C",
+          "attempt": 3,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 164,
+          "company": "C",
+          "attempt": 3,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 160,
+          "company": "C",
+          "attempt": 3,
+          "error_type": "ConnectionError"
+        },
+        {
+          "user_index": 161,
+          "company": "B",
+          "attempt": 3,
+          "error_type": "ConnectionError"
+        }
+      ],
+      "invalid_reason": "User preparation failed or target concurrency was not reached",
+      "setup_failures": 6,
+      "users": 200
+    }
+  }
+]
