@@ -1,6 +1,6 @@
 # ECOMPARTS: informe de validación breve de Kubernetes
 
-**Responsable de infraestructura:** Frank. **Pruebas y análisis compartidos:** Jesús. **Fecha:** 25 de noviembre de 2026. **Estado:** infraestructura, integración A/B/C y validaciones funcionales comprobadas en laboratorio; avance formal de benchmark documentado en la sección 8.
+**Responsable de infraestructura:** Frank. **Pruebas y análisis compartidos:** Jesús. **Fecha:** 25 de noviembre de 2026. **Alcance:** validación funcional, integración A/B/C, recuperación de réplicas, escalamiento HPA y mediciones de carga en el laboratorio descrito.
 
 ## 1. Objetivo y alcance
 
@@ -81,7 +81,7 @@ La corrida válida `202611231840403600` mantuvo 100 usuarios durante 120 s medid
 
 Los dos Pods nuevos recibieron POST `call_kw` con HTTP 200. Una captura posterior sin carga confirmó un Pod deseado y listo. Las observaciones están limitadas por el intervalo real de muestreo, aproximadamente 5 s más el tiempo de consultas.
 
-Los 18 fallos fueron de transporte. El escalado funcionó y los errores permanecen como un resultado que analizar. Tres intentos previos con 200 usuarios no completaron la preparación y se excluyeron. El protocolo corregido se comprobó con 100; la carga de 200 corresponde a las pruebas pendientes.
+Los 18 fallos fueron de transporte y coincidieron temporalmente con el intervalo de escalamiento. La evidencia permite describir esa asociación, pero no atribuir causalidad al HPA. Tres intentos previos con 200 usuarios no completaron la preparación y se excluyeron del análisis. La corrida válida de este escenario se realizó con 100 usuarios.
 
 Se usan `final.json` y `timing.json` para los totales. El CSV periódico del HPA terminó con 14985 solicitudes porque su último muestreo ocurrió antes del cierre. El archivo `measured_summary.csv` consolida los totales finales, evitando mezclar ambos instantes.
 
@@ -122,15 +122,15 @@ Si hay dos Pods Odoo, cualquiera puede atender la siguiente conexión. Ambos con
 
 Las analogías ayudan a imaginar el flujo. CPU mide trabajo del servidor y no cuenta directamente personas esperando. Una compañía de Odoo no tiene un Pod exclusivo: los Pods atienden todas las compañías respetando sus permisos.
 
-## 8. Entrega y criterios de cierre
+## 8. Alcance y conclusiones de la evaluación
 
-Jesús recibe el procedimiento y una matriz reanudable. Por modo son 36 corridas: 1/2/3 Pods, 20/50/100/200 usuarios y tres repeticiones. Cada corrida usa 30 s de calentamiento y 300 s medidos, además de preparación y rampa. Son al menos tres horas de medición por modo. Lectura y pedidos se analizan por separado.
+Este informe presenta la validación funcional de la arquitectura Kubernetes para Odoo multiempresa, su integración con el marketplace, la recuperación de una réplica, el escalamiento HPA y las mediciones de carga documentadas. En la rama `kubernetes-final` se corrigió el ejecutor de matrices y se registraron tres corridas formales de lectura con 20 usuarios, 1, 2 y 3 Pods, durante 300 s por escenario. Las tres completaron con cero fallos. Sus identificadores son `202611242155074400`, `202611242201065200` y `202611242207003800`.
 
-En la rama `kubernetes-final` se corrigió el ejecutor de matrices para evitar bloqueo por tuberías heredadas de PowerShell. Tres corridas formales de lectura completaron el protocolo de 300 s con 20 usuarios, 1, 2 y 3 Pods; cada una registró cero fallos. Sus run IDs son `202611242155074400`, `202611242201065200` y `202611242207003800`. La matriz se detuvo al iniciar la siguiente celda por un timeout TLS del API de Kubernetes. El checkpoint local `.lab/matrices/matrix-20261125T024745Z.json` conserva el avance y los resultados están en `.lab/runs/` (archivos locales ignorados por Git). El resultado previo del HPA `202611231840403600` registró 18 errores de transporte durante el escalado; estos no demuestran por sí solos causalidad del HPA. La evidencia disponible describe un cierre parcial del alcance verificado y no una matriz comparativa completa.
+En conjunto, la evidencia confirma el funcionamiento de los componentes y flujos evaluados: aislamiento lógico A/B/C, persistencia compartida, continuidad de sesión entre Pods, recuperación de una réplica, activación del HPA y creación de ventas borrador desde Django/Celery en Odoo. Las tres corridas formales a 20 usuarios complementan la prueba breve previamente documentada. Las cifras de una y otra familia corresponden a protocolos de distinta duración y se presentan como tales, sin mezclarlas.
 
-La validación de integración A/B/C y de persistencia está descrita en las secciones anteriores y en los registros enlazados abajo. Las observaciones de tres corridas de lectura a baja carga no permiten concluir una mejora general por número de Pods. El alcance del laboratorio sigue siendo un nodo con PostgreSQL único; no demuestra alta disponibilidad del sistema completo.
+Los resultados respaldan la viabilidad funcional de la solución y describen su comportamiento bajo las cargas observadas. No establecen una mejora general de rendimiento ni una capacidad máxima de usuarios. El laboratorio utiliza un nodo Minikube y una instancia compartida de PostgreSQL; por ello, las conclusiones se circunscriben a esa arquitectura.
 
-El alcance de un nodo con PostgreSQL único permite estudiar réplicas de Odoo. La pérdida del nodo o de la base requiere otro diseño y otras pruebas. No se declara alta disponibilidad del sistema completo ni una capacidad máxima a partir de esta validación breve.
+El alcance de un nodo con PostgreSQL único permite estudiar réplicas de Odoo. Los resultados no representan una prueba de alta disponibilidad del nodo o de la base de datos ni una determinación de capacidad máxima.
 
 ## Fuentes y archivos
 
