@@ -1,6 +1,6 @@
 # ECOMPARTS: informe de validación breve de Kubernetes
 
-**Responsable de infraestructura:** Frank. **Pruebas y análisis compartidos:** Jesús. **Fecha:** 23 de noviembre de 2026. **Estado:** infraestructura e integración comprobadas en laboratorio; matriz formal y revisión cruzada pendientes.
+**Responsable de infraestructura:** Frank. **Pruebas y análisis compartidos:** Jesús. **Fecha:** 25 de noviembre de 2026. **Estado:** infraestructura, integración A/B/C y validaciones funcionales comprobadas en laboratorio; avance formal de benchmark documentado en la sección 8.
 
 ## 1. Objetivo y alcance
 
@@ -126,7 +126,9 @@ Las analogías ayudan a imaginar el flujo. CPU mide trabajo del servidor y no cu
 
 Jesús recibe el procedimiento y una matriz reanudable. Por modo son 36 corridas: 1/2/3 Pods, 20/50/100/200 usuarios y tres repeticiones. Cada corrida usa 30 s de calentamiento y 300 s medidos, además de preparación y rampa. Son al menos tres horas de medición por modo. Lectura y pedidos se analizan por separado.
 
-Para cerrar el experimento faltan ejecutar y verificar la cobertura completa, analizar p95/operaciones exitosas/errores junto con CPU/RAM/conexiones PG, repetir el pico HPA, revisar los cambios entre compañeros y actualizar las conclusiones del informe y la presentación. La prueba de interfaz y los escenarios de pago/stock deben registrarse si forman parte de la entrega funcional.
+En la rama `kubernetes-final` se corrigió el ejecutor de matrices para evitar bloqueo por tuberías heredadas de PowerShell. Tres corridas formales de lectura completaron el protocolo de 300 s con 20 usuarios, 1, 2 y 3 Pods; cada una registró cero fallos. Sus run IDs son `202611242155074400`, `202611242201065200` y `202611242207003800`. La matriz se detuvo al iniciar la siguiente celda por un timeout TLS del API de Kubernetes. El checkpoint local `.lab/matrices/matrix-20261125T024745Z.json` conserva el avance y los resultados están en `.lab/runs/` (archivos locales ignorados por Git). El resultado previo del HPA `202611231840403600` registró 18 errores de transporte durante el escalado; estos no demuestran por sí solos causalidad del HPA. La evidencia disponible describe un cierre parcial del alcance verificado y no una matriz comparativa completa.
+
+La validación de integración A/B/C y de persistencia está descrita en las secciones anteriores y en los registros enlazados abajo. Las observaciones de tres corridas de lectura a baja carga no permiten concluir una mejora general por número de Pods. El alcance del laboratorio sigue siendo un nodo con PostgreSQL único; no demuestra alta disponibilidad del sistema completo.
 
 El alcance de un nodo con PostgreSQL único permite estudiar réplicas de Odoo. La pérdida del nodo o de la base requiere otro diseño y otras pruebas. No se declara alta disponibilidad del sistema completo ni una capacidad máxima a partir de esta validación breve.
 
