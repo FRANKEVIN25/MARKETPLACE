@@ -254,5 +254,4 @@ python3 manage.py shell
 
 ---
 
-Generado: 2026-01-26
 Status: ✅ Estructura LISTA para migraciones
