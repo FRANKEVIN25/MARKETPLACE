@@ -5,10 +5,12 @@ from datetime import datetime, timezone
 import json
 from pathlib import Path
 import re
+import shutil
 import subprocess
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
+POWERSHELL = shutil.which('pwsh.exe') or shutil.which('powershell.exe')
 
 
 class StepFailed(RuntimeError):
@@ -17,15 +19,16 @@ class StepFailed(RuntimeError):
         self.stdout = stdout
 
 
-def run(arguments):
-    result = subprocess.run(arguments, cwd=ROOT, text=True, capture_output=True,
+def run(arguments, *, capture=True):
+    result = subprocess.run(arguments, cwd=ROOT, text=True, capture_output=capture,
                             encoding='utf-8', errors='replace')
-    print(result.stdout, end='', flush=True)
-    if result.stderr:
-        print(result.stderr, file=sys.stderr, end='', flush=True)
+    if capture:
+        print(result.stdout, end='', flush=True)
+        if result.stderr:
+            print(result.stderr, file=sys.stderr, end='', flush=True)
     if result.returncode:
-        raise StepFailed(result.stdout)
-    return result.stdout
+        raise StepFailed(result.stdout or '')
+    return result.stdout or ''
 
 
 def main():
@@ -42,6 +45,8 @@ def main():
                           'expected_cells': cells,
                           'note': 'Preview only. No cluster changes and no load were started.'}, indent=2))
         return
+    if not POWERSHELL:
+        raise RuntimeError('PowerShell is required to control the Kubernetes laboratory')
     if run(['git', 'status', '--porcelain', '--untracked-files=no']).strip():
         raise RuntimeError('Commit or resolve tracked changes before the formal matrix')
     commit = run(['git', 'rev-parse', 'HEAD']).strip()
@@ -73,7 +78,7 @@ def main():
         if cell['status'] == 'failed' and args.mode == 'write':
             # A failed run may already have written drafts during ramp/warmup.
             # Clean only its own prefix before retrying the pending cell.
-            run(['powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/kubernetes.ps1', '-Action', 'Forward'])
+            run([POWERSHELL, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/kubernetes.ps1', '-Action', 'Forward'], capture=False)
             run([sys.executable, 'scripts/benchmark_dataset.py', 'reset-orders', '--run-id', cell['run_id']])
             run([sys.executable, 'scripts/benchmark_dataset.py', 'verify'])
             cell['status'] = 'pending'
@@ -81,8 +86,8 @@ def main():
         if cell['status'] == 'measured':
             run_id = cell['run_id']
         else:
-            run(['powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/kubernetes.ps1',
-                 '-Action', 'Scale', '-Replicas', str(cell['pods'])])
+            run([POWERSHELL, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/kubernetes.ps1',
+                 '-Action', 'Scale', '-Replicas', str(cell['pods'])], capture=False)
             try:
                 output = run([sys.executable, 'scripts/benchmark_runner.py', '--mode', args.mode,
                     '--pods', str(cell['pods']), '--users', str(cell['users']), '--repeat', str(cell['repeat']),
@@ -112,7 +117,7 @@ def main():
         cell.update({'status': 'measured', 'run_id': run_id})
         save()
         if args.mode == 'write':
-            run(['powershell.exe', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/kubernetes.ps1', '-Action', 'Forward'])
+            run([POWERSHELL, '-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', 'scripts/kubernetes.ps1', '-Action', 'Forward'], capture=False)
             run([sys.executable, 'scripts/benchmark_dataset.py', 'reset-orders', '--run-id', run_id])
             run([sys.executable, 'scripts/benchmark_dataset.py', 'verify'])
         cell.update({'status': 'complete', 'run_id': run_id})
