@@ -269,7 +269,6 @@ MARKETPLACE
 
 ---
 
-**Generado:** 26-01-2026  
 **Status:** ✅ IMPLEMENTACIÓN COMPLETA  
 **Siguiente:** Ver MIGRATION_GUIDE.md y ejecutar migraciones
 
